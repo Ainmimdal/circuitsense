@@ -1,0 +1,314 @@
+/**
+ * Component Library — Defines available components for the sidebar,
+ * plus rich metadata for validation, auto-wiring, and code generation.
+ *
+ * pinMeta maps *logical* pin names → types used by the engines.
+ * Types: VCC | GND | DIGITAL | ANALOG | PWM | I2C_SDA | I2C_SCL | SIGNAL
+ * (actual wokwi pin names are matched at runtime via store.pinInfoMap)
+ */
+
+// ─── Pin-type constants ────────────────────────────────
+export const PIN = {
+    VCC: 'VCC',
+    GND: 'GND',
+    DIGITAL: 'DIGITAL',
+    ANALOG: 'ANALOG',
+    PWM: 'PWM',
+    I2C_SDA: 'I2C_SDA',
+    I2C_SCL: 'I2C_SCL',
+    SIGNAL: 'SIGNAL',
+    TRIGGER: 'TRIGGER',
+    ECHO: 'ECHO',
+    DATA: 'DATA',
+};
+
+// ─── Arduino Uno pin catalog (used by auto-wire) ──────
+export const ARDUINO_PINS = {
+    digital: ['2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13'],
+    pwm: ['3', '5', '6', '9', '10', '11'],
+    analog: ['A0', 'A1', 'A2', 'A3', 'A4', 'A5'],
+    i2c: { sda: 'A4', scl: 'A5' },
+    power: ['5V', '3.3V'],
+    ground: ['GND.1', 'GND.2', 'GND.3'],
+    serial: ['0', '1'],
+    maxCurrent_mA: 500,
+    pinMaxCurrent_mA: 40,
+};
+
+// ─── Component definitions ─────────────────────────────
+export const componentLibrary = {
+    'arduino-uno': {
+        id: 'arduino-uno',
+        name: 'Arduino Uno',
+        tag: 'wokwi-arduino-uno',
+        category: 'board',
+        description: 'ATmega328P microcontroller board',
+        icon: '🔵',
+        attrs: {},
+        currentDraw_mA: 0,
+        pinMeta: {},
+        isBoard: true,
+    },
+
+    'led': {
+        id: 'led',
+        name: 'LED',
+        tag: 'wokwi-led',
+        category: 'output',
+        description: 'Light Emitting Diode',
+        icon: '💡',
+        attrs: { color: 'red' },
+        currentDraw_mA: 20,
+        pinMeta: {
+            'A': PIN.SIGNAL,
+            'C': PIN.GND,
+        },
+        autoWire: { A: PIN.DIGITAL, C: PIN.GND },
+        needsResistor: true,
+        codeTemplate: 'digitalWrite(${pin}, HIGH);',
+    },
+
+    'resistor': {
+        id: 'resistor',
+        name: 'Resistor 220\u03A9',
+        tag: 'wokwi-resistor',
+        category: 'passive',
+        description: '220 ohm resistor',
+        icon: '\u3030\uFE0F',
+        attrs: { value: '220' },
+        currentDraw_mA: 0,
+        pinMeta: {
+            '1': PIN.SIGNAL,
+            '2': PIN.SIGNAL,
+        },
+        isPassive: true,
+    },
+
+    'pushbutton': {
+        id: 'pushbutton',
+        name: 'Push Button',
+        tag: 'wokwi-pushbutton',
+        category: 'input',
+        description: 'Momentary push button',
+        icon: '🔘',
+        attrs: {},
+        currentDraw_mA: 0,
+        pinMeta: {
+            '1.l': PIN.SIGNAL,
+            '2.l': PIN.SIGNAL,
+            '1.r': PIN.SIGNAL,
+            '2.r': PIN.SIGNAL,
+        },
+        autoWire: { '1.l': PIN.DIGITAL, '2.l': PIN.GND },
+        needsPullup: true,
+        codeTemplate: 'digitalRead(${pin})',
+    },
+
+    'buzzer': {
+        id: 'buzzer',
+        name: 'Buzzer',
+        tag: 'wokwi-buzzer',
+        category: 'output',
+        description: 'Piezo buzzer',
+        icon: '🔊',
+        attrs: {},
+        currentDraw_mA: 30,
+        pinMeta: {
+            '1': PIN.SIGNAL,
+            '2': PIN.GND,
+        },
+        autoWire: { '1': PIN.PWM, '2': PIN.GND },
+        codeTemplate: 'tone(${pin}, 1000);',
+    },
+
+    'hc-sr04': {
+        id: 'hc-sr04',
+        name: 'HC-SR04',
+        tag: 'wokwi-hc-sr04',
+        category: 'sensor',
+        description: 'Ultrasonic distance sensor',
+        icon: '📡',
+        attrs: {},
+        currentDraw_mA: 15,
+        pinMeta: {
+            'VCC': PIN.VCC,
+            'TRIG': PIN.TRIGGER,
+            'ECHO': PIN.ECHO,
+            'GND': PIN.GND,
+        },
+        autoWire: { VCC: PIN.VCC, GND: PIN.GND, TRIG: PIN.DIGITAL, ECHO: PIN.DIGITAL },
+        codeTemplate: [
+            'digitalWrite(trigPin, LOW); delayMicroseconds(2);',
+            'digitalWrite(trigPin, HIGH); delayMicroseconds(10);',
+            'digitalWrite(trigPin, LOW);',
+            'long duration = pulseIn(echoPin, HIGH);',
+            'float distance = duration * 0.034 / 2;',
+        ].join('\n'),
+    },
+
+    'servo': {
+        id: 'servo',
+        name: 'Servo Motor',
+        tag: 'wokwi-servo',
+        category: 'actuator',
+        description: 'SG90 Micro Servo',
+        icon: '\u2699\uFE0F',
+        attrs: {},
+        currentDraw_mA: 200,
+        pinMeta: {
+            'PWM': PIN.PWM,
+            'V+': PIN.VCC,
+            'GND': PIN.GND,
+        },
+        autoWire: { 'PWM': PIN.PWM, 'V+': PIN.VCC, 'GND': PIN.GND },
+        avoidPins: ['0', '1'],
+        codeTemplate: 'myServo.write(90);',
+    },
+
+    'potentiometer': {
+        id: 'potentiometer',
+        name: 'Potentiometer',
+        tag: 'wokwi-potentiometer',
+        category: 'input',
+        description: 'Variable resistor / knob',
+        icon: '🎛\uFE0F',
+        attrs: {},
+        currentDraw_mA: 1,
+        pinMeta: {
+            'GND': PIN.GND,
+            'SIG': PIN.ANALOG,
+            'VCC': PIN.VCC,
+        },
+        autoWire: { GND: PIN.GND, SIG: PIN.ANALOG, VCC: PIN.VCC },
+        codeTemplate: 'int val = analogRead(${pin});',
+    },
+
+    // ─── New components ────────────────────────────────
+
+    'dht22': {
+        id: 'dht22',
+        name: 'DHT22',
+        tag: 'wokwi-dht22',
+        category: 'sensor',
+        description: 'Temperature & humidity sensor',
+        icon: '🌡\uFE0F',
+        attrs: {},
+        currentDraw_mA: 2,
+        pinMeta: {
+            'VCC': PIN.VCC,
+            'SDA': PIN.DATA,
+            'NC': PIN.SIGNAL,
+            'GND': PIN.GND,
+        },
+        autoWire: { VCC: PIN.VCC, SDA: PIN.DIGITAL, GND: PIN.GND },
+        codeTemplate: 'float temp = dht.readTemperature();',
+    },
+
+    'lcd1602': {
+        id: 'lcd1602',
+        name: 'LCD 16\u00D72 (I2C)',
+        tag: 'wokwi-lcd1602',
+        category: 'output',
+        description: '16\u00D72 character LCD with I2C backpack',
+        icon: '🖥\uFE0F',
+        attrs: {},
+        currentDraw_mA: 25,
+        pinMeta: {
+            'VCC': PIN.VCC,
+            'GND': PIN.GND,
+            'SDA': PIN.I2C_SDA,
+            'SCL': PIN.I2C_SCL,
+        },
+        autoWire: { VCC: PIN.VCC, GND: PIN.GND, SDA: PIN.I2C_SDA, SCL: PIN.I2C_SCL },
+        codeTemplate: 'lcd.setCursor(0, 0); lcd.print("Hello!");',
+    },
+
+    'pir-motion-sensor': {
+        id: 'pir-motion-sensor',
+        name: 'PIR Motion',
+        tag: 'wokwi-pir-motion-sensor',
+        category: 'sensor',
+        description: 'Passive infrared motion sensor',
+        icon: '👁\uFE0F',
+        attrs: {},
+        currentDraw_mA: 5,
+        pinMeta: {
+            'VCC': PIN.VCC,
+            'OUT': PIN.SIGNAL,
+            'GND': PIN.GND,
+        },
+        autoWire: { VCC: PIN.VCC, OUT: PIN.DIGITAL, GND: PIN.GND },
+        codeTemplate: 'int motion = digitalRead(${pin});',
+    },
+
+    'ir-receiver': {
+        id: 'ir-receiver',
+        name: 'IR Receiver',
+        tag: 'wokwi-ir-receiver',
+        category: 'sensor',
+        description: 'Infrared remote receiver (TSOP38238)',
+        icon: '📲',
+        attrs: {},
+        currentDraw_mA: 5,
+        pinMeta: {
+            'GND': PIN.GND,
+            'VCC': PIN.VCC,
+            'DAT': PIN.SIGNAL,
+        },
+        autoWire: { GND: PIN.GND, VCC: PIN.VCC, DAT: PIN.DIGITAL },
+        codeTemplate: 'if (irrecv.decode(&results)) { /* ... */ }',
+    },
+
+    'neopixel': {
+        id: 'neopixel',
+        name: 'NeoPixel Ring',
+        tag: 'wokwi-neopixel',
+        category: 'output',
+        description: 'WS2812B addressable RGB LED',
+        icon: '🌈',
+        attrs: {},
+        currentDraw_mA: 60,
+        pinMeta: {
+            'VCC': PIN.VCC,
+            'GND': PIN.GND,
+            'DIN': PIN.SIGNAL,
+            'DOUT': PIN.SIGNAL,
+        },
+        autoWire: { VCC: PIN.VCC, GND: PIN.GND, DIN: PIN.DIGITAL },
+        codeTemplate: 'strip.setPixelColor(0, strip.Color(255, 0, 0)); strip.show();',
+    },
+
+    'slide-switch': {
+        id: 'slide-switch',
+        name: 'Slide Switch',
+        tag: 'wokwi-slide-switch',
+        category: 'input',
+        description: 'SPDT slide switch',
+        icon: '🔀',
+        attrs: {},
+        currentDraw_mA: 0,
+        pinMeta: {
+            '1': PIN.SIGNAL,
+            '2': PIN.SIGNAL,
+            '3': PIN.SIGNAL,
+        },
+        autoWire: { '1': PIN.VCC, '2': PIN.DIGITAL, '3': PIN.GND },
+        codeTemplate: 'int state = digitalRead(${pin});',
+    },
+};
+
+export const categories = [
+    { id: 'board', name: 'Boards' },
+    { id: 'sensor', name: 'Sensors' },
+    { id: 'input', name: 'Input' },
+    { id: 'output', name: 'Output' },
+    { id: 'actuator', name: 'Actuators' },
+    { id: 'passive', name: 'Passive' },
+];
+
+/**
+ * Helper — get component definition for an instance
+ */
+export function getComponentDef(componentId) {
+    return componentLibrary[componentId] || null;
+}
