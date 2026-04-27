@@ -10,13 +10,22 @@ class PlacedComponent extends LitElement {
         componentId: { type: String },
         _pinInfo: { state: true },
         _autoWireMsg: { state: true },
+        _hoveredPin: { state: true },
     };
 
-    static styles = css `
+    static styles = css`
     :host {
       display: inline-block;
       cursor: grab;
       user-select: none;
+      outline: 2px solid transparent;
+      outline-offset: 4px;
+      border-radius: 4px;
+      transition: outline-color 0.2s;
+    }
+
+    :host(.selected) {
+      outline-color: #4FC3F7;
     }
 
     :host(.dragging) {
@@ -34,112 +43,122 @@ class PlacedComponent extends LitElement {
       pointer-events: none;
     }
 
-    /* Pin dots overlaid on component */
+    /* Pin dots — hidden by default, shown on hover (like Tinkercad) */
     .pin-dot {
       position: absolute;
-      width: 11px;
-      height: 11px;
+      width: 8px;
+      height: 8px;
       border-radius: 50%;
       background: #4CAF50;
-      border: 2px solid rgba(255, 255, 255, 0.9);
-      transform: translate(-50%, -50%);
+      border: 1.5px solid rgba(255, 255, 255, 0.85);
+      transform: translate(-50%, -50%) scale(0);
+      opacity: 0;
       cursor: crosshair;
       z-index: 20;
+      pointer-events: none;
+      transition: transform 0.2s ease, opacity 0.2s ease, box-shadow 0.15s ease;
+    }
+
+    /* Reveal pin dots on component hover or selection */
+    :host(:hover) .pin-dot,
+    :host(.selected) .pin-dot {
+      transform: translate(-50%, -50%) scale(1);
+      opacity: 1;
       pointer-events: all;
-      transition: transform 0.15s ease, box-shadow 0.15s ease;
     }
 
     .pin-dot:hover {
-      transform: translate(-50%, -50%) scale(1.6);
-      box-shadow: 0 0 10px rgba(255, 255, 255, 0.4);
+      transform: translate(-50%, -50%) scale(1.5);
+      box-shadow: 0 0 8px rgba(255, 255, 255, 0.35);
     }
 
+    /* Active pin during wiring — always visible */
     .pin-dot.active {
       background: #FF9800 !important;
-      transform: translate(-50%, -50%) scale(1.6);
-      box-shadow: 0 0 14px rgba(255, 152, 0, 0.8);
+      transform: translate(-50%, -50%) scale(1.5);
+      opacity: 1;
+      pointer-events: all;
+      box-shadow: 0 0 12px rgba(255, 152, 0, 0.7);
       animation: pin-pulse 1s infinite;
     }
 
-    .pin-dot.power {
-      background: #F44336;
-    }
-
-    .pin-dot.ground {
-      background: #555;
-      border-color: #aaa;
-    }
-
-    .pin-dot.signal {
-      background: #4CAF50;
-    }
+    .pin-dot.power { background: #F44336; }
+    .pin-dot.ground { background: #555; border-color: #aaa; }
+    .pin-dot.signal { background: #4CAF50; }
 
     @keyframes pin-pulse {
-      0%, 100% { box-shadow: 0 0 8px rgba(255, 152, 0, 0.6); }
-      50% { box-shadow: 0 0 18px rgba(255, 152, 0, 0.9); }
+      0%, 100% { box-shadow: 0 0 6px rgba(255, 152, 0, 0.5); }
+      50% { box-shadow: 0 0 14px rgba(255, 152, 0, 0.85); }
     }
 
-    /* Tooltip shown on pin hover */
+    /* Tooltip — JS-driven visibility */
     .pin-tooltip {
       position: absolute;
       transform: translate(-50%, -100%);
-      margin-top: -8px;
-      background: rgba(40, 40, 60, 0.95);
-      color: #fff;
-      padding: 2px 8px;
-      border-radius: 4px;
+      margin-top: -10px;
+      background: rgba(39, 39, 42, 0.95); /* Zinc 800 */
+      color: #fafafa;
+      padding: 3px 10px;
+      border-radius: 6px;
       font-size: 10px;
-      font-weight: 600;
+      font-weight: 500;
       white-space: nowrap;
       pointer-events: none;
-      opacity: 0;
-      transition: opacity 0.15s;
       z-index: 30;
+      opacity: 0;
+      transition: opacity 0.12s;
+      backdrop-filter: blur(4px);
+      border: 1px solid rgba(255,255,255,0.1);
     }
 
-    .pin-dot:hover ~ .pin-tooltip[data-for],
-    .pin-dot:hover + .pin-tooltip {
+    .pin-tooltip.visible {
       opacity: 1;
     }
 
-    /* Action buttons toolbar */
+    /* Action buttons toolbar — compact, inside component bounds */
     .action-bar {
       position: absolute;
-      top: -30px;
-      left: 50%;
-      transform: translateX(-50%);
+      top: 2px;
+      right: 2px;
       display: none;
-      gap: 4px;
+      gap: 2px;
       z-index: 30;
       pointer-events: all;
+      padding: 2px;
+      border-radius: 4px;
+      background: rgba(24, 24, 27, 0.7); /* Zinc 900 */
+      backdrop-filter: blur(6px);
     }
 
-    :host(:hover) .action-bar {
+    :host(:hover) .action-bar,
+    :host(.selected) .action-bar {
       display: flex;
     }
 
     .action-btn {
-      width: 24px;
-      height: 24px;
-      border-radius: 6px;
-      border: 1px solid #333;
-      font-size: 12px;
+      width: 20px;
+      height: 20px;
+      border-radius: 4px;
+      border: 1px solid rgba(255,255,255,0.15);
+      font-size: 10px;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
       line-height: 1;
       transition: all 0.15s;
+      opacity: 0.7;
     }
 
     .action-btn:hover {
       transform: scale(1.15);
+      opacity: 1;
     }
 
     .delete-btn {
-      background: #E53935;
+      background: rgba(229, 57, 53, 0.75);
       color: white;
-      border-color: #C62828;
+      border-color: rgba(198, 40, 40, 0.5);
     }
 
     .delete-btn:hover {
@@ -147,9 +166,9 @@ class PlacedComponent extends LitElement {
     }
 
     .autowire-btn {
-      background: #1E88E5;
+      background: rgba(30, 136, 229, 0.75);
       color: white;
-      border-color: #1565C0;
+      border-color: rgba(21, 101, 192, 0.5);
     }
 
     .autowire-btn:hover {
@@ -159,18 +178,19 @@ class PlacedComponent extends LitElement {
     /* Auto-wire toast */
     .autowire-toast {
       position: absolute;
-      top: -54px;
+      top: -28px;
       left: 50%;
       transform: translateX(-50%);
       background: rgba(30, 136, 229, 0.95);
       color: white;
-      padding: 4px 12px;
+      padding: 5px 14px;
       border-radius: 8px;
       font-size: 10px;
       white-space: nowrap;
       pointer-events: none;
       z-index: 40;
       animation: toast-fade 2s ease forwards;
+      backdrop-filter: blur(4px);
     }
 
     .autowire-toast.error {
@@ -182,12 +202,26 @@ class PlacedComponent extends LitElement {
       70% { opacity: 1; }
       100% { opacity: 0; transform: translateX(-50%) translateY(-10px); }
     }
+
+    /* Component name label */
+    .component-label {
+      position: absolute;
+      bottom: -18px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 9px;
+      color: #555;
+      white-space: nowrap;
+      pointer-events: none;
+      user-select: none;
+    }
   `;
 
     constructor() {
         super();
         this._pinInfo = [];
         this._autoWireMsg = null;
+        this._hoveredPin = null;
         this._storeHandler = () => this.requestUpdate();
     }
 
@@ -201,11 +235,21 @@ class PlacedComponent extends LitElement {
         store.removeEventListener('change', this._storeHandler);
     }
 
+    updated(changedProperties) {
+        super.updated(changedProperties);
+        // Update selection visual
+        if (store.selectedInstanceId === this.instanceId) {
+            this.classList.add('selected');
+        } else {
+            this.classList.remove('selected');
+        }
+    }
+
     firstUpdated() {
         this._readPinInfo();
     }
 
-    _readPinInfo(retries = 5) {
+    _readPinInfo(retries = 8) {
         const container = this.shadowRoot && this.shadowRoot.querySelector('.wokwi-container');
         if (!container) return;
 
@@ -220,18 +264,21 @@ class PlacedComponent extends LitElement {
     }
 
     render() {
-            const def = getComponentDef(this.componentId);
-            if (!def) return html `<div style="color:red;">Unknown: ${this.componentId}</div>`;
+        const def = getComponentDef(this.componentId);
+        if (!def) return html`<div style="color:red;">Unknown: ${this.componentId}</div>`;
 
-            const attrs = Object.entries(def.attrs || {})
-                .map(([k, v]) => `${k}="${v}"`)
-                .join(' ');
-            const tagHtml = `<${def.tag} ${attrs}></${def.tag}>`;
+        const attrs = Object.entries(def.attrs || {})
+            .map(([k, v]) => `${k}="${v}"`)
+            .join(' ');
+        const tagHtml = `<${def.tag} ${attrs}></${def.tag}>`;
 
-            const showAutoWire = !def.isBoard && !def.isPassive && def.autoWire;
+        const showAutoWire = !def.isBoard && !def.isPassive && def.autoWire;
 
-            return html `
-      <div class="wrapper" @pointerdown=${this._onPointerDown}>
+        return html`
+      <div class="wrapper"
+        @pointerdown=${this._onPointerDown}
+        @click=${this._onClick}
+      >
         <div class="action-bar">
           ${showAutoWire ? html`
             <button class="action-btn autowire-btn"
@@ -240,7 +287,7 @@ class PlacedComponent extends LitElement {
           ` : ''}
           <button class="action-btn delete-btn"
             @click=${this._onDelete}
-            title="Remove component">\u00D7</button>
+            title="Remove component (Del)">×</button>
         </div>
 
         ${this._autoWireMsg ? html`
@@ -252,7 +299,10 @@ class PlacedComponent extends LitElement {
         <div class="wokwi-container">
           ${unsafeHTML(tagHtml)}
         </div>
+
         ${this._pinInfo.map(pin => this._renderPin(pin))}
+
+        <div class="component-label">${def.name}</div>
       </div>
     `;
     }
@@ -260,15 +310,17 @@ class PlacedComponent extends LitElement {
     _renderPin(pin) {
         const isActive =
             store.wiringState && store.wiringState.instanceId === this.instanceId &&
-            store.wiringState && store.wiringState.pinName === pin.name;
+            store.wiringState.pinName === pin.name;
 
         const pinClass = this._getPinClass(pin);
+        const isHovered = this._hoveredPin === pin.name;
 
         return html`
       <div
         class="pin-dot ${pinClass} ${isActive ? 'active' : ''}"
         style="left: ${pin.x}px; top: ${pin.y}px;"
-        title="${pin.name}"
+        @mouseenter=${() => { this._hoveredPin = pin.name; }}
+        @mouseleave=${() => { this._hoveredPin = null; }}
         @pointerdown=${(e) => e.stopPropagation()}
         @click=${(e) => {
             e.stopPropagation();
@@ -276,7 +328,7 @@ class PlacedComponent extends LitElement {
         }}
       ></div>
       <div
-        class="pin-tooltip"
+        class="pin-tooltip ${isHovered ? 'visible' : ''}"
         style="left: ${pin.x}px; top: ${pin.y}px;"
       >
         ${pin.name}
@@ -301,12 +353,25 @@ class PlacedComponent extends LitElement {
         }
     }
 
+    _onClick(e) {
+        // Select this component (unless clicking a pin or button)
+        const path = e.composedPath();
+        const isPin = path.some(el => el.classList && el.classList.contains('pin-dot'));
+        const isBtn = path.some(el => el.classList && el.classList.contains('action-btn'));
+        if (!isPin && !isBtn) {
+            store.selectInstance(this.instanceId);
+        }
+    }
+
     _onAutoWire(e) {
         e.stopPropagation();
         const result = autoWire(this.instanceId);
 
+        // Commit auto-wire batch to history
+        store.commitAutoWire();
+
         if (result.success) {
-            this._autoWireMsg = { ok: true, text: '\u2713 Wired: ' + result.wired.join(', ') };
+            this._autoWireMsg = { ok: true, text: '✓ Wired: ' + result.wired.join(', ') };
         } else if (result.wired.length > 0) {
             this._autoWireMsg = { ok: false, text: 'Partial: ' + result.errors.join('; ') };
         } else {
@@ -331,6 +396,9 @@ class PlacedComponent extends LitElement {
         const inst = store.getInstance(this.instanceId);
         if (!inst) return;
 
+        // Select on mousedown
+        store.selectInstance(this.instanceId);
+
         this._startX = e.clientX;
         this._startY = e.clientY;
         this._origX = inst.x;
@@ -339,11 +407,15 @@ class PlacedComponent extends LitElement {
         this.classList.add('dragging');
         this.setPointerCapture(e.pointerId);
 
+        const scale = store.viewport.scale || 1;
+
         const onMove = (ev) => {
+            const dx = (ev.clientX - this._startX) / scale;
+            const dy = (ev.clientY - this._startY) / scale;
             store.moveInstance(
                 this.instanceId,
-                this._origX + ev.clientX - this._startX,
-                this._origY + ev.clientY - this._startY
+                this._origX + dx,
+                this._origY + dy
             );
         };
 
@@ -351,6 +423,7 @@ class PlacedComponent extends LitElement {
             this.classList.remove('dragging');
             this.removeEventListener('pointermove', onMove);
             this.removeEventListener('pointerup', onUp);
+            store.moveInstanceDone(this.instanceId);
         };
 
         this.addEventListener('pointermove', onMove);

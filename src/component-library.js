@@ -45,6 +45,7 @@ export const componentLibrary = {
         description: 'ATmega328P microcontroller board',
         icon: '🔵',
         attrs: {},
+        size: { width: 230, height: 200 },
         currentDraw_mA: 0,
         pinMeta: {},
         isBoard: true,
@@ -58,6 +59,7 @@ export const componentLibrary = {
         description: 'Light Emitting Diode',
         icon: '💡',
         attrs: { color: 'red' },
+        size: { width: 40, height: 60 },
         currentDraw_mA: 20,
         pinMeta: {
             'A': PIN.SIGNAL,
@@ -76,6 +78,7 @@ export const componentLibrary = {
         description: '220 ohm resistor',
         icon: '\u3030\uFE0F',
         attrs: { value: '220' },
+        size: { width: 110, height: 30 },
         currentDraw_mA: 0,
         pinMeta: {
             '1': PIN.SIGNAL,
@@ -92,6 +95,7 @@ export const componentLibrary = {
         description: 'Momentary push button',
         icon: '🔘',
         attrs: {},
+        size: { width: 50, height: 50 },
         currentDraw_mA: 0,
         pinMeta: {
             '1.l': PIN.SIGNAL,
@@ -112,6 +116,7 @@ export const componentLibrary = {
         description: 'Piezo buzzer',
         icon: '🔊',
         attrs: {},
+        size: { width: 60, height: 70 },
         currentDraw_mA: 30,
         pinMeta: {
             '1': PIN.SIGNAL,
@@ -129,6 +134,7 @@ export const componentLibrary = {
         description: 'Ultrasonic distance sensor',
         icon: '📡',
         attrs: {},
+        size: { width: 130, height: 60 },
         currentDraw_mA: 15,
         pinMeta: {
             'VCC': PIN.VCC,
@@ -154,6 +160,7 @@ export const componentLibrary = {
         description: 'SG90 Micro Servo',
         icon: '\u2699\uFE0F',
         attrs: {},
+        size: { width: 100, height: 80 },
         currentDraw_mA: 200,
         pinMeta: {
             'PWM': PIN.PWM,
@@ -173,6 +180,7 @@ export const componentLibrary = {
         description: 'Variable resistor / knob',
         icon: '🎛\uFE0F',
         attrs: {},
+        size: { width: 60, height: 60 },
         currentDraw_mA: 1,
         pinMeta: {
             'GND': PIN.GND,
@@ -193,6 +201,7 @@ export const componentLibrary = {
         description: 'Temperature & humidity sensor',
         icon: '🌡\uFE0F',
         attrs: {},
+        size: { width: 60, height: 90 }, // Adjusted to prevent text overlap
         currentDraw_mA: 2,
         pinMeta: {
             'VCC': PIN.VCC,
@@ -212,6 +221,7 @@ export const componentLibrary = {
         description: '16\u00D72 character LCD with I2C backpack',
         icon: '🖥\uFE0F',
         attrs: {},
+        size: { width: 260, height: 80 },
         currentDraw_mA: 25,
         pinMeta: {
             'VCC': PIN.VCC,
@@ -223,14 +233,15 @@ export const componentLibrary = {
         codeTemplate: 'lcd.setCursor(0, 0); lcd.print("Hello!");',
     },
 
-    'pir-motion-sensor': {
-        id: 'pir-motion-sensor',
+    'pir-motion': {
+        id: 'pir-motion',
         name: 'PIR Motion',
         tag: 'wokwi-pir-motion-sensor',
         category: 'sensor',
         description: 'Passive infrared motion sensor',
         icon: '👁\uFE0F',
         attrs: {},
+        size: { width: 100, height: 100 }, // Adjusted to prevent bounding box cutoff
         currentDraw_mA: 5,
         pinMeta: {
             'VCC': PIN.VCC,
@@ -249,6 +260,7 @@ export const componentLibrary = {
         description: 'Infrared remote receiver (TSOP38238)',
         icon: '📲',
         attrs: {},
+        size: { width: 50, height: 50 },
         currentDraw_mA: 5,
         pinMeta: {
             'GND': PIN.GND,
@@ -267,6 +279,7 @@ export const componentLibrary = {
         description: 'WS2812B addressable RGB LED',
         icon: '🌈',
         attrs: {},
+        size: { width: 40, height: 40 },
         currentDraw_mA: 60,
         pinMeta: {
             'VCC': PIN.VCC,
@@ -286,6 +299,7 @@ export const componentLibrary = {
         description: 'SPDT slide switch',
         icon: '🔀',
         attrs: {},
+        size: { width: 60, height: 30 },
         currentDraw_mA: 0,
         pinMeta: {
             '1': PIN.SIGNAL,

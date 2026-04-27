@@ -1,20 +1,26 @@
 /**
  * Validation Bar — Displays real-time circuit errors and warnings at
- * the bottom of the canvas. Subscribes to store changes and reruns
- * the validation engine on every change.
+ * the bottom of the canvas.
+ *
+ * Improvements:
+ *  - Debounced: listens to 'structural-change' instead of every 'change'
+ *  - Auto-expands when new errors appear
+ *  - Click-to-highlight: clicking an issue selects the related component
  */
 
 import { LitElement, html, css } from 'lit';
 import { store } from '../store.js';
 import { validateCircuit, SEV } from '../services/validation-engine.js';
+import { getComponentDef } from '../component-library.js';
 
 class ValidationBar extends LitElement {
     static properties = {
         _results: { state: true },
         _collapsed: { state: true },
+        _prevErrorCount: { state: true },
     };
 
-    static styles = css `
+    static styles = css`
     :host {
       display: block;
       position: absolute;
@@ -29,9 +35,10 @@ class ValidationBar extends LitElement {
       pointer-events: all;
       background: rgba(18, 18, 31, 0.96);
       border-top: 1px solid #2a2a4a;
-      max-height: 180px;
+      max-height: 200px;
       overflow-y: auto;
       transition: max-height 0.25s ease;
+      backdrop-filter: blur(8px);
     }
 
     .bar.collapsed {
@@ -51,6 +58,7 @@ class ValidationBar extends LitElement {
       font-size: 12px;
       cursor: pointer;
       user-select: none;
+      backdrop-filter: blur(8px);
     }
 
     .summary:hover {
@@ -80,19 +88,28 @@ class ValidationBar extends LitElement {
       transform: rotate(180deg);
     }
 
+    /* Save indicator */
+    .save-indicator {
+      margin-left: auto;
+      margin-right: 8px;
+      font-size: 10px;
+      color: #444;
+    }
+
     /* Individual issue rows */
     .issue {
       display: flex;
       align-items: flex-start;
       gap: 10px;
-      padding: 6px 16px;
+      padding: 7px 16px;
       font-size: 12px;
       border-bottom: 1px solid rgba(255,255,255,0.04);
       transition: background 0.15s;
+      cursor: pointer;
     }
 
     .issue:hover {
-      background: rgba(255,255,255,0.04);
+      background: rgba(255,255,255,0.06);
     }
 
     .issue:last-child {
@@ -120,11 +137,13 @@ class ValidationBar extends LitElement {
     .issue-message {
       color: #ccc;
       line-height: 1.5;
+      flex: 1;
     }
 
-    .issue-message .inst-id {
-      color: #888;
+    .issue-component {
       font-size: 10px;
+      color: #666;
+      margin-left: 4px;
     }
 
     /* Scrollbar */
@@ -137,41 +156,90 @@ class ValidationBar extends LitElement {
         super();
         this._results = { errors: [], warnings: [], info: [], all: [] };
         this._collapsed = true;
-        this._storeHandler = () => this._runValidation();
+        this._prevErrorCount = 0;
+        this._debounceTimer = null;
+
+        // Listen to structural changes only (not every mouse move)
+        this._structuralHandler = () => this._scheduleValidation();
+        // Also do an initial validation after components load
+        this._changeHandler = () => {
+            if (!this._hasRunInitial) {
+                this._hasRunInitial = true;
+                this._scheduleValidation();
+            }
+        };
+        this._hasRunInitial = false;
     }
 
     connectedCallback() {
         super.connectedCallback();
-        store.addEventListener('change', this._storeHandler);
+        store.addEventListener('structural-change', this._structuralHandler);
+        store.addEventListener('change', this._changeHandler);
         this._runValidation();
     }
 
     disconnectedCallback() {
         super.disconnectedCallback();
-        store.removeEventListener('change', this._storeHandler);
+        store.removeEventListener('structural-change', this._structuralHandler);
+        store.removeEventListener('change', this._changeHandler);
+        clearTimeout(this._debounceTimer);
+    }
+
+    _scheduleValidation() {
+        clearTimeout(this._debounceTimer);
+        this._debounceTimer = setTimeout(() => this._runValidation(), 100);
     }
 
     _runValidation() {
+        const prev = this._results;
         this._results = validateCircuit();
+
+        // Auto-expand when errors appear for the first time
+        const newErrorCount = this._results.errors.length;
+        if (newErrorCount > 0 && this._prevErrorCount === 0) {
+            this._collapsed = false;
+        }
+        // Auto-collapse when errors are all fixed
+        if (newErrorCount === 0 && prev.errors.length > 0) {
+            this._collapsed = true;
+        }
+        this._prevErrorCount = newErrorCount;
     }
 
     _toggle() {
         this._collapsed = !this._collapsed;
     }
 
-    render() {
-            const { errors, warnings, info, all } = this._results;
-            const hasIssues = all.length > 0;
+    _onIssueClick(issue) {
+        if (issue.instanceId) {
+            store.selectInstance(issue.instanceId);
+        }
+    }
 
-            return html `
+    _getComponentName(instanceId) {
+        if (!instanceId) return '';
+        const inst = store.getInstance(instanceId);
+        if (!inst) return instanceId;
+        const def = getComponentDef(inst.componentId);
+        return def ? def.name : instanceId;
+    }
+
+    render() {
+        const { errors, warnings, info, all } = this._results;
+        const hasIssues = all.length > 0;
+
+        return html`
       ${hasIssues ? html`
         <div class="bar ${this._collapsed ? 'collapsed' : ''}">
           ${all.map(issue => html`
-            <div class="issue">
+            <div class="issue" @click=${() => this._onIssueClick(issue)}>
               <div class="issue-icon">${issue.icon || '•'}</div>
               <div class="issue-severity ${issue.severity}"></div>
               <div class="issue-message">
                 ${issue.message}
+                ${issue.instanceId ? html`
+                  <span class="issue-component">(click to highlight)</span>
+                ` : ''}
               </div>
             </div>
           `)}
@@ -191,6 +259,7 @@ class ValidationBar extends LitElement {
         ${all.length === 0 ? html`
           <span class="count ok">✓ No issues</span>
         ` : ''}
+        <span class="save-indicator">auto-saved</span>
         ${hasIssues ? html`
           <span class="toggle-icon ${this._collapsed ? '' : 'open'}">▲</span>
         ` : ''}

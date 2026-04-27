@@ -61,7 +61,8 @@ export function autoWire(instanceId) {
             continue;
         }
 
-        const arduinoPin = _pickArduinoPin(needType, usedPins, i2cInUse, def.avoidPins || []);
+        const sourcePos = store.getPinAbsolutePosition(instanceId, pinName);
+        const arduinoPin = _pickArduinoPin(needType, usedPins, i2cInUse, def.avoidPins || [], sourcePos, board.id);
         if (!arduinoPin) {
             errors.push('No free Arduino pin for ' + pinName + ' (' + needType + ')');
             continue;
@@ -111,10 +112,29 @@ function _isI2cInUse(boardInstanceId) {
 /**
  * Pick the best free Arduino pin for a given requirement type.
  */
-function _pickArduinoPin(needType, usedPins, i2cInUse, avoidPins) {
+function _pickArduinoPin(needType, usedPins, i2cInUse, avoidPins, sourcePos, boardId) {
     const avoid = new Set(avoidPins);
-
     const isFree = (pin) => !usedPins.has(pin) && !avoid.has(pin);
+
+    const getClosest = (candidates) => {
+        const freePins = candidates.filter(isFree);
+        if (freePins.length === 0) return null;
+        if (!sourcePos) return freePins[0];
+
+        let minDistance = Infinity;
+        let bestPin = freePins[0];
+
+        for (const pin of freePins) {
+            const targetPos = store.getPinAbsolutePosition(boardId, pin);
+            if (!targetPos) continue;
+            const dist = Math.hypot(targetPos.x - sourcePos.x, targetPos.y - sourcePos.y);
+            if (dist < minDistance) {
+                minDistance = dist;
+                bestPin = pin;
+            }
+        }
+        return bestPin;
+    };
 
     switch (needType) {
         case PIN.VCC:
@@ -125,37 +145,25 @@ function _pickArduinoPin(needType, usedPins, i2cInUse, avoidPins) {
             return '5V';
 
         case PIN.GND:
-            // Multiple GND pins available
-            for (const g of ARDUINO_PINS.ground) {
-                if (isFree(g)) return g;
-            }
-            // GND can be shared too
-            return ARDUINO_PINS.ground[0];
+            const freeGND = getClosest(ARDUINO_PINS.ground);
+            return freeGND || ARDUINO_PINS.ground[0]; // Share if full
 
         case PIN.PWM:
-            for (const p of ARDUINO_PINS.pwm) {
-                if (isFree(p)) return p;
-            }
-            return null;
+            return getClosest(ARDUINO_PINS.pwm);
 
         case PIN.DIGITAL:
         case PIN.SIGNAL:
         case PIN.TRIGGER:
         case PIN.ECHO:
         case PIN.DATA:
-            for (const p of ARDUINO_PINS.digital) {
-                if (isFree(p)) return p;
-            }
-            return null;
+            return getClosest(ARDUINO_PINS.digital);
 
         case PIN.ANALOG:
-            for (const p of ARDUINO_PINS.analog) {
-                if (p === 'A4' || p === 'A5') {
-                    if (i2cInUse) continue; // reserved for I2C
-                }
-                if (isFree(p)) return p;
-            }
-            return null;
+            const analogPins = ARDUINO_PINS.analog.filter(p => {
+                if ((p === 'A4' || p === 'A5') && i2cInUse) return false;
+                return true;
+            });
+            return getClosest(analogPins);
 
         case PIN.I2C_SDA:
             return 'A4';
@@ -165,9 +173,6 @@ function _pickArduinoPin(needType, usedPins, i2cInUse, avoidPins) {
 
         default:
             // Fallback: try any digital
-            for (const p of ARDUINO_PINS.digital) {
-                if (isFree(p)) return p;
-            }
-            return null;
+            return getClosest(ARDUINO_PINS.digital);
     }
 }
