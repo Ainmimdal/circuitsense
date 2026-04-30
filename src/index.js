@@ -7,3 +7,4 @@ import './components/component-sidebar.js';
 import './components/circuit-canvas.js';
 import './components/placed-component.js';
 import './components/validation-bar.js';
+import './components/ai-assistant.js';
