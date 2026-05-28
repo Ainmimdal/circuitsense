@@ -34,6 +34,8 @@ export function wirePath(x1, y1, x2, y2, options = {}) {
         exitDir1 = 'up',
         exitDir2 = 'up',
         index = 0,
+        stagger1,
+        stagger2,
     } = options;
 
     if (style === 'smooth') {
@@ -54,7 +56,7 @@ export function wirePath(x1, y1, x2, y2, options = {}) {
     }
 
     // Smart routing: approach each pin perpendicular to its component edge
-    return smartRoute(x1, y1, exitDir1, x2, y2, exitDir2, index);
+    return smartRoute(x1, y1, exitDir1, x2, y2, exitDir2, index, stagger1, stagger2);
 }
 
 // ─── Smart Routing (new) ─────────────────────────────────────
@@ -63,16 +65,17 @@ export function wirePath(x1, y1, x2, y2, options = {}) {
  * Route a wire that exits perpendicularly from each pin's component edge.
  * This prevents wires from running along pin header rows.
  */
-function smartRoute(x1, y1, dir1, x2, y2, dir2, index) {
-    const stagger = (index % 5) * 6; // Limit stagger to prevent massive sweeping loops
-    const ext = EXTENSION + stagger;
+function smartRoute(x1, y1, dir1, x2, y2, dir2, index, s1, s2) {
+    const stagger1 = s1 !== undefined ? s1 : (index % 5) * 6;
+    const stagger2 = s2 !== undefined ? s2 : (index % 5) * 6;
+    const ext1 = EXTENSION + stagger1;
+    const ext2 = EXTENSION + stagger2;
 
-    // Extension points: where the wire goes after leaving each pin
-    const extPt1 = extendPoint(x1, y1, dir1, ext);
-    const extPt2 = extendPoint(x2, y2, dir2, ext);
+    const extPt1 = extendPoint(x1, y1, dir1, ext1);
+    const extPt2 = extendPoint(x2, y2, dir2, ext2);
 
-    // Build the path from pin1 → ext1 → ... → ext2 → pin2
-    const midPoints = connectExtensions(extPt1, extPt2, dir1, dir2, stagger);
+    const midStagger = Math.max(stagger1, stagger2);
+    const midPoints = connectExtensions(extPt1, extPt2, dir1, dir2, midStagger);
 
     const allPoints = [
         { x: x1, y: y1 },
@@ -82,7 +85,6 @@ function smartRoute(x1, y1, dir1, x2, y2, dir2, index) {
         { x: x2, y: y2 },
     ];
 
-    // Remove redundant collinear points
     const cleaned = cleanCollinear(allPoints);
 
     return buildPathThroughPoints(cleaned);

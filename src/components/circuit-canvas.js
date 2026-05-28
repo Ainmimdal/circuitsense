@@ -2,12 +2,14 @@ import { LitElement, html, css, svg } from 'lit';
 import { repeat } from 'lit/directives/repeat.js';
 import { store } from '../store.js';
 import { wirePath, WIRE_COLORS } from '../utils/wire-path.js';
+import { getComponentDef } from '../component-library.js';
 
 class CircuitCanvas extends LitElement {
     static properties = {
         _scale: { state: true },
         _panX: { state: true },
         _panY: { state: true },
+        _selectRect: { state: true },
     };
 
     static styles = css`
@@ -23,14 +25,7 @@ class CircuitCanvas extends LitElement {
       width: 100%;
       height: 100%;
       overflow: hidden;
-      background-image: 
-        linear-gradient(to right, #27272a 1px, transparent 1px),
-        linear-gradient(to bottom, #27272a 1px, transparent 1px);
-      background-size: 20px 20px;
-      /* Optional dot grid instead: 
-         background-image: radial-gradient(circle, #3f3f46 1px, transparent 1px);
-         background-size: 20px 20px;
-      */
+      background-image: radial-gradient(circle, #3f3f46 1.5px, transparent 1.5px);
     }
 
     .canvas-world {
@@ -46,10 +41,11 @@ class CircuitCanvas extends LitElement {
       position: absolute;
       top: 0;
       left: 0;
-      width: 10000px;
-      height: 10000px;
+      width: 100%;
+      height: 100%;
       pointer-events: none;
       z-index: 50;
+      overflow: visible;
     }
 
     .wire {
@@ -233,6 +229,13 @@ class CircuitCanvas extends LitElement {
         this._panStartPanY = 0;
         this._spaceDown = false;
 
+        // Selection drag state
+        this._isSelectDragging = false;
+        this._selectStartX = 0;
+        this._selectStartY = 0;
+        this._selectEndX = 0;
+        this._selectEndY = 0;
+
         // Event handlers
         this._storeHandler = () => this.requestUpdate();
         this._mouseHandler = () => this.requestUpdate();
@@ -278,6 +281,7 @@ class CircuitCanvas extends LitElement {
         return html`
       <div
         class="canvas-area"
+        style="background-position: ${this._panX}px ${this._panY}px; background-size: ${24 * this._scale}px ${24 * this._scale}px;"
         @dragover=${this._onDragOver}
         @drop=${this._onDrop}
         @pointermove=${this._onPointerMove}
@@ -299,11 +303,13 @@ class CircuitCanvas extends LitElement {
             ></placed-component>
           `)}
 
-          <svg class="wire-layer" width="10000" height="10000">
+          <svg class="wire-layer">
             ${this._renderWires()}
             ${this._renderTempWire()}
           </svg>
         </div>
+
+        ${this._renderSelectRect()}
 
         ${isEmpty && this._scale === 1 && this._panX === 0 ? html`
           <div class="drop-hint">
@@ -326,11 +332,32 @@ class CircuitCanvas extends LitElement {
         </div>
 
         <div class="shortcut-hint">
-          Scroll to zoom · Middle-drag to pan · Click wire = select · Double-click wire = add bend · Delete = remove
+          Scroll to zoom · Middle-drag to pan · Ctrl+A select all · Ctrl+Z undo · Ctrl+Y redo · Delete = remove
         </div>
 
         ${store.selectedWireId ? this._renderColorPicker() : ''}
       </div>
+    `;
+    }
+
+    _renderSelectRect() {
+        if (!this._isSelectDragging) return html``;
+        const x = Math.min(this._selectStartX, this._selectEndX);
+        const y = Math.min(this._selectStartY, this._selectEndY);
+        const w = Math.abs(this._selectEndX - this._selectStartX);
+        const h = Math.abs(this._selectEndY - this._selectStartY);
+        if (w < 2 && h < 2) return html``;
+
+        return html`
+      <div style="
+        position: absolute;
+        left: ${x}px; top: ${y}px;
+        width: ${w}px; height: ${h}px;
+        border: 2px dashed #4FC3F7;
+        background: rgba(79, 195, 247, 0.08);
+        pointer-events: none;
+        z-index: 300;
+      "></div>
     `;
     }
 
@@ -362,11 +389,15 @@ class CircuitCanvas extends LitElement {
             const exitDir1 = store.getPinExitDirection(wire.from.instanceId, wire.from.pinName);
             const exitDir2 = store.getPinExitDirection(wire.to.instanceId, wire.to.pinName);
 
+            const stagger = store.getFanoutStagger(wire.id);
+
             const path = wirePath(from.x, from.y, to.x, to.y, {
                 index,
                 waypoints: wire.waypoints || [],
                 exitDir1,
                 exitDir2,
+                stagger1: stagger.s1,
+                stagger2: stagger.s2,
             });
             const color = wire.color || '#4CAF50';
             const isSelected = store.selectedWireId === wire.id;
@@ -375,7 +406,7 @@ class CircuitCanvas extends LitElement {
         <path
           class="wire-hitarea"
           d="${path}"
-          stroke-width="${14 / this._scale}"
+          stroke-width="${16 / this._scale}"
           @click=${(e) => { e.stopPropagation(); store.selectWire(wire.id); }}
           @dblclick=${(e) => {
             e.stopPropagation();
@@ -389,7 +420,7 @@ class CircuitCanvas extends LitElement {
           class="wire ${isSelected ? 'selected' : ''}"
           d="${path}"
           stroke="${color}"
-          stroke-width="${2.5 / this._scale}"
+          stroke-width="${4 / this._scale}"
           fill="none"
           stroke-linecap="round"
           stroke-linejoin="round"
@@ -522,7 +553,6 @@ class CircuitCanvas extends LitElement {
 
     // ——— Pan ———————————————————————————————————————————
     _onPointerDown(e) {
-        // Middle mouse button or Space + left click → pan
         if (e.button === 1 || (this._spaceDown && e.button === 0)) {
             e.preventDefault();
             this._isPanning = true;
@@ -534,6 +564,26 @@ class CircuitCanvas extends LitElement {
             const el = this.shadowRoot.querySelector('.canvas-area');
             el.setPointerCapture(e.pointerId);
             el.style.cursor = 'grabbing';
+            return;
+        }
+
+        if (e.button === 0 && !this._spaceDown && !store.wiringState) {
+            const path = e.composedPath();
+            const isComponent = path.some(el => el.tagName && el.tagName.toLowerCase() === 'placed-component');
+            const isWire = path.some(el => el.classList && (el.classList.contains('wire') || el.classList.contains('wire-hitarea')));
+            const isPin = path.some(el => el.classList && el.classList.contains('pin-dot'));
+            if (!isComponent && !isWire && !isPin) {
+                this._isSelectDragging = true;
+                const rect = this._canvasRect;
+                this._selectStartX = e.clientX - rect.left;
+                this._selectStartY = e.clientY - rect.top;
+                this._selectEndX = this._selectStartX;
+                this._selectEndY = this._selectStartY;
+                this._selectRect = null;
+
+                const el = this.shadowRoot.querySelector('.canvas-area');
+                el.setPointerCapture(e.pointerId);
+            }
         }
     }
 
@@ -545,7 +595,14 @@ class CircuitCanvas extends LitElement {
             return;
         }
 
-        // Update mouse position for temp wire (convert to world coords)
+        if (this._isSelectDragging) {
+            const rect = this._canvasRect;
+            this._selectEndX = e.clientX - rect.left;
+            this._selectEndY = e.clientY - rect.top;
+            this.requestUpdate();
+            return;
+        }
+
         if (store.wiringState) {
             const rect = this._canvasRect;
             const screenX = e.clientX - rect.left;
@@ -561,6 +618,55 @@ class CircuitCanvas extends LitElement {
             const el = this.shadowRoot.querySelector('.canvas-area');
             el.releasePointerCapture(e.pointerId);
             el.style.cursor = '';
+            return;
+        }
+
+        if (this._isSelectDragging) {
+            this._isSelectDragging = false;
+            const el = this.shadowRoot.querySelector('.canvas-area');
+            el.releasePointerCapture(e.pointerId);
+
+            const minX = Math.min(this._selectStartX, this._selectEndX);
+            const maxX = Math.max(this._selectStartX, this._selectEndX);
+            const minY = Math.min(this._selectStartY, this._selectEndY);
+            const maxY = Math.max(this._selectStartY, this._selectEndY);
+            const width = maxX - minX;
+            const height = maxY - minY;
+
+            if (width > 4 || height > 4) {
+                const selected = [];
+                for (const inst of store.instances) {
+                    const compDef = getComponentDef(inst.componentId);
+                    const size = compDef?.size || { width: 80, height: 60 };
+
+                    const instScreen = {
+                        x: inst.x * this._scale + this._panX,
+                        y: inst.y * this._scale + this._panY,
+                        w: size.width * this._scale,
+                        h: size.height * this._scale,
+                    };
+
+                    // Check rect intersection
+                    if (instScreen.x + instScreen.w > minX && instScreen.x < maxX &&
+                        instScreen.y + instScreen.h > minY && instScreen.y < maxY) {
+                        selected.push(inst.id);
+                    }
+                }
+
+                if (e.ctrlKey || e.metaKey) {
+                    const current = new Set(store.selectedInstanceIds);
+                    for (const id of selected) {
+                        if (current.has(id)) current.delete(id);
+                        else current.add(id);
+                    }
+                    store.selectInstances([...current]);
+                } else {
+                    store.selectInstances(selected);
+                }
+            }
+
+            this._selectRect = null;
+            this.requestUpdate();
         }
     }
 
@@ -585,7 +691,6 @@ class CircuitCanvas extends LitElement {
 
     // ——— Canvas Click ——————————————————————————————————
     _onCanvasClick(e) {
-        // Cancel wiring if clicking empty canvas
         if (store.wiringState) {
             const path = e.composedPath();
             const isPin = path.some(el => el.classList && el.classList.contains('pin-dot'));
@@ -593,11 +698,11 @@ class CircuitCanvas extends LitElement {
                 store.cancelWiring();
             }
         } else {
-            // Clicking empty canvas clears selection
             const path = e.composedPath();
             const isComponent = path.some(el => el.tagName && el.tagName.toLowerCase() === 'placed-component');
             const isWire = path.some(el => el.classList && (el.classList.contains('wire') || el.classList.contains('wire-hitarea')));
-            if (!isComponent && !isWire) {
+            const isActionButton = path.some(el => el.classList && el.classList.contains('action-btn'));
+            if (!isComponent && !isWire && !isActionButton) {
                 store.clearSelection();
             }
         }
@@ -613,8 +718,13 @@ class CircuitCanvas extends LitElement {
             e.preventDefault();
         }
 
-        if ((e.key === 'Delete' || e.key === 'Backspace') && (store.selectedInstanceId || store.selectedWireId)) {
+        if ((e.key === 'Delete' || e.key === 'Backspace') && (store.selectedInstanceIds.size > 0 || store.selectedWireId)) {
             store.deleteSelected();
+            e.preventDefault();
+        }
+
+        if (e.key === 'a' && (e.ctrlKey || e.metaKey) && !e.shiftKey) {
+            store.selectAllInstances();
             e.preventDefault();
         }
 

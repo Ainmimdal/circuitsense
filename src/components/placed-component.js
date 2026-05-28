@@ -22,6 +22,7 @@ class PlacedComponent extends LitElement {
       outline-offset: 4px;
       border-radius: 4px;
       transition: outline-color 0.2s;
+      padding-bottom: 28px;
     }
 
     :host(.selected) {
@@ -37,6 +38,7 @@ class PlacedComponent extends LitElement {
     .wrapper {
       position: relative;
       display: inline-block;
+      margin-bottom: -28px;
     }
 
     .wokwi-container {
@@ -115,10 +117,10 @@ class PlacedComponent extends LitElement {
       opacity: 1;
     }
 
-    /* Action buttons toolbar — compact, inside component bounds */
+    /* Action buttons toolbar — positioned below component bounds */
     .action-bar {
       position: absolute;
-      top: 2px;
+      bottom: -26px;
       right: 2px;
       display: none;
       gap: 2px;
@@ -126,7 +128,7 @@ class PlacedComponent extends LitElement {
       pointer-events: all;
       padding: 2px;
       border-radius: 4px;
-      background: rgba(24, 24, 27, 0.7); /* Zinc 900 */
+      background: rgba(24, 24, 27, 0.85); /* Zinc 900 */
       backdrop-filter: blur(6px);
     }
 
@@ -237,8 +239,7 @@ class PlacedComponent extends LitElement {
 
     updated(changedProperties) {
         super.updated(changedProperties);
-        // Update selection visual
-        if (store.selectedInstanceId === this.instanceId) {
+        if (store.isInstanceSelected(this.instanceId)) {
             this.classList.add('selected');
         } else {
             this.classList.remove('selected');
@@ -354,12 +355,11 @@ class PlacedComponent extends LitElement {
     }
 
     _onClick(e) {
-        // Select this component (unless clicking a pin or button)
         const path = e.composedPath();
         const isPin = path.some(el => el.classList && el.classList.contains('pin-dot'));
         const isBtn = path.some(el => el.classList && el.classList.contains('action-btn'));
         if (!isPin && !isBtn) {
-            store.selectInstance(this.instanceId);
+            store.selectInstance(this.instanceId, e.ctrlKey || e.metaKey);
         }
     }
 
@@ -397,7 +397,10 @@ class PlacedComponent extends LitElement {
         if (!inst) return;
 
         // Select on mousedown
-        store.selectInstance(this.instanceId);
+        const isCtrl = e.ctrlKey || e.metaKey;
+        if (isCtrl || !store.isInstanceSelected(this.instanceId)) {
+            store.selectInstance(this.instanceId, isCtrl);
+        }
 
         this._startX = e.clientX;
         this._startY = e.clientY;

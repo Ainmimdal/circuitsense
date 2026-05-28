@@ -46,6 +46,7 @@ export const componentLibrary = {
         icon: '🔵',
         attrs: {},
         size: { width: 230, height: 200 },
+        snapAnchor: { x: 0, y: 0 },
         currentDraw_mA: 0,
         pinMeta: {},
         isBoard: true,
@@ -60,6 +61,7 @@ export const componentLibrary = {
         icon: '💡',
         attrs: { color: 'red' },
         size: { width: 40, height: 60 },
+        snapAnchor: { x: 20, y: 50 },
         currentDraw_mA: 20,
         pinMeta: {
             'A': PIN.SIGNAL,
@@ -79,6 +81,7 @@ export const componentLibrary = {
         icon: '\u3030\uFE0F',
         attrs: { value: '220' },
         size: { width: 110, height: 30 },
+        snapAnchor: { x: 55, y: 15 },
         currentDraw_mA: 0,
         pinMeta: {
             '1': PIN.SIGNAL,
@@ -96,6 +99,7 @@ export const componentLibrary = {
         icon: '🔘',
         attrs: {},
         size: { width: 50, height: 50 },
+        snapAnchor: { x: 25, y: 25 },
         currentDraw_mA: 0,
         pinMeta: {
             '1.l': PIN.SIGNAL,
@@ -117,6 +121,7 @@ export const componentLibrary = {
         icon: '🔊',
         attrs: {},
         size: { width: 60, height: 70 },
+        snapAnchor: { x: 30, y: 60 },
         currentDraw_mA: 30,
         pinMeta: {
             '1': PIN.SIGNAL,
@@ -135,6 +140,7 @@ export const componentLibrary = {
         icon: '📡',
         attrs: {},
         size: { width: 130, height: 60 },
+        snapAnchor: { x: 65, y: 30 },
         currentDraw_mA: 15,
         pinMeta: {
             'VCC': PIN.VCC,
@@ -161,6 +167,7 @@ export const componentLibrary = {
         icon: '\u2699\uFE0F',
         attrs: {},
         size: { width: 100, height: 80 },
+        snapAnchor: { x: 50, y: 70 },
         currentDraw_mA: 200,
         pinMeta: {
             'PWM': PIN.PWM,
@@ -181,6 +188,7 @@ export const componentLibrary = {
         icon: '🎛\uFE0F',
         attrs: {},
         size: { width: 60, height: 60 },
+        snapAnchor: { x: 30, y: 50 },
         currentDraw_mA: 1,
         pinMeta: {
             'GND': PIN.GND,
@@ -201,7 +209,8 @@ export const componentLibrary = {
         description: 'Temperature & humidity sensor',
         icon: '🌡\uFE0F',
         attrs: {},
-        size: { width: 60, height: 90 }, // Adjusted to prevent text overlap
+        size: { width: 60, height: 120 }, // Adjusted to prevent text overlap
+        snapAnchor: { x: 30, y: 110 },
         currentDraw_mA: 2,
         pinMeta: {
             'VCC': PIN.VCC,
@@ -222,6 +231,7 @@ export const componentLibrary = {
         icon: '🖥\uFE0F',
         attrs: {},
         size: { width: 260, height: 80 },
+        snapAnchor: { x: 130, y: 70 },
         currentDraw_mA: 25,
         pinMeta: {
             'VCC': PIN.VCC,
@@ -241,7 +251,8 @@ export const componentLibrary = {
         description: 'Passive infrared motion sensor',
         icon: '👁\uFE0F',
         attrs: {},
-        size: { width: 100, height: 100 }, // Adjusted to prevent bounding box cutoff
+        size: { width: 120, height: 140 }, // Adjusted to prevent bounding box cutoff
+        snapAnchor: { x: 60, y: 130 },
         currentDraw_mA: 5,
         pinMeta: {
             'VCC': PIN.VCC,
@@ -261,6 +272,7 @@ export const componentLibrary = {
         icon: '📲',
         attrs: {},
         size: { width: 50, height: 50 },
+        snapAnchor: { x: 25, y: 40 },
         currentDraw_mA: 5,
         pinMeta: {
             'GND': PIN.GND,
@@ -280,6 +292,7 @@ export const componentLibrary = {
         icon: '🌈',
         attrs: {},
         size: { width: 40, height: 40 },
+        snapAnchor: { x: 20, y: 20 },
         currentDraw_mA: 60,
         pinMeta: {
             'VCC': PIN.VCC,
@@ -300,6 +313,7 @@ export const componentLibrary = {
         icon: '🔀',
         attrs: {},
         size: { width: 60, height: 30 },
+        snapAnchor: { x: 30, y: 15 },
         currentDraw_mA: 0,
         pinMeta: {
             '1': PIN.SIGNAL,

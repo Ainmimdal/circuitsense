@@ -74,6 +74,7 @@ class ComponentSidebar extends LitElement {
       height: 60px;
       margin-bottom: 8px;
       pointer-events: none;
+      overflow: hidden;
     }
 
     .component-name {
@@ -105,7 +106,7 @@ class ComponentSidebar extends LitElement {
           <div class="category-label">${cat.name}</div>
           <div class="category-grid">
             ${comps.map(comp => {
-              const scale = Math.min(1, 50 / Math.max(comp.size.width, comp.size.height));
+              const scale = Math.min(1, 34 / Math.max(comp.size.width, comp.size.height));
               const attrs = Object.entries(comp.attrs || {}).map(([k,v])=>`${k}="${v}"`).join(' ');
               const style = `position:absolute; top:50%; left:50%; width:${comp.size.width}px; height:${comp.size.height}px; margin-left:-${comp.size.width/2}px; margin-top:-${comp.size.height/2}px; transform: scale(${scale}); pointer-events: none;`;
               const tagHtml = `<${comp.tag} ${attrs} style="${style}"></${comp.tag}>`;

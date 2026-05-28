@@ -1,9 +1,12 @@
 import { LitElement, html, css } from 'lit';
 import { store } from './store.js';
+import { autoWireAll } from './services/auto-wire-engine.js';
 
 class CircuitApp extends LitElement {
     static properties = {
         _antiOverlap: { state: true },
+        _fanOut: { state: true },
+        _gridSize: { state: true },
         _aiOpen: { state: true },
     };
 
@@ -92,6 +95,21 @@ class CircuitApp extends LitElement {
       border-color: #6366f1;
     }
 
+    .grid-size-select {
+      padding: 4px 8px;
+      border-radius: 6px;
+      border: 1px solid #3f3f46;
+      background: #27272a;
+      color: #a1a1aa;
+      font-size: 11px;
+      font-family: inherit;
+      cursor: pointer;
+    }
+
+    .grid-size-select:hover {
+      border-color: #52525b;
+    }
+
     .toolbar-btn .icon {
       font-size: 13px;
     }
@@ -143,9 +161,13 @@ class CircuitApp extends LitElement {
     constructor() {
         super();
         this._antiOverlap = store.antiOverlap;
+        this._fanOut = store.fanOut;
+        this._gridSize = store.gridSize;
         this._aiOpen = false;
         this._storeHandler = () => {
             this._antiOverlap = store.antiOverlap;
+            this._fanOut = store.fanOut;
+            this._gridSize = store.gridSize;
         };
     }
 
@@ -163,6 +185,14 @@ class CircuitApp extends LitElement {
         store.toggleAntiOverlap();
     }
 
+    _toggleFanOut() {
+        store.toggleFanOut();
+    }
+
+    _setGridSize(size) {
+        store.setGridSize(size);
+    }
+
     _clearProject() {
         if (confirm('Clear all components and wires? This cannot be undone.')) {
             store.clearProject();
@@ -173,6 +203,19 @@ class CircuitApp extends LitElement {
     _redoAction() { store.redo(); }
     _cleanupWires() { store.cleanupWires(); }
     _resetWires() { store.resetWireRouting(); }
+
+    _autoWireAll() {
+        const result = autoWireAll();
+        if (result.total === 0) {
+            alert('No components to auto-wire. Add components with pins first.');
+            return;
+        }
+        const msg = [
+            `Auto-wired ${result.success} pins across ${result.total} components.`,
+            result.errors.length > 0 ? `${result.errors.length} errors.` : '',
+        ].filter(Boolean).join(' ');
+        alert(msg);
+    }
 
     _toggleAi() {
         const panel = this.shadowRoot.querySelector('ai-assistant');
@@ -203,6 +246,10 @@ class CircuitApp extends LitElement {
           <button class="toolbar-btn" @click=${this._resetWires} title="Reset all wires to default routing">
             <span class="icon">↺</span>
           </button>
+          <button class="toolbar-btn" @click=${this._autoWireAll} title="Auto-wire all components to Arduino">
+            <span class="icon">⚡</span>
+            Auto-wire all
+          </button>
           <div class="toolbar-divider"></div>
           <button
             class="toolbar-btn ${this._antiOverlap ? 'active' : ''}"
@@ -212,6 +259,24 @@ class CircuitApp extends LitElement {
             <span class="icon">${this._antiOverlap ? '🔒' : '🔓'}</span>
             Anti-overlap
           </button>
+          <button
+            class="toolbar-btn ${this._fanOut ? 'active' : ''}"
+            @click=${this._toggleFanOut}
+            title="Toggle wire fan-out: wires spread cleanly from header rows"
+          >
+            <span class="icon">📐</span>
+            Fan-out
+          </button>
+          <div class="toolbar-divider"></div>
+          <select class="grid-size-select"
+            @change=${(e) => this._setGridSize(parseInt(e.target.value))}
+            .value="${this._gridSize}"
+            title="Grid snap size"
+          >
+            <option value="10">Grid 10px</option>
+            <option value="20">Grid 20px</option>
+            <option value="50">Grid 50px</option>
+          </select>
           <div class="toolbar-divider"></div>
           <button class="toolbar-btn danger" @click=${this._clearProject} title="Clear all">
             <span class="icon">🗑</span>

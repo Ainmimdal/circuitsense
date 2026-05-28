@@ -30,8 +30,8 @@ class CircuitStore extends EventTarget {
         this._nextId = 1;
 
         // Selection
-        /** @type {string | null} */
-        this.selectedInstanceId = null;
+        /** @type {Set<string>} */
+        this.selectedInstanceIds = new Set();
         /** @type {string | null} */
         this.selectedWireId = null;
 
@@ -43,6 +43,9 @@ class CircuitStore extends EventTarget {
 
         // Anti-overlap toggle (on by default)
         this.antiOverlap = true;
+
+        // Fan-out toggle (on by default)
+        this.fanOut = true;
 
         // Undo/redo history
         this._history = [];
@@ -61,9 +64,40 @@ class CircuitStore extends EventTarget {
         return Math.round(value / this.gridSize) * this.gridSize;
     }
 
+    /**
+     * Snap component position so its anchor point aligns to the grid.
+     * @param {number} x - desired top-left X
+     * @param {number} y - desired top-left Y
+     * @param {{x:number, y:number}} anchor — offset of the reference pin from top-left
+     */
+    snapWithAnchor(x, y, anchor = { x: 0, y: 0 }) {
+        const ax = x + anchor.x;
+        const ay = y + anchor.y;
+        const sax = this.snapToGrid(ax);
+        const say = this.snapToGrid(ay);
+        return { x: sax - anchor.x, y: say - anchor.y };
+    }
+
+    setGridSize(size) {
+        const valid = [10, 20, 50];
+        if (!valid.includes(size)) return;
+        this.gridSize = size;
+        this._notify();
+    }
+
+    get gridSizeLabel() {
+        return this.gridSize + 'px';
+    }
+
     toggleAntiOverlap() {
         this.antiOverlap = !this.antiOverlap;
         this._notify();
+    }
+
+    toggleFanOut() {
+        this.fanOut = !this.fanOut;
+        this._notify();
+        this._notifyStructural();
     }
 
     // ——— Anti-Overlap Collision Detection ————————————————
@@ -137,8 +171,11 @@ class CircuitStore extends EventTarget {
 
     // ——— Instance Management ———————————————————————————
     addInstance(componentId, x, y) {
-        let sx = this.snapToGrid(x);
-        let sy = this.snapToGrid(y);
+        const def = getComponentDef(componentId);
+        const anchor = def?.snapAnchor || { x: 0, y: 0 };
+        const snapped = this.snapWithAnchor(x, y, anchor);
+        let sx = snapped.x;
+        let sy = snapped.y;
 
         const instance = {
             id: `inst_${this._nextId++}`,
@@ -155,7 +192,7 @@ class CircuitStore extends EventTarget {
             instance.y = resolved.y;
         }
 
-        this.selectedInstanceId = instance.id;
+        this.selectedInstanceIds = new Set([instance.id]);
         this._pushHistory();
         this._notifyStructural();
         return instance;
@@ -164,8 +201,10 @@ class CircuitStore extends EventTarget {
     moveInstance(id, x, y) {
         const inst = this.instances.find(i => i.id === id);
         if (inst) {
-            inst.x = this.snapToGrid(x);
-            inst.y = this.snapToGrid(y);
+            const def = getComponentDef(inst.componentId);
+            const anchor = def?.snapAnchor || { x: 0, y: 0 };
+            inst.x = this.snapToGrid(x + anchor.x) - anchor.x;
+            inst.y = this.snapToGrid(y + anchor.y) - anchor.y;
             this._notify(); // lightweight — no history during drag
         }
     }
@@ -190,7 +229,7 @@ class CircuitStore extends EventTarget {
             w => w.from.instanceId !== id && w.to.instanceId !== id
         );
         this.pinInfoMap.delete(id);
-        if (this.selectedInstanceId === id) this.selectedInstanceId = null;
+        this.selectedInstanceIds.delete(id);
         this._pushHistory();
         this._notifyStructural();
     }
@@ -200,15 +239,41 @@ class CircuitStore extends EventTarget {
     }
 
     // ——— Selection ————————————————————————————————————
-    selectInstance(id) {
-        this.selectedInstanceId = id;
+    /** Select a single instance (replaces current selection unless Ctrl/Cmd). */
+    selectInstance(id, addToSelection = false) {
+        if (addToSelection) {
+            if (this.selectedInstanceIds.has(id)) {
+                this.selectedInstanceIds.delete(id);
+            } else {
+                this.selectedInstanceIds = new Set([...this.selectedInstanceIds, id]);
+            }
+        } else {
+            this.selectedInstanceIds = new Set([id]);
+        }
         this.selectedWireId = null;
         this._notify();
     }
 
+    /** Select multiple instances at once (replace current). */
+    selectInstances(ids) {
+        this.selectedInstanceIds = new Set(ids);
+        this.selectedWireId = null;
+        this._notify();
+    }
+
+    selectAllInstances() {
+        this.selectedInstanceIds = new Set(this.instances.map(i => i.id));
+        this.selectedWireId = null;
+        this._notify();
+    }
+
+    isInstanceSelected(id) {
+        return this.selectedInstanceIds.has(id);
+    }
+
     clearSelection() {
-        if (this.selectedInstanceId !== null || this.selectedWireId !== null) {
-            this.selectedInstanceId = null;
+        if (this.selectedInstanceIds.size > 0 || this.selectedWireId !== null) {
+            this.selectedInstanceIds = new Set();
             this.selectedWireId = null;
             this._notify();
         }
@@ -216,13 +281,17 @@ class CircuitStore extends EventTarget {
 
     selectWire(id) {
         this.selectedWireId = id;
-        this.selectedInstanceId = null;
+        this.selectedInstanceIds = new Set();
         this._notify();
     }
 
     deleteSelected() {
-        if (this.selectedInstanceId) {
-            this.removeInstance(this.selectedInstanceId);
+        if (this.selectedInstanceIds.size > 0) {
+            const ids = [...this.selectedInstanceIds];
+            for (const id of ids) {
+                this.removeInstance(id);
+            }
+            this.selectedInstanceIds = new Set();
         } else if (this.selectedWireId) {
             this.removeWire(this.selectedWireId);
             this.selectedWireId = null;
@@ -289,6 +358,37 @@ class CircuitStore extends EventTarget {
         if (min === distBottom) return 'down';
         if (min === distLeft) return 'left';
         return 'right';
+    }
+
+    /**
+     * Compute per-edge stagger offsets for fan-out routing.
+     * Groups wires sharing the same component edge and assigns
+     * sequential stagger distances so wires fan out cleanly
+     * from header rows.
+     * @returns {{ s1: number, s2: number }}
+     */
+    getFanoutStagger(wireId) {
+        if (!this.fanOut) return { s1: 0, s2: 0 };
+        const wire = this.wires.find(w => w.id === wireId);
+        if (!wire) return { s1: 0, s2: 0 };
+
+        const dir1 = this.getPinExitDirection(wire.from.instanceId, wire.from.pinName);
+        const dir2 = this.getPinExitDirection(wire.to.instanceId, wire.to.pinName);
+        const key1 = `${wire.from.instanceId}|${dir1}`;
+        const key2 = `${wire.to.instanceId}|${dir2}`;
+
+        let idx1 = 0;
+        let idx2 = 0;
+        for (const w of this.wires) {
+            if (w.id === wireId) break;
+            const d1 = this.getPinExitDirection(w.from.instanceId, w.from.pinName);
+            if (`${w.from.instanceId}|${d1}` === key1) idx1++;
+            const d2 = this.getPinExitDirection(w.to.instanceId, w.to.pinName);
+            if (`${w.to.instanceId}|${d2}` === key2) idx2++;
+        }
+
+        const SPACING = 8;
+        return { s1: idx1 * SPACING, s2: idx2 * SPACING };
     }
 
     // ——— Wiring ———————————————————————————————————————
@@ -440,13 +540,14 @@ class CircuitStore extends EventTarget {
             const to = this.getPinAbsolutePosition(wire.to.instanceId, wire.to.pinName);
             if (!from || !to) continue;
 
-            // Get obstacles: all instances except the two connected by this wire
             const excludeIds = [wire.from.instanceId, wire.to.instanceId];
             const obstacles = getObstacles(this.instances, excludeIds, getComponentDef);
 
-            // Import the route generator
+            const exitDir1 = this.getPinExitDirection(wire.from.instanceId, wire.from.pinName);
+            const exitDir2 = this.getPinExitDirection(wire.to.instanceId, wire.to.pinName);
+
             wire.waypoints = generateCleanWaypoints(
-                from.x, from.y, to.x, to.y, obstacles, this.gridSize
+                from.x, from.y, exitDir1, to.x, to.y, exitDir2, obstacles, this.gridSize
             );
         }
         this._pushHistory();
@@ -519,7 +620,9 @@ class CircuitStore extends EventTarget {
         this.wires = JSON.parse(JSON.stringify(snapshot.wires));
         this._nextId = snapshot._nextId || this._nextId;
         this.wiringState = null;
-        this.selectedInstanceId = null;
+        this.selectedInstanceIds = new Set();
+        this.selectedWireId = null;
+        this.pinInfoMap = new Map();
         this._notifyStructural();
     }
 
@@ -562,7 +665,8 @@ class CircuitStore extends EventTarget {
         this.wires = [];
         this.pinInfoMap.clear();
         this.wiringState = null;
-        this.selectedInstanceId = null;
+        this.selectedInstanceIds = new Set();
+        this.selectedWireId = null;
         this._nextId = 1;
         this._pushHistory();
         this._notifyStructural();
@@ -598,63 +702,113 @@ function distToSegment(px, py, ax, ay, bx, by) {
     return Math.hypot(px - projX, py - projY);
 }
 
+// ─── Clean wire pathfinding ───────────────────────────────
+
 /**
- * Generate obstacle-aware waypoints for a single wire.
- * Routes around component bounding boxes by going above or below.
+ * Build a clean orthogonal path between two pins, respecting exit directions
+ * and routing around obstacles. Single-pass: builds the base route, then for
+ * each segment collects ALL crossed obstacles and inserts ONE detour.
+ * Obstacle rects from getObstacles already include 15px margin.
  */
-function generateCleanWaypoints(x1, y1, x2, y2, obstacles, gridSize = 20) {
+function generateCleanWaypoints(x1, y1, exitDir1, x2, y2, exitDir2, obstacles, gridSize = 20) {
     const snap = (v) => Math.round(v / gridSize) * gridSize;
-    const margin = 25;
+    const EXT = 35;
+    const GAP = 10;
 
-    // Find obstacles that the direct Z-path would cross
-    const crossed = obstacles.filter(obs => {
-        const midY = (y1 + y2) / 2;
-        const minX = Math.min(x1, x2);
-        const maxX = Math.max(x1, x2);
-
-        // Horizontal segment crosses box
-        if (midY >= obs.top && midY <= obs.bottom &&
-            maxX >= obs.left && minX <= obs.right) return true;
-
-        // Vertical segment from x1 crosses box
-        if (x1 >= obs.left && x1 <= obs.right) {
-            const segTop = Math.min(y1, midY);
-            const segBot = Math.max(y1, midY);
-            if (segBot >= obs.top && segTop <= obs.bottom) return true;
+    function go(x, y, dir, d) {
+        switch (dir) {
+            case 'up': return { x, y: y - d };
+            case 'down': return { x, y: y + d };
+            case 'left': return { x: x - d, y };
+            case 'right': return { x: x + d, y };
+            default: return { x, y: y - d };
         }
-
-        // Vertical segment from x2 crosses box
-        if (x2 >= obs.left && x2 <= obs.right) {
-            const segTop = Math.min(midY, y2);
-            const segBot = Math.max(midY, y2);
-            if (segBot >= obs.top && segTop <= obs.bottom) return true;
-        }
-
-        return false;
-    });
-
-    if (crossed.length === 0) return [];
-
-    // Sort by distance from start
-    crossed.sort((a, b) =>
-        Math.hypot(a.cx - x1, a.cy - y1) - Math.hypot(b.cx - x1, b.cy - y1)
-    );
-
-    const waypoints = [];
-
-    for (const obs of crossed) {
-        // Choose above or below based on which is closer to the wire endpoints
-        const aboveDist = Math.abs(y1 - (obs.top - margin)) + Math.abs(y2 - (obs.top - margin));
-        const belowDist = Math.abs(y1 - (obs.bottom + margin)) + Math.abs(y2 - (obs.bottom + margin));
-        const clearY = aboveDist <= belowDist
-            ? snap(obs.top - margin)
-            : snap(obs.bottom + margin);
-
-        waypoints.push({ x: snap(obs.left - margin), y: clearY });
-        waypoints.push({ x: snap(obs.right + margin), y: clearY });
     }
 
-    return waypoints;
+    function crossed(a, b, obs) {
+        const r = { left: obs.left - GAP, top: obs.top - GAP,
+                     right: obs.right + GAP, bottom: obs.bottom + GAP };
+        if (a.x < r.left && b.x < r.left) return false;
+        if (a.x > r.right && b.x > r.right) return false;
+        if (a.y < r.top && b.y < r.top) return false;
+        if (a.y > r.bottom && b.y > r.bottom) return false;
+        if (Math.abs(a.y - b.y) < 2) {
+            return (a.y >= r.top && a.y <= r.bottom) &&
+                   Math.max(a.x, b.x) >= r.left && Math.min(a.x, b.x) <= r.right;
+        }
+        if (Math.abs(a.x - b.x) < 2) {
+            return (a.x >= r.left && a.x <= r.right) &&
+                   Math.max(a.y, b.y) >= r.top && Math.min(a.y, b.y) <= r.bottom;
+        }
+        return false;
+    }
+
+    function dropCollinear(pts) {
+        if (pts.length <= 2) return pts;
+        const r = [pts[0]];
+        for (let i = 1; i < pts.length - 1; i++) {
+            const a = r[r.length - 1], b = pts[i], c = pts[i + 1];
+            if (!(Math.abs(a.x - b.x) < 2 && Math.abs(b.x - c.x) < 2) &&
+                !(Math.abs(a.y - b.y) < 2 && Math.abs(b.y - c.y) < 2))
+                r.push(b);
+        }
+        r.push(pts[pts.length - 1]);
+        return r;
+    }
+
+    // Step 1 — build base route from extension points
+    const s = go(x1, y1, exitDir1, EXT);
+    const t = go(x2, y2, exitDir2, EXT);
+    const v1 = exitDir1 === 'up' || exitDir1 === 'down';
+    const v2 = exitDir2 === 'up' || exitDir2 === 'down';
+
+    let points;
+    if (v1 && v2) {
+        const my = snap((s.y + t.y) / 2);
+        points = [s, { x: s.x, y: my }, { x: t.x, y: my }, t];
+    } else if (!v1 && !v2) {
+        const mx = snap((s.x + t.x) / 2);
+        points = [s, { x: mx, y: s.y }, { x: mx, y: t.y }, t];
+    } else {
+        points = v1 ? [s, { x: s.x, y: t.y }, t]
+                    : [s, { x: t.x, y: s.y }, t];
+    }
+
+    // Step 2 — for each segment, collect all crossing obstacles, add one detour
+    const out = [points[0]];
+    for (let i = 0; i < points.length - 1; i++) {
+        const a = points[i], b = points[i + 1];
+        const hits = obstacles.filter(o => crossed(a, b, o));
+        if (hits.length === 0) { out.push(b); continue; }
+
+        const isH = Math.abs(a.y - b.y) < 2;
+        if (isH) {
+            const y = a.y;
+            const tops = hits.map(o => o.top);
+            const bots = hits.map(o => o.bottom);
+            const dy = snap(Math.min(...tops) - GAP);
+            const uy = snap(Math.max(...bots) + GAP);
+            const goUp = y - dy < uy - y;
+            const cy = goUp ? dy : uy;
+            out.push({ x: snap(a.x), y: cy });
+            out.push({ x: snap(b.x), y: cy });
+        } else {
+            const x = a.x;
+            const lefts = hits.map(o => o.left);
+            const rights = hits.map(o => o.right);
+            const lx = snap(Math.min(...lefts) - GAP);
+            const rx = snap(Math.max(...rights) + GAP);
+            const goLeft = x - lx < rx - x;
+            const cx = goLeft ? lx : rx;
+            out.push({ x: cx, y: snap(a.y) });
+            out.push({ x: cx, y: snap(b.y) });
+        }
+        out.push(b);
+    }
+
+    const full = [{ x: x1, y: y1 }, ...out, { x: x2, y: y2 }];
+    const clean = dropCollinear(full);
+    return clean.slice(1, clean.length - 1);
 }
 
 export const store = new CircuitStore();

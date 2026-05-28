@@ -20,6 +20,38 @@ import { store } from '../store.js';
 import { getComponentDef, ARDUINO_PINS, PIN } from '../component-library.js';
 
 /**
+ * Auto-wire every eligible component on the canvas.
+ * @returns {{ total: number, success: number, errors: string[] }}
+ */
+export function autoWireAll() {
+    const eligible = store.instances.filter(inst => {
+        const def = getComponentDef(inst.componentId);
+        return def && !def.isBoard && def.autoWire;
+    });
+
+    if (eligible.length === 0) {
+        return { total: 0, success: 0, errors: ['No components to auto-wire.'] };
+    }
+
+    let success = 0;
+    const allErrors = [];
+
+    for (const inst of eligible) {
+        const result = autoWire(inst.id);
+        success += result.wired.length;
+        allErrors.push(...result.errors.map(e => inst.id + ': ' + e));
+    }
+
+    store.commitAutoWire();
+
+    return {
+        total: eligible.length,
+        success,
+        errors: allErrors,
+    };
+}
+
+/**
  * Auto-wire a component to the first Arduino board on the canvas.
  * @param {string} instanceId — the component instance to wire
  * @returns {{ success: boolean, wired: string[], errors: string[] }}
@@ -40,7 +72,15 @@ export function autoWire(instanceId) {
     });
     if (!board) return { success: false, wired: [], errors: ['No Arduino board on the canvas. Add one first.'] };
 
-    // Build set of used Arduino pins
+    // Strip existing wires on this component's auto-wireable pins before re-wiring
+    const autoPins = new Set(Object.keys(def.autoWire));
+    store.wires = store.wires.filter(w => {
+        if (w.from.instanceId === instanceId && autoPins.has(w.from.pinName)) return false;
+        if (w.to.instanceId === instanceId && autoPins.has(w.to.pinName)) return false;
+        return true;
+    });
+
+    // Build set of used Arduino pins (now that old wires are removed)
     const usedPins = _getUsedArduinoPins(board.id);
 
     // Check which I2C pins are reserved
@@ -51,16 +91,6 @@ export function autoWire(instanceId) {
 
     // Process each pin from the autoWire rules
     for (const [pinName, needType] of Object.entries(def.autoWire)) {
-        // Skip if this component pin already has a wire
-        const existingWires = store.wires.filter(
-            w => (w.from.instanceId === instanceId && w.from.pinName === pinName) ||
-            (w.to.instanceId === instanceId && w.to.pinName === pinName)
-        );
-        if (existingWires.length > 0) {
-            wired.push(pinName + ' (already wired)');
-            continue;
-        }
-
         const sourcePos = store.getPinAbsolutePosition(instanceId, pinName);
         const arduinoPin = _pickArduinoPin(needType, usedPins, i2cInUse, def.avoidPins || [], sourcePos, board.id);
         if (!arduinoPin) {
