@@ -1,4 +1,4 @@
-# Diagram 1 — Architecture Diagram (Mermaid flowchart LR)
+# Diagram 1 — System Architecture (Mermaid flowchart LR)
 
 ```mermaid
 flowchart LR
@@ -8,7 +8,8 @@ flowchart LR
         CANVAS["Circuit Canvas\n(viewport & wire render)"]
         PC["Placed Component\n(rendered instance)"]
         VB["Validation Bar\n(error & warning display)"]
-        AI["AI Assistant\n&laquo;planned&raquo;"]
+        AI["AI Assistant\n(natural language guidance)"]
+        CB["Component Builder\n(custom part creation)"]
     end
 
     subgraph SVC["Services"]
@@ -22,7 +23,7 @@ flowchart LR
     end
 
     subgraph BACK["Backend"]
-        SUP["Supabase\n&laquo;planned&raquo;"]
+        SUP["Supabase\n(auth & project storage)"]
     end
 
     CL -->|component list & categories| SIDEBAR
@@ -42,14 +43,98 @@ flowchart LR
     VE -->|validation results| VB
 
     APP -->|undo, redo, clear & routing commands| STORE
+    AI -->|reads circuit state| STORE
+    AI -->|auto-wire actions| STORE
+    CB -->|custom component metadata| CL
     SUP <-->|project sync| STORE
     SUP -->|auth| APP
 ```
 
 ---
 
-# Diagram 3 — Entity Relationship Diagram (Mermaid erDiagram)
-## Planned Supabase PostgreSQL Schema
+# Diagram 2 — Sequence Diagram (PlantUML)
+
+```plantuml
+@startuml
+title Wire Placement and Validation Flow
+
+actor Student
+participant "Canvas" as C
+participant "Store" as S
+participant "Validation Engine" as VE
+participant "Validation Bar" as VB
+
+Student -> C : clicks second pin to complete wire
+activate C
+
+C -> S : submits new wire connection
+activate S
+
+S -> S : records wire and saves history snapshot
+S --> C : notifies circuit changed
+deactivate C
+
+S -> VB : signals structural change
+deactivate S
+
+activate VB
+VB -> VE : requests circuit validation
+activate VE
+
+VE -> S : reads component instances and wires
+S --> VE : returns current circuit state
+
+VE --> VB : returns errors, warnings, and info
+deactivate VE
+
+VB -> VB : re-renders updated issue list
+deactivate VB
+
+Student <-- VB : sees updated error and warning counts
+@enduml
+```
+
+---
+
+# Diagram 3 — Entity Relationship Diagram (Runtime Model)
+
+```mermaid
+erDiagram
+    COMPONENT {
+        string id PK
+        string name
+        string category
+        number currentDraw_mA
+        object pinMeta
+        object autoWire
+        string codeTemplate
+    }
+
+    INSTANCE {
+        string id PK
+        string componentId FK
+        number x
+        number y
+    }
+
+    WIRE {
+        string id PK
+        string fromInstanceId FK
+        string fromPinName
+        string toInstanceId FK
+        string toPinName
+        array waypoints
+        string color
+    }
+
+    COMPONENT ||--o{ INSTANCE : "instantiated as"
+    INSTANCE ||--o{ WIRE : "originates from"
+    INSTANCE ||--o{ WIRE : "connects to"
+```
+
+---
+
+# Diagram 3B — Entity Relationship Diagram (Supabase PostgreSQL Schema)
 
 ```mermaid
 erDiagram
@@ -95,15 +180,54 @@ erDiagram
 
 ---
 
-## Self-Check — Architecture Diagram
+# Diagram 4 — Use Case Diagram (PlantUML)
 
-| Item | Status | Reason for exclusion |
-|------|--------|----------------------|
-| `wire-path.js` | Excluded | Internal utility used only by `circuit-canvas.js` for SVG path generation; has no independent architectural role and adding it would exceed the 12-node limit |
-| `placed-component.js` | Included | Shown as **Placed Component** inside UI subgraph |
-| `ai-assistant.js` | Included | Shown as **«planned»** inside UI subgraph |
-| `index.js` | Excluded | Entry-point only; imports and registers custom elements, contains no business logic |
-| `pinInfoMap` (runtime state) | Excluded | Transient `Map` built at runtime from Wokwi element properties; never persisted, not an architectural concern |
-| `wiringState`, `mousePos`, `viewport` | Excluded | Transient store fields; excluded per prior spec and irrelevant to module-level architecture |
-| Auto-save to localStorage | Not shown as separate node | Captured under the **Circuit Store** node label "state, history & persistence"; it is an internal behaviour of the store, not a separate module |
-| Supabase | Included | Shown as **«planned»** inside Backend subgraph, connected to Store ("project sync") and Circuit App ("auth") |
+```plantuml
+@startuml
+title Elera — Use Cases
+left to right direction
+skinparam actorStyle awesome
+
+actor Student
+
+rectangle "Elera Circuit Builder" {
+
+    package "Component Management" {
+        usecase "Place component" as UC1
+        usecase "Move component" as UC2
+        usecase "Delete component" as UC3
+        usecase "Search components" as UC4
+    }
+
+    package "Wiring" {
+        usecase "Wire two pins manually" as UC5
+        usecase "Auto-wire component" as UC6
+        usecase "Edit wire waypoints" as UC7
+        usecase "Clean up wire routing" as UC8
+    }
+
+    package "Validation" {
+        usecase "View validation results" as UC9
+    }
+
+    package "Project" {
+        usecase "Zoom and pan canvas" as UC10
+        usecase "Undo or redo action" as UC11
+        usecase "Clear project" as UC12
+    }
+}
+
+Student --> UC1
+Student --> UC2
+Student --> UC3
+Student --> UC4
+Student --> UC5
+Student --> UC6
+Student --> UC7
+Student --> UC8
+Student --> UC9
+Student --> UC10
+Student --> UC11
+Student --> UC12
+@enduml
+```

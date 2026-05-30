@@ -22,6 +22,22 @@ export const PIN = {
     DATA: 'DATA',
 };
 
+/**
+ * PIN_ALIASES — maps alternative pin names to canonical names.
+ * Used by store.resolvePinName() so auto-wire and wiring work
+ * regardless of whether a wokwi element uses VDD vs VCC, etc.
+ */
+export const PIN_ALIASES = {
+    'VDD':  'VCC',
+    'VIN':  'VCC',
+    'V+':   'VCC',
+    'PWR':  'VCC',
+    'VSS':  'GND',
+    'GND2': 'GND',
+    'DGND': 'GND',
+    'AGND': 'GND',
+};
+
 // ─── Arduino Uno pin catalog (used by auto-wire) ──────
 export const ARDUINO_PINS = {
     digital: ['2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13'],
@@ -46,10 +62,17 @@ export const componentLibrary = {
         icon: '🔵',
         attrs: {},
         size: { width: 230, height: 200 },
-        snapAnchor: { x: 0, y: 0 },
         currentDraw_mA: 0,
         pinMeta: {},
         isBoard: true,
+        pinExitOverride: {
+            '5V': 'down', '3.3V': 'down', 'GND.1': 'down', 'GND.2': 'down',
+            'VIN': 'down', 'IOREF': 'down', 'RESET': 'down',
+            'A0': 'down', 'A1': 'down', 'A2': 'down', 'A3': 'down', 'A4': 'down', 'A5': 'down',
+            'GND.3': 'up', 'AREF': 'up',
+            '0': 'up', '1': 'up', '2': 'up', '3': 'up', '4': 'up', '5': 'up', '6': 'up',
+            '7': 'up', '8': 'up', '9': 'up', '10': 'up', '11': 'up', '12': 'up', '13': 'up'
+        }
     },
 
     'led': {
@@ -61,7 +84,6 @@ export const componentLibrary = {
         icon: '💡',
         attrs: { color: 'red' },
         size: { width: 40, height: 60 },
-        snapAnchor: { x: 20, y: 50 },
         currentDraw_mA: 20,
         pinMeta: {
             'A': PIN.SIGNAL,
@@ -81,11 +103,15 @@ export const componentLibrary = {
         icon: '\u3030\uFE0F',
         attrs: { value: '220' },
         size: { width: 110, height: 30 },
-        snapAnchor: { x: 55, y: 15 },
         currentDraw_mA: 0,
         pinMeta: {
             '1': PIN.SIGNAL,
             '2': PIN.SIGNAL,
+        },
+        // Pin 1 exits left, pin 2 exits right — match the wokwi resistor leg endpoints
+        pinExitOverride: {
+            '1': 'left',
+            '2': 'right',
         },
         isPassive: true,
     },
@@ -295,12 +321,14 @@ export const componentLibrary = {
         snapAnchor: { x: 20, y: 20 },
         currentDraw_mA: 60,
         pinMeta: {
-            'VCC': PIN.VCC,
+            // wokwi-neopixel reports its power pin as 'VDD' — kept here as canonical
+            'VDD': PIN.VCC,
             'GND': PIN.GND,
             'DIN': PIN.SIGNAL,
             'DOUT': PIN.SIGNAL,
         },
-        autoWire: { VCC: PIN.VCC, GND: PIN.GND, DIN: PIN.DIGITAL },
+        // autoWire keys must match actual wokwi pinInfo names (VDD, not VCC)
+        autoWire: { VDD: PIN.VCC, GND: PIN.GND, DIN: PIN.DIGITAL },
         codeTemplate: 'strip.setPixelColor(0, strip.Color(255, 0, 0)); strip.show();',
     },
 

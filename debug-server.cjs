@@ -1,0 +1,33 @@
+const http = require('http');
+const fs = require('fs');
+
+const server = http.createServer((req, res) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+    if (req.method === 'OPTIONS') {
+        res.writeHead(200);
+        res.end();
+        return;
+    }
+
+    if (req.method === 'POST' && req.url === '/debug') {
+        let body = '';
+        req.on('data', chunk => { body += chunk.toString(); });
+        req.on('end', () => {
+            fs.writeFileSync('debug-output.json', body);
+            res.writeHead(200);
+            res.end('OK');
+            console.log('Saved debug-output.json');
+            process.exit(0);
+        });
+    } else {
+        res.writeHead(404);
+        res.end();
+    }
+});
+
+server.listen(3001, () => {
+    console.log('Debug server listening on 3001');
+});

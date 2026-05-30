@@ -13,7 +13,9 @@
  *  - Structural vs cosmetic change events (for efficient validation)
  */
 import { getComponentDef } from './component-library.js';
-import { getObstacles, generateWireColor } from './utils/wire-path.js';
+import { generateWireColor } from './utils/wire-path.js';
+import { PIN_ALIASES } from './component-library.js';
+import { routeAll } from './services/routing-engine.js';
 class CircuitStore extends EventTarget {
     constructor() {
         super();
@@ -38,14 +40,17 @@ class CircuitStore extends EventTarget {
         // Viewport (shared with canvas for coordinate conversions)
         this.viewport = { scale: 1, panX: 0, panY: 0 };
 
-        // Grid
-        this.gridSize = 20;
+        // Grid (10px matches 0.1-inch standard breadboard / Arduino header spacing)
+        this.gridSize = 10;
 
         // Anti-overlap toggle (on by default)
         this.antiOverlap = true;
 
         // Fan-out toggle (on by default)
         this.fanOut = true;
+
+        // Sharp wire corners toggle (off by default = rounded)
+        this.sharpCorners = false;
 
         // Undo/redo history
         this._history = [];
@@ -100,6 +105,11 @@ class CircuitStore extends EventTarget {
         this._notifyStructural();
     }
 
+    toggleSharpCorners() {
+        this.sharpCorners = !this.sharpCorners;
+        this._notify();
+    }
+
     // ——— Anti-Overlap Collision Detection ————————————————
     /**
      * Find the nearest non-overlapping position for a component.
@@ -116,7 +126,15 @@ class CircuitStore extends EventTarget {
         if (!inst) return { x, y };
 
         const def = getComponentDef(inst.componentId);
-        const size = def?.size || { width: 80, height: 60 };
+
+        const getRotatedSize = (compInst, compDef) => {
+            const rot = compInst.rotation || 0;
+            const w = compDef?.size?.width || 80;
+            const h = compDef?.size?.height || 60;
+            return (rot === 90 || rot === 270) ? { width: h, height: w } : { width: w, height: h };
+        };
+
+        const size = getRotatedSize(inst, def);
         const gap = this.gridSize; // 20px gap between components
 
         const box = {
@@ -130,7 +148,7 @@ class CircuitStore extends EventTarget {
             if (other.id === instanceId) continue;
 
             const otherDef = getComponentDef(other.componentId);
-            const otherSize = otherDef?.size || { width: 80, height: 60 };
+            const otherSize = getRotatedSize(other, otherDef);
             const otherBox = {
                 left: other.x - gap,
                 top: other.y - gap,
@@ -182,6 +200,7 @@ class CircuitStore extends EventTarget {
             componentId,
             x: sx,
             y: sy,
+            rotation: 0,
         };
         this.instances = [...this.instances, instance];
 
@@ -228,7 +247,8 @@ class CircuitStore extends EventTarget {
         this.wires = this.wires.filter(
             w => w.from.instanceId !== id && w.to.instanceId !== id
         );
-        this.pinInfoMap.delete(id);
+        
+        // Do NOT delete from pinInfoMap, as we need it if the user undoes the deletion.
         this.selectedInstanceIds.delete(id);
         this._pushHistory();
         this._notifyStructural();
@@ -236,6 +256,23 @@ class CircuitStore extends EventTarget {
 
     getInstance(id) {
         return this.instances.find(i => i.id === id);
+    }
+
+    rotateInstance(id) {
+        const inst = this.getInstance(id);
+        if (inst) {
+            inst.rotation = ((inst.rotation || 0) + 90) % 360;
+            
+            // Adjust overlap if it now hits something
+            if (this.antiOverlap) {
+                const resolved = this.resolveOverlap(id, inst.x, inst.y);
+                inst.x = resolved.x;
+                inst.y = resolved.y;
+            }
+            
+            this._pushHistory();
+            this._notifyStructural();
+        }
     }
 
     // ——— Selection ————————————————————————————————————
@@ -301,6 +338,35 @@ class CircuitStore extends EventTarget {
     // ——— Pin Info ——————————————————————————————————————
     registerPinInfo(instanceId, pinInfo) {
         this.pinInfoMap.set(instanceId, pinInfo);
+        
+        // Dynamically update snapAnchor based on actual SVG pins.
+        // This guarantees that when users drag components, the PINS snap to the grid, not the top-left corners.
+        const inst = this.getInstance(instanceId);
+        if (inst && pinInfo && pinInfo.length > 0) {
+            const def = getComponentDef(inst.componentId);
+            if (def && !def.snapAnchor) {
+                let anchorPin = pinInfo.find(p => p.name === 'GND.1' || p.name === 'GND');
+                if (!anchorPin) anchorPin = pinInfo.find(p => p.name === 'A' || p.name === 'VCC');
+                if (!anchorPin) anchorPin = pinInfo[0];
+                
+                if (anchorPin) {
+                    def.snapAnchor = { x: anchorPin.x, y: anchorPin.y };
+                    
+                    // Immediately re-snap this instance so it snaps perfectly upon first load
+                    if (!inst.rotation || inst.rotation === 0) {
+                        const nx = this.snapToGrid(inst.x + anchorPin.x) - anchorPin.x;
+                        const ny = this.snapToGrid(inst.y + anchorPin.y) - anchorPin.y;
+                        
+                        if (nx !== inst.x || ny !== inst.y) {
+                            inst.x = nx;
+                            inst.y = ny;
+                            this._notifyStructural();
+                        }
+                    }
+                }
+            }
+        }
+        this._notify(); // Force re-render of canvas so wires appear after load
     }
 
     getPinAbsolutePosition(instanceId, pinName) {
@@ -308,18 +374,67 @@ class CircuitStore extends EventTarget {
         if (!inst) return null;
         const pinInfo = this.pinInfoMap.get(instanceId);
         if (!pinInfo) return null;
-        const pin = pinInfo.find(p => p.name === pinName);
+        const resolvedName = this.resolvePinName(pinInfo, pinName);
+        const pin = pinInfo.find(p => p.name === resolvedName);
         if (!pin) return null;
+        
+        const rotation = inst.rotation || 0;
+        let baseX, baseY;
+        
+        if (rotation === 0) {
+            baseX = inst.x + pin.x;
+            baseY = inst.y + pin.y;
+        } else {
+            const def = getComponentDef(inst.componentId);
+            const width = def?.size?.width || 80;
+            const height = def?.size?.height || 60;
+            
+            const cx = width / 2;
+            const cy = height / 2;
+            const dx = pin.x - cx;
+            const dy = pin.y - cy;
+            
+            let rx, ry;
+            switch (rotation) {
+                case 90: rx = -dy; ry = dx; break;
+                case 180: rx = -dx; ry = -dy; break;
+                case 270: rx = dy; ry = -dx; break;
+                default: rx = dx; ry = dy;
+            }
+
+            baseX = inst.x + cx + rx;
+            baseY = inst.y + cy + ry;
+        }
+
         return {
-            x: inst.x + pin.x,
-            y: inst.y + pin.y,
+            x: baseX,
+            y: baseY,
         };
+    }
+
+    /**
+     * Resolve a logical pin name against the actual pinInfo array.
+     * Tries the exact name first, then checks PIN_ALIASES.
+     * E.g. 'VCC' will match a pin named 'VDD' if the alias exists.
+     */
+    resolvePinName(pinInfo, pinName) {
+        // Exact match first
+        if (pinInfo.find(p => p.name === pinName)) return pinName;
+        // Try alias: is pinName an alias for something in pinInfo?
+        const canonical = PIN_ALIASES[pinName];
+        if (canonical && pinInfo.find(p => p.name === canonical)) return canonical;
+        // Try reverse: does pinInfo have a pin whose name is aliased to pinName?
+        for (const p of pinInfo) {
+            if (PIN_ALIASES[p.name] === pinName) return p.name;
+        }
+        return pinName; // fallback — let caller deal with null
     }
 
     getPinSignals(instanceId, pinName) {
         const pinInfo = this.pinInfoMap.get(instanceId);
         if (!pinInfo) return [];
-        const pin = pinInfo.find(p => p.name === pinName);
+        const resolvedName = this.resolvePinName(pinInfo, pinName);
+        const pin = pinInfo.find(p => p.name === resolvedName);
         return (pin && pin.signals) || [];
     }
 
@@ -327,15 +442,17 @@ class CircuitStore extends EventTarget {
      * Determine which edge of the component a pin exits from.
      * Returns 'up', 'down', 'left', or 'right'.
      *
-     * Uses actual pin positions to compute the real bounding box,
-     * because wokwi elements often have pins outside the nominal library size.
+     * Checks component def's pinExitOverride first (for components like resistors
+     * whose wokwi pins exit horizontally), then falls back to geometric detection.
      */
     getPinExitDirection(instanceId, pinName) {
         const inst = this.getInstance(instanceId);
         if (!inst) return 'up';
         const pinInfo = this.pinInfoMap.get(instanceId);
         if (!pinInfo || pinInfo.length === 0) return 'up';
-        const pin = pinInfo.find(p => p.name === pinName);
+
+        const resolvedName = this.resolvePinName(pinInfo, pinName);
+        const pin = pinInfo.find(p => p.name === resolvedName);
         if (!pin) return 'up';
 
         // Compute actual bounding box from ALL pin positions
@@ -354,10 +471,25 @@ class CircuitStore extends EventTarget {
         const distRight = width - pin.x;
 
         const min = Math.min(distTop, distBottom, distLeft, distRight);
-        if (min === distTop) return 'up';
-        if (min === distBottom) return 'down';
-        if (min === distLeft) return 'left';
-        return 'right';
+        let baseDir = 'up';
+        
+        // Check component-level exit direction override first
+        const def = getComponentDef(inst.componentId);
+        if (def && def.pinExitOverride && (def.pinExitOverride[resolvedName] || def.pinExitOverride[pinName])) {
+            baseDir = def.pinExitOverride[resolvedName] || def.pinExitOverride[pinName];
+        } else {
+            if (min === distBottom) baseDir = 'down';
+            else if (min === distLeft) baseDir = 'left';
+            else if (min === distRight) baseDir = 'right';
+        }
+
+        const rotation = inst.rotation || 0;
+        if (rotation === 0) return baseDir;
+
+        const dirs = ['up', 'right', 'down', 'left'];
+        const currentIdx = dirs.indexOf(baseDir);
+        const newIdx = (currentIdx + (rotation / 90)) % 4;
+        return dirs[newIdx];
     }
 
     /**
@@ -420,8 +552,9 @@ class CircuitStore extends EventTarget {
 
     /**
      * Directly create a wire between two pins (used by auto-wire engine).
+     * @param {string} pinType - Optional PIN.* type to force correct wire color
      */
-    completeWiringDirect(fromInstanceId, fromPinName, toInstanceId, toPinName) {
+    completeWiringDirect(fromInstanceId, fromPinName, toInstanceId, toPinName, pinType) {
         // Don't duplicate an existing wire
         const exists = this.wires.some(
             w => (w.from.instanceId === fromInstanceId && w.from.pinName === fromPinName &&
@@ -437,7 +570,7 @@ class CircuitStore extends EventTarget {
             from: { instanceId: fromInstanceId, pinName: fromPinName },
             to: { instanceId: toInstanceId, pinName: toPinName },
             waypoints: [],
-            color: generateWireColor(signals),
+            color: generateWireColor(signals, pinType),
         };
         this.wires = [...this.wires, wire];
         this._notify(); // no individual history for batch auto-wires
@@ -452,6 +585,37 @@ class CircuitStore extends EventTarget {
     cancelWiring() {
         this.wiringState = null;
         this._notify();
+    }
+
+    /**
+     * Remove all wires connected to specific logical pins on an instance.
+     * Handles pin-name aliases (VDD↔VCC, VSS↔GND, etc.) so auto-wire can
+     * cleanly re-wire regardless of wokwi naming quirks.
+     */
+    stripWiresForPins(instanceId, pinNames) {
+        const pinInfo = this.pinInfoMap.get(instanceId);
+
+        // Build the full set of pin names to strip: input names +
+        // canonical forms + all alias variants present in pinInfo.
+        const pinsToStrip = new Set(pinNames);
+        if (pinInfo) {
+            for (const name of pinNames) {
+                const canonical = this.resolvePinName(pinInfo, name);
+                pinsToStrip.add(canonical);
+                // Walk pinInfo and include names that alias to/from the canonical
+                for (const p of pinInfo) {
+                    if (PIN_ALIASES[p.name] === canonical) pinsToStrip.add(p.name);
+                    if (PIN_ALIASES[canonical] === p.name) pinsToStrip.add(p.name);
+                }
+            }
+        }
+
+        this.wires = this.wires.filter(w => {
+            if (w.from.instanceId === instanceId && pinsToStrip.has(w.from.pinName)) return false;
+            if (w.to.instanceId === instanceId && pinsToStrip.has(w.to.pinName)) return false;
+            return true;
+        });
+        this._notify(); // Immediate visual update
     }
 
     removeWire(id) {
@@ -531,27 +695,13 @@ class CircuitStore extends EventTarget {
     }
 
     /**
-     * Auto-cleanup all wires: generate obstacle-aware waypoints
-     * that route around component bounding boxes.
+     * Route All — Deterministic structural layout engine.
+     * Rips up all wire waypoints and recomputes clean orthogonal paths
+     * respecting structural zones, net grouping, and stability.
+     * @returns {Promise<{ routed: number, failed: number, errors: string[] }>}
      */
-    cleanupWires() {
-        for (const wire of this.wires) {
-            const from = this.getPinAbsolutePosition(wire.from.instanceId, wire.from.pinName);
-            const to = this.getPinAbsolutePosition(wire.to.instanceId, wire.to.pinName);
-            if (!from || !to) continue;
-
-            const excludeIds = [wire.from.instanceId, wire.to.instanceId];
-            const obstacles = getObstacles(this.instances, excludeIds, getComponentDef);
-
-            const exitDir1 = this.getPinExitDirection(wire.from.instanceId, wire.from.pinName);
-            const exitDir2 = this.getPinExitDirection(wire.to.instanceId, wire.to.pinName);
-
-            wire.waypoints = generateCleanWaypoints(
-                from.x, from.y, exitDir1, to.x, to.y, exitDir2, obstacles, this.gridSize
-            );
-        }
-        this._pushHistory();
-        this._notifyStructural();
+    async cleanupWires() {
+        return await routeAll();
     }
 
     /** Clear all waypoints (reset wires to default routing) */
@@ -622,7 +772,7 @@ class CircuitStore extends EventTarget {
         this.wiringState = null;
         this.selectedInstanceIds = new Set();
         this.selectedWireId = null;
-        this.pinInfoMap = new Map();
+        // Do NOT clear pinInfoMap here! If we undo a deletion, we need the cached pinInfo to render the restored wires.
         this._notifyStructural();
     }
 
@@ -660,6 +810,86 @@ class CircuitStore extends EventTarget {
         }
     }
 
+    exportProject() {
+        return JSON.stringify({
+            instances: this.instances,
+            wires: this.wires,
+            _nextId: this._nextId,
+            version: '1.0'
+        }, null, 2);
+    }
+
+    importProject(data) {
+        if (!data) return false;
+        try {
+            const parsed = typeof data === 'string' ? JSON.parse(data) : data;
+            this.instances = parsed.instances || [];
+            this.wires = parsed.wires || [];
+            this._nextId = parsed._nextId || 1;
+            
+            this.pinInfoMap.clear();
+            this.wiringState = null;
+            this.selectedInstanceIds = new Set();
+            this.selectedWireId = null;
+            
+            this._pushHistory();
+            this._notifyStructural();
+            return true;
+        } catch (e) {
+            console.error('Failed to import project:', e);
+            return false;
+        }
+    }
+
+    // ——— Cloud Account Simulation —————————————————————
+    getSavedProjects() {
+        try {
+            const raw = localStorage.getItem('circuitsense_cloud_projects');
+            return raw ? JSON.parse(raw) : [];
+        } catch(e) { return []; }
+    }
+
+    saveProjectToAccount(name) {
+        const projects = this.getSavedProjects();
+        const existing = projects.find(p => p.name === name);
+        const data = {
+            instances: this.instances,
+            wires: this.wires,
+            _nextId: this._nextId
+        };
+        
+        if (existing) {
+            existing.data = data;
+            existing.updatedAt = Date.now();
+        } else {
+            projects.push({
+                id: 'proj_' + Date.now(),
+                name,
+                updatedAt: Date.now(),
+                data
+            });
+        }
+        localStorage.setItem('circuitsense_cloud_projects', JSON.stringify(projects));
+        this._notify(); // triggers UI update
+    }
+
+    loadProjectFromAccount(id) {
+        const projects = this.getSavedProjects();
+        const project = projects.find(p => p.id === id);
+        if (project) {
+            this.importProject(project.data);
+            return true;
+        }
+        return false;
+    }
+
+    deleteProjectFromAccount(id) {
+        let projects = this.getSavedProjects();
+        projects = projects.filter(p => p.id !== id);
+        localStorage.setItem('circuitsense_cloud_projects', JSON.stringify(projects));
+        this._notify();
+    }
+
     clearProject() {
         this.instances = [];
         this.wires = [];
@@ -683,132 +913,6 @@ class CircuitStore extends EventTarget {
         this._scheduleSave();
         this.dispatchEvent(new CustomEvent('structural-change'));
     }
-}
-
-// ─── Helper utilities ──────────────────────────────────────
-
-/** Distance from point (px,py) to line segment (ax,ay)-(bx,by) */
-function distToSegment(px, py, ax, ay, bx, by) {
-    const dx = bx - ax;
-    const dy = by - ay;
-    const lenSq = dx * dx + dy * dy;
-    if (lenSq === 0) return Math.hypot(px - ax, py - ay);
-
-    let t = ((px - ax) * dx + (py - ay) * dy) / lenSq;
-    t = Math.max(0, Math.min(1, t));
-
-    const projX = ax + t * dx;
-    const projY = ay + t * dy;
-    return Math.hypot(px - projX, py - projY);
-}
-
-// ─── Clean wire pathfinding ───────────────────────────────
-
-/**
- * Build a clean orthogonal path between two pins, respecting exit directions
- * and routing around obstacles. Single-pass: builds the base route, then for
- * each segment collects ALL crossed obstacles and inserts ONE detour.
- * Obstacle rects from getObstacles already include 15px margin.
- */
-function generateCleanWaypoints(x1, y1, exitDir1, x2, y2, exitDir2, obstacles, gridSize = 20) {
-    const snap = (v) => Math.round(v / gridSize) * gridSize;
-    const EXT = 35;
-    const GAP = 10;
-
-    function go(x, y, dir, d) {
-        switch (dir) {
-            case 'up': return { x, y: y - d };
-            case 'down': return { x, y: y + d };
-            case 'left': return { x: x - d, y };
-            case 'right': return { x: x + d, y };
-            default: return { x, y: y - d };
-        }
-    }
-
-    function crossed(a, b, obs) {
-        const r = { left: obs.left - GAP, top: obs.top - GAP,
-                     right: obs.right + GAP, bottom: obs.bottom + GAP };
-        if (a.x < r.left && b.x < r.left) return false;
-        if (a.x > r.right && b.x > r.right) return false;
-        if (a.y < r.top && b.y < r.top) return false;
-        if (a.y > r.bottom && b.y > r.bottom) return false;
-        if (Math.abs(a.y - b.y) < 2) {
-            return (a.y >= r.top && a.y <= r.bottom) &&
-                   Math.max(a.x, b.x) >= r.left && Math.min(a.x, b.x) <= r.right;
-        }
-        if (Math.abs(a.x - b.x) < 2) {
-            return (a.x >= r.left && a.x <= r.right) &&
-                   Math.max(a.y, b.y) >= r.top && Math.min(a.y, b.y) <= r.bottom;
-        }
-        return false;
-    }
-
-    function dropCollinear(pts) {
-        if (pts.length <= 2) return pts;
-        const r = [pts[0]];
-        for (let i = 1; i < pts.length - 1; i++) {
-            const a = r[r.length - 1], b = pts[i], c = pts[i + 1];
-            if (!(Math.abs(a.x - b.x) < 2 && Math.abs(b.x - c.x) < 2) &&
-                !(Math.abs(a.y - b.y) < 2 && Math.abs(b.y - c.y) < 2))
-                r.push(b);
-        }
-        r.push(pts[pts.length - 1]);
-        return r;
-    }
-
-    // Step 1 — build base route from extension points
-    const s = go(x1, y1, exitDir1, EXT);
-    const t = go(x2, y2, exitDir2, EXT);
-    const v1 = exitDir1 === 'up' || exitDir1 === 'down';
-    const v2 = exitDir2 === 'up' || exitDir2 === 'down';
-
-    let points;
-    if (v1 && v2) {
-        const my = snap((s.y + t.y) / 2);
-        points = [s, { x: s.x, y: my }, { x: t.x, y: my }, t];
-    } else if (!v1 && !v2) {
-        const mx = snap((s.x + t.x) / 2);
-        points = [s, { x: mx, y: s.y }, { x: mx, y: t.y }, t];
-    } else {
-        points = v1 ? [s, { x: s.x, y: t.y }, t]
-                    : [s, { x: t.x, y: s.y }, t];
-    }
-
-    // Step 2 — for each segment, collect all crossing obstacles, add one detour
-    const out = [points[0]];
-    for (let i = 0; i < points.length - 1; i++) {
-        const a = points[i], b = points[i + 1];
-        const hits = obstacles.filter(o => crossed(a, b, o));
-        if (hits.length === 0) { out.push(b); continue; }
-
-        const isH = Math.abs(a.y - b.y) < 2;
-        if (isH) {
-            const y = a.y;
-            const tops = hits.map(o => o.top);
-            const bots = hits.map(o => o.bottom);
-            const dy = snap(Math.min(...tops) - GAP);
-            const uy = snap(Math.max(...bots) + GAP);
-            const goUp = y - dy < uy - y;
-            const cy = goUp ? dy : uy;
-            out.push({ x: snap(a.x), y: cy });
-            out.push({ x: snap(b.x), y: cy });
-        } else {
-            const x = a.x;
-            const lefts = hits.map(o => o.left);
-            const rights = hits.map(o => o.right);
-            const lx = snap(Math.min(...lefts) - GAP);
-            const rx = snap(Math.max(...rights) + GAP);
-            const goLeft = x - lx < rx - x;
-            const cx = goLeft ? lx : rx;
-            out.push({ x: cx, y: snap(a.y) });
-            out.push({ x: cx, y: snap(b.y) });
-        }
-        out.push(b);
-    }
-
-    const full = [{ x: x1, y: y1 }, ...out, { x: x2, y: y2 }];
-    const clean = dropCollinear(full);
-    return clean.slice(1, clean.length - 1);
 }
 
 export const store = new CircuitStore();

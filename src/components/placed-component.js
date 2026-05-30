@@ -18,15 +18,12 @@ class PlacedComponent extends LitElement {
       display: inline-block;
       cursor: grab;
       user-select: none;
-      outline: 2px solid transparent;
-      outline-offset: 4px;
       border-radius: 4px;
-      transition: outline-color 0.2s;
       padding-bottom: 28px;
     }
 
     :host(.selected) {
-      outline-color: #4FC3F7;
+      /* host no longer has outline */
     }
 
     :host(.dragging) {
@@ -37,8 +34,22 @@ class PlacedComponent extends LitElement {
 
     .wrapper {
       position: relative;
-      display: inline-block;
+      display: flex;
+      flex-direction: column;
       margin-bottom: -28px;
+    }
+
+    .rotatable-group {
+      position: relative;
+      transform-origin: center center;
+      transition: transform 0.2s ease, outline-color 0.2s;
+      outline: 2px solid transparent;
+      outline-offset: 4px;
+      border-radius: 4px;
+    }
+
+    :host(.selected) .rotatable-group {
+      outline-color: #4FC3F7;
     }
 
     .wokwi-container {
@@ -177,6 +188,16 @@ class PlacedComponent extends LitElement {
       background: #42A5F5;
     }
 
+    .rotate-btn {
+      background: rgba(67, 160, 71, 0.75);
+      color: white;
+      border-color: rgba(46, 125, 50, 0.5);
+    }
+
+    .rotate-btn:hover {
+      background: #4CAF50;
+    }
+
     /* Auto-wire toast */
     .autowire-toast {
       position: absolute;
@@ -244,13 +265,18 @@ class PlacedComponent extends LitElement {
         } else {
             this.classList.remove('selected');
         }
+
+        // If the store cleared our pin info (e.g. after loading a project), we must re-register it
+        if (!store.pinInfoMap.has(this.instanceId)) {
+            this._readPinInfo(50);
+        }
     }
 
     firstUpdated() {
         this._readPinInfo();
     }
 
-    _readPinInfo(retries = 8) {
+    _readPinInfo(retries = 50) {
         const container = this.shadowRoot && this.shadowRoot.querySelector('.wokwi-container');
         if (!container) return;
 
@@ -265,8 +291,13 @@ class PlacedComponent extends LitElement {
     }
 
     render() {
+        const inst = store.getInstance(this.instanceId);
         const def = getComponentDef(this.componentId);
         if (!def) return html`<div style="color:red;">Unknown: ${this.componentId}</div>`;
+
+        const rot = inst?.rotation || 0;
+        const width = def.size?.width || 80;
+        const height = def.size?.height || 60;
 
         const attrs = Object.entries(def.attrs || {})
             .map(([k, v]) => `${k}="${v}"`)
@@ -286,6 +317,9 @@ class PlacedComponent extends LitElement {
               @click=${this._onAutoWire}
               title="Auto-wire to Arduino">⚡</button>
           ` : ''}
+          <button class="action-btn rotate-btn"
+            @click=${this._onRotate}
+            title="Rotate (R)">↻</button>
           <button class="action-btn delete-btn"
             @click=${this._onDelete}
             title="Remove component (Del)">×</button>
@@ -297,11 +331,12 @@ class PlacedComponent extends LitElement {
           </div>
         ` : ''}
 
-        <div class="wokwi-container">
-          ${unsafeHTML(tagHtml)}
+        <div class="rotatable-group" style="width: ${width}px; height: ${height}px; transform: rotate(${rot}deg);">
+          <div class="wokwi-container" style="position: absolute; left: 0; top: 0; width: 100%; height: 100%;">
+            ${unsafeHTML(tagHtml)}
+          </div>
+          ${this._pinInfo.map(pin => this._renderPin(pin))}
         </div>
-
-        ${this._pinInfo.map(pin => this._renderPin(pin))}
 
         <div class="component-label">${def.name}</div>
       </div>
@@ -371,7 +406,11 @@ class PlacedComponent extends LitElement {
         store.commitAutoWire();
 
         if (result.success) {
-            this._autoWireMsg = { ok: true, text: '✓ Wired: ' + result.wired.join(', ') };
+            let text = '✓ Wired: ' + result.wired.join(', ');
+            if (result.added && result.added.length > 0) {
+                text += ' · Added: ' + [...new Set(result.added)].join(', ');
+            }
+            this._autoWireMsg = { ok: true, text };
         } else if (result.wired.length > 0) {
             this._autoWireMsg = { ok: false, text: 'Partial: ' + result.errors.join('; ') };
         } else {
@@ -379,10 +418,12 @@ class PlacedComponent extends LitElement {
         }
 
         // Clear toast after animation
-        setTimeout(() => { this._autoWireMsg = null; }, 2200);
+        setTimeout(() => { this._autoWireMsg = null; }, 2800);
     }
 
     _onPointerDown(e) {
+        if (e.button !== 0) return; // Only allow left-clicks to drag/select
+
         const target = e.composedPath()[0];
         if (
             (target && target.classList && target.classList.contains('pin-dot')) ||
@@ -436,6 +477,11 @@ class PlacedComponent extends LitElement {
     _onDelete(e) {
         e.stopPropagation();
         store.removeInstance(this.instanceId);
+    }
+
+    _onRotate(e) {
+        e.stopPropagation();
+        store.rotateInstance(this.instanceId);
     }
 }
 

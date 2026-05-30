@@ -93,8 +93,6 @@ The Agile Iterative model was selected as the development approach for this proj
 
 The project is organised into seven sprints: (1) interactive canvas with component placement, grid snapping, and pan/zoom, (2) component library with metadata and the sidebar interface, (3) manual pin-to-pin wiring with orthogonal routing, (4) validation engine covering nine rules and the validation bar UI, (5) auto-wire engine with smart pin assignment, (6) state management upgrades including undo/redo, localStorage persistence, and anti-overlap collision detection, and (7) integration testing, UI polish, and wire cleanup features.
 
-[INSERT AGILE ITERATIVE MODEL DIAGRAM HERE]
-
 ### Requirements Specifications
 
 Requirements were gathered through three methods. First, a literature review of existing circuit design tools identified which features are standard and which are absent. Second, a needs analysis questionnaire was distributed to 35 undergraduate students from KICT and the Kulliyyah of Engineering at IIUM. Third, iterative prototyping of the UI and validation logic provided practical feedback on which design decisions worked and which needed adjustment.
@@ -105,45 +103,33 @@ These findings directly informed the prioritisation of the Validation Engine as 
 
 ### Logical Design
 
-The logical design of Elera describes the system's structure and behaviour through standard UML and data flow diagrams. This subsection presents the narrative that accompanies each diagram.
+The logical design of Elera describes the system's structure and behaviour through standard UML diagrams. This subsection presents the narrative that accompanies each diagram.
 
-**System Architecture.** Elera is designed on a modular architecture using Lit 3 Web Components. The system comprises twelve modules that communicate through an event-driven pattern. When a user performs an action on the canvas, such as placing a wire, the Circuit Store updates its internal state and fires a "structural-change" event. The Validation Engine listens for that event, re-checks the circuit, and sends the results to the Validation Bar, which re-renders automatically. The user sees updated feedback without any manual refresh. The twelve modules are: Circuit App, Component Library, Component Sidebar, Circuit Canvas, Placed Component, Circuit Store, Validation Engine, Validation Bar, Auto-Wire Engine, Wire Path Utility, AI Assistant, and Component Builder. The Component Library feeds metadata to the Sidebar, Canvas, Validation Engine, and Auto-Wire Engine. The Canvas and Auto-Wire Engine read from and write to the Store. The Store fires structural-change events to the Validation Engine, which outputs results to the Validation Bar. The AI Assistant reads circuit state from the Store and writes auto-wire actions back to it via the Gemini API. The Component Builder submits images to the Gemini vision API and saves custom component metadata to the Store.
+**System Architecture.** Elera uses a modular architecture built with Lit 3 Web Components. The system comprises twelve modules that communicate through an event-driven pattern. When a user performs an action on the canvas, such as placing a wire, the Circuit Store updates its internal state and fires a "structural-change" event. The Validation Engine listens for that event, re-checks the circuit, and sends the results to the Validation Bar, which re-renders automatically. The user sees updated feedback without any manual refresh. The twelve modules are: Circuit App, Component Library, Component Sidebar, Circuit Canvas, Placed Component, Circuit Store, Validation Engine, Validation Bar, Auto-Wire Engine, Wire Path Utility, AI Assistant, and Component Builder. The Component Library feeds metadata to the Sidebar, Canvas, Validation Engine, and Auto-Wire Engine. The Canvas and Auto-Wire Engine read from and write to the Store. The Store fires structural-change events to the Validation Engine, which outputs results to the Validation Bar. The AI Assistant reads circuit state from the Store and writes auto-wire actions back to it via the Gemini API. The Component Builder allows users to create custom components and saves the resulting metadata to the Component Library.
 
 [INSERT SYSTEM ARCHITECTURE DIAGRAM HERE]
 
-**Use Case Diagram.** The primary actor in the system is the Student. The Use Case diagram illustrates ten supported interactions: Place Component, Move Component, Delete Component, Wire Components, Edit Wire Waypoints, Search Components, Auto-Wire Component, View Validation Results, Undo/Redo, and Clear Project. Each use case maps to one or more functional requirements defined during the requirements gathering phase.
+**Use Case Diagram.** The primary actor in the system is the Student. The Use Case diagram illustrates twelve supported interactions grouped into four packages. Under Component Management: Place Component, Move Component, Delete Component, and Search Components. Under Wiring: Wire Two Pins Manually, Auto-Wire Component, Edit Wire Waypoints, and Clean Up Wire Routing. Under Validation: View Validation Results. Under Project: Zoom and Pan Canvas, Undo or Redo Action, and Clear Project. Each use case maps to one or more functional requirements defined during the requirements gathering phase.
 
 [INSERT USE CASE DIAGRAM HERE]
 
-**Activity Diagram.** The Activity diagram illustrates the circuit building workflow from start to finish. The process begins when the student places an Arduino Uno on the canvas, followed by placing one or more components. The student then chooses between manual wiring and auto-wiring. In the manual path, the student clicks a source pin, clicks a destination pin, and a wire appears. In the auto-wire path, the student triggers the engine, pins are assigned, and wires are generated automatically. After either path, the validation engine runs automatically and the student views the results. If errors are present, the student fixes the wiring and the cycle repeats. If no errors are detected, the circuit is complete.
+**Activity Workflow.** The circuit building workflow proceeds as follows. The student places an Arduino Uno on the canvas, followed by one or more components. The student then chooses between manual wiring and auto-wiring. In the manual path, the student clicks a source pin, clicks a destination pin, and a wire appears. In the auto-wire path, the student triggers the engine, pins are assigned, and wires are generated automatically. After either path, the validation engine runs automatically and the student views the results. If errors are present, the student fixes the wiring and the cycle repeats. If no errors are detected, the circuit is complete.
 
-[INSERT ACTIVITY DIAGRAM HERE]
-
-**Sequence Diagram.** The Sequence diagram illustrates the validation flow. The interaction begins when the user interacts with the Canvas by placing a wire. The Canvas calls Store.completeWiring(). The Store adds the wire and fires a "structural-change" event. The Validation Engine receives the event, calls validateCircuit(), builds context from the current circuit state, and runs the nine rules. The results are returned to the Validation Bar, which renders the messages. The user then reads the feedback.
+**Sequence Diagram.** The Sequence diagram illustrates the validation flow. The interaction begins when the user completes a wire on the Canvas. The Canvas calls Store.completeWiring(). The Store records the wire, saves a history snapshot, and fires a "structural-change" event. The Validation Bar listens for that event, requests validation from the Validation Engine. The Validation Engine reads the current component instances and wires from the Store, runs the nine rules, and returns the results to the Validation Bar. The Validation Bar re-renders the updated issue list, and the user sees the new error and warning counts.
 
 [INSERT SEQUENCE DIAGRAM HERE]
-
-**Data Flow Diagrams.** The Context Diagram (DFD Level 0) shows one external entity, the Student, interacting with the Elera system. Inbound data flows include component placement commands, wiring actions, search queries, and auto-wire requests. Outbound flows include the visual circuit display, validation results, and auto-wire confirmations.
-
-[INSERT CONTEXT DIAGRAM (DFD LEVEL 0) HERE]
-
-The Level 1 DFD decomposes the system into four processes: (1) Manage Components, which takes placement and deletion commands and reads/writes to the Circuit Store data store, (2) Manage Wires, which takes wiring commands and reads/writes wire data, (3) Validate Circuit, which is triggered by structural changes, reads instance and wire data from the Store, reads metadata from the Component Library, and outputs validation results, and (4) Auto-Wire, which takes auto-wire requests, reads metadata and used-pin data, and writes new wires to the Store.
-
-[INSERT LEVEL 1 DFD HERE]
 
 ### Database Design
 
 The data model is designed around a PostgreSQL database hosted on Supabase, organised into four tables: Users, Projects, ComponentInstances, and Wires.
 
-The Entity-Relationship Diagram illustrates the logical relationships between three core entities. The Component entity (from the metadata library) contains the attributes componentId (PK, String), name (String), category (String), pinCount (Integer), currentDraw (Float), and autoWireRules (JSON). The Instance entity (a placed component on the canvas) contains id (PK, String), componentId (FK, String), x (Float), and y (Float). The Wire entity (a connection between two pin endpoints) contains id (PK, String), fromInstanceId (FK, String), fromPinName (String), toInstanceId (FK, String), toPinName (String), waypoints (JSON), and color (String). The relationships are: one Component to many Instances, and one Instance to many Wires (from both the source and destination sides).
+The Entity-Relationship Diagram illustrates the logical relationships between three core entities. The Component entity (from the metadata library) contains the attributes componentId (PK, String), name (String), category (String), currentDraw_mA (Number), pinMeta (Object), autoWire (Object), and codeTemplate (String). The Instance entity (a placed component on the canvas) contains id (PK, String), componentId (FK, String), x (Float), and y (Float). The Wire entity (a connection between two pin endpoints) contains id (PK, String), fromInstanceId (FK, String), fromPinName (String), toInstanceId (FK, String), toPinName (String), waypoints (Array), and color (String). The relationships are: one Component to many Instances, and one Instance to many Wires (from both the source and destination sides).
 
 [INSERT ENTITY-RELATIONSHIP DIAGRAM (ERD) HERE]
 
 The Users table stores account information for each registered student, including a UUID primary key, name, email address, and account creation timestamp. The Projects table represents a saved circuit design. Each project belongs to one user through a foreign key relationship and stores a title and the timestamp of the last modification. The ComponentInstances table records each component placed on the canvas for a given project. It stores the component type identifier, which maps to the static component library definition, and the canvas position coordinates. The Wires table stores each wire connection between two component pins. The source and destination are recorded as foreign keys to ComponentInstances along with the specific pin names. Wire routing waypoints are stored as a JSONB column to accommodate variable-length path arrays without requiring a separate table. The wire colour is stored as a string and is assigned automatically based on signal type during rendering.
 
-The component library definitions are maintained as static metadata in the application layer rather than the database, as they do not change between sessions and are not specific to any user or project. During FYP1 development, application state is managed client-side using localStorage as a temporary persistence layer. The full Supabase integration is planned for FYP2.
-
-[INSERT DATA DICTIONARY TABLE HERE]
+The component library definitions are maintained as static metadata in the application layer rather than the database, as they do not change between sessions and are not specific to any user or project.
 
 ### Prototype Design
 
@@ -172,10 +158,6 @@ The user interface prototype follows a three-panel layout. There is a fixed head
 **Wire Cleanup.** As users add, move, and delete components, wires can become tangled. Paths may overlap with other components, cross unnecessarily, or take longer routes than needed. The wire cleanup feature re-routes all existing wires using the orthogonal pathfinding algorithm to find cleaner paths that avoid obstacles. The user triggers this with a single button press from the header toolbar. This addresses one of the key usability pain points identified in the literature review, where all four existing tools leave wire management entirely to the user.
 
 [INSERT WIRE CLEANUP BEFORE/AFTER PROTOTYPE SCREENSHOT HERE]
-
-**Navigation Flow.** The application loads and displays the Canvas, either empty or restored from the last saved state. From the canvas, the user can place a component, search the library, wire pins manually, trigger auto-wire, run wire cleanup, view validation results, undo/redo actions, or clear the project. All paths lead back to the canvas.
-
-[INSERT NAVIGATION FLOW DIAGRAM HERE]
 
 ## References
 [1] D. Nair, "Online Laboratory Course using Low Tech Supplies to Introduce Digital Logic Design Concepts," in 2021 International e-Engineering Education Services Conference (e-Engineering), 2021, pp. 121-126.

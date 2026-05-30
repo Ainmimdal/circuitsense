@@ -36,6 +36,7 @@ export function wirePath(x1, y1, x2, y2, options = {}) {
         index = 0,
         stagger1,
         stagger2,
+        sharp = false,
     } = options;
 
     if (style === 'smooth') {
@@ -48,7 +49,7 @@ export function wirePath(x1, y1, x2, y2, options = {}) {
             { x: x1, y: y1 },
             ...waypoints,
             { x: x2, y: y2 },
-        ]);
+        ], sharp);
     }
 
     if (style === 'orthogonal') {
@@ -154,10 +155,19 @@ function connectExtensions(p1, p2, dir1, dir2, stagger = 0) {
 /**
  * Build an SVG path through a series of points with rounded corners.
  */
-function buildPathThroughPoints(points) {
+function buildPathThroughPoints(points, sharp = false) {
     if (points.length < 2) return '';
     if (points.length === 2) {
         return `M ${points[0].x} ${points[0].y} L ${points[1].x} ${points[1].y}`;
+    }
+
+    // Sharp mode: no rounded corners, just straight lines
+    if (sharp) {
+        let path = `M ${points[0].x} ${points[0].y}`;
+        for (let i = 1; i < points.length; i++) {
+            path += ` L ${points[i].x} ${points[i].y}`;
+        }
+        return path;
     }
 
     let path = `M ${points[0].x} ${points[0].y}`;
@@ -289,15 +299,35 @@ export const WIRE_COLORS = [
 
 const SIGNAL_COLORS = WIRE_COLORS.slice(0, 9); // Exclude Red/GND
 
-export function generateWireColor(signals) {
-    if (!signals || signals.length === 0) {
-        return SIGNAL_COLORS[Math.floor(Math.random() * SIGNAL_COLORS.length)];
+// Rotating index so each new signal wire gets a different colour (deterministic)
+let _signalColorIndex = 0;
+
+/**
+ * Generate a wire color.
+ *
+ * @param {Array} signals   - Wokwi pin signals array (fallback detection)
+ * @param {string} [pinType] - Optional PIN.* constant from auto-wire rules (takes priority)
+ * @returns {string} CSS color string
+ */
+export function generateWireColor(signals, pinType) {
+    // pinType from auto-wire rules takes priority — always deterministic
+    if (pinType) {
+        if (pinType === 'GND')    return '#111111';
+        if (pinType === 'VCC')    return '#F44336';
+        // Signal types get a rotating palette entry
+        return SIGNAL_COLORS[(_signalColorIndex++) % SIGNAL_COLORS.length];
     }
-    for (const sig of signals) {
-        if (sig.signal === 'GND') return '#111111'; // GND
-        if (sig.signal === 'VCC') return '#F44336'; // Red
+
+    // Fallback: check wokwi signal metadata
+    if (signals && signals.length > 0) {
+        for (const sig of signals) {
+            if (sig.signal === 'GND') return '#111111';
+            if (sig.signal === 'VCC') return '#F44336';
+        }
     }
-    return SIGNAL_COLORS[Math.floor(Math.random() * SIGNAL_COLORS.length)];
+
+    // Last resort: rotate through palette
+    return SIGNAL_COLORS[(_signalColorIndex++) % SIGNAL_COLORS.length];
 }
 
 // Re-export for store usage

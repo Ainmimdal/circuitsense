@@ -1,6 +1,6 @@
 import { LitElement, html, css } from 'lit';
 import { store } from './store.js';
-import { autoWireAll } from './services/auto-wire-engine.js';
+import { autoWireAll, autoLayoutAll } from './services/auto-wire-engine.js';
 
 class CircuitApp extends LitElement {
     static properties = {
@@ -8,6 +8,7 @@ class CircuitApp extends LitElement {
         _fanOut: { state: true },
         _gridSize: { state: true },
         _aiOpen: { state: true },
+        _sharpCorners: { state: true },
     };
 
     static styles = css `
@@ -164,21 +165,39 @@ class CircuitApp extends LitElement {
         this._fanOut = store.fanOut;
         this._gridSize = store.gridSize;
         this._aiOpen = false;
+        this._sharpCorners = store.sharpCorners;
         this._storeHandler = () => {
             this._antiOverlap = store.antiOverlap;
             this._fanOut = store.fanOut;
             this._gridSize = store.gridSize;
+            this._sharpCorners = store.sharpCorners;
         };
     }
 
     connectedCallback() {
         super.connectedCallback();
         store.addEventListener('change', this._storeHandler);
+        
+        this._keydownHandler = (e) => {
+            if (e.key === 'Delete' || e.key === 'Backspace') {
+                if (document.activeElement.tagName === 'INPUT') return;
+                store.deleteSelected();
+            }
+            if (e.key === 'r' || e.key === 'R') {
+                if (document.activeElement.tagName === 'INPUT') return;
+                if (store.selectedInstanceIds.size > 0) {
+                    const id = [...store.selectedInstanceIds][0];
+                    store.rotateInstance(id);
+                }
+            }
+        };
+        window.addEventListener('keydown', this._keydownHandler);
     }
 
     disconnectedCallback() {
         super.disconnectedCallback();
         store.removeEventListener('change', this._storeHandler);
+        window.removeEventListener('keydown', this._keydownHandler);
     }
 
     _toggleAntiOverlap() {
@@ -187,6 +206,10 @@ class CircuitApp extends LitElement {
 
     _toggleFanOut() {
         store.toggleFanOut();
+    }
+
+    _toggleSharpCorners() {
+        store.toggleSharpCorners();
     }
 
     _setGridSize(size) {
@@ -201,8 +224,37 @@ class CircuitApp extends LitElement {
 
     _undoAction() { store.undo(); }
     _redoAction() { store.redo(); }
-    _cleanupWires() { store.cleanupWires(); }
+    async _cleanupWires() {
+        const result = await store.cleanupWires();
+        // routeAll() now returns { routed, failed, errors }
+        if (result && result.routed !== undefined) {
+            if (result.failed > 0) {
+                alert(`Routed ${result.routed} wires, ${result.failed} failed.\n${result.errors.slice(0, 3).join('\n')}`);
+            }
+        }
+    }
     _resetWires() { store.resetWireRouting(); }
+
+    _autoLayoutAll() {
+        const result = autoWireAll();
+        if (result.total === 0) {
+            alert('No components to layout. Add components with pins first.');
+            return;
+        }
+        
+        // autoWireAll may have just inserted helper components (like resistors).
+        // We must wait until their <placed-component> DOM elements have mounted 
+        // and registered their exact SVG pin coordinates before computing layout.
+        const waitAndLayout = () => {
+            const allReady = store.instances.every(inst => store.pinInfoMap.has(inst.id));
+            if (allReady) {
+                autoLayoutAll();
+            } else {
+                requestAnimationFrame(waitAndLayout);
+            }
+        };
+        waitAndLayout();
+    }
 
     _autoWireAll() {
         const result = autoWireAll();
@@ -225,6 +277,47 @@ class CircuitApp extends LitElement {
         }
     }
 
+    _exportProject() {
+        const dataStr = store.exportProject();
+        const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+        const exportFileDefaultName = 'circuit-project.json';
+
+        const linkElement = document.createElement('a');
+        linkElement.setAttribute('href', dataUri);
+        linkElement.setAttribute('download', exportFileDefaultName);
+        linkElement.click();
+    }
+
+    _importProject() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.json';
+        input.onchange = e => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = event => {
+                const success = store.importProject(event.target.result);
+                if (!success) {
+                    alert('Failed to load project file. It may be corrupted or invalid.');
+                }
+            };
+            reader.readAsText(file);
+        };
+        input.click();
+    }
+
+    _loginDummy() {
+        alert("Login functionality is coming soon! (Google Auth setup planned)");
+    }
+
+    _openProjects() {
+        const modal = this.shadowRoot.querySelector('projects-modal');
+        if (modal) {
+            modal.open = true;
+        }
+    }
+
     render() {
         return html `
       <div class="header">
@@ -239,6 +332,15 @@ class CircuitApp extends LitElement {
             <span class="icon">↪</span>
           </button>
           <div class="toolbar-divider"></div>
+          <button class="toolbar-btn" @click=${this._exportProject} title="Export Project to File">
+            <span class="icon">💾</span>
+            Export
+          </button>
+          <button class="toolbar-btn" @click=${this._importProject} title="Import Project from File">
+            <span class="icon">📂</span>
+            Import
+          </button>
+          <div class="toolbar-divider"></div>
           <button class="toolbar-btn" @click=${this._cleanupWires} title="Auto-route wires around components">
             <span class="icon">🔧</span>
             Clean wires
@@ -249,6 +351,10 @@ class CircuitApp extends LitElement {
           <button class="toolbar-btn" @click=${this._autoWireAll} title="Auto-wire all components to Arduino">
             <span class="icon">⚡</span>
             Auto-wire all
+          </button>
+          <button class="toolbar-btn" @click=${this._autoLayoutAll} title="Auto-layout and wire all components">
+            <span class="icon">🪄</span>
+            Auto-layout
           </button>
           <div class="toolbar-divider"></div>
           <button
@@ -266,6 +372,14 @@ class CircuitApp extends LitElement {
           >
             <span class="icon">📐</span>
             Fan-out
+          </button>
+          <button
+            class="toolbar-btn ${this._sharpCorners ? 'active' : ''}"
+            @click=${this._toggleSharpCorners}
+            title="Toggle sharp wire corners (no rounding)"
+          >
+            <span class="icon">📏</span>
+            Sharp
           </button>
           <div class="toolbar-divider"></div>
           <select class="grid-size-select"
@@ -290,6 +404,11 @@ class CircuitApp extends LitElement {
             <span class="icon">✨</span>
             Elera AI
           </button>
+          <div class="toolbar-divider"></div>
+          <button class="toolbar-btn" @click=${this._openProjects} title="My Projects">
+            <span class="icon">📁</span>
+            My Projects
+          </button>
         </div>
       </div>
       <div class="main">
@@ -300,6 +419,7 @@ class CircuitApp extends LitElement {
         </div>
       </div>
       <ai-assistant></ai-assistant>
+      <projects-modal></projects-modal>
     `;
     }
 }

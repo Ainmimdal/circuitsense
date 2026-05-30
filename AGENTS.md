@@ -1,10 +1,12 @@
-# CircuitSense - Claude Project Context
+# CircuitSense - Codex Project Context
 
 ## Project Type
 Final Year Project (FYP) for IIUM (IT student).
 
 ## Project Purpose
-CircuitSense is an intelligent, web-based Arduino circuit builder inspired by tools like Tinkercad/Wokwi, but focused on smarter guidance instead of only manual design.
+Elera is an intelligent, web-based Arduino circuit builder inspired by tools like Tinkercad/Wokwi, but focused on smarter guidance instead of only manual design.
+
+FYP wants to look more at the software engineering aspect of system development.
 
 The main FYP objective is to build a system that helps students design valid circuits faster by combining:
 - visual drag-and-drop circuit building,
@@ -34,8 +36,8 @@ Core capabilities in progress:
 - Auto-wiring engine.
 
 ## Planned Scope (Next Phases)
-- FastAPI backend
-- PostgreSQL project persistence
+- FastAPI backend?
+- PostgreSQL project persistence (Supabase)
 - User authentication
 - Save/load/share projects
 - Arduino code generation

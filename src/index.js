@@ -8,3 +8,4 @@ import './components/circuit-canvas.js';
 import './components/placed-component.js';
 import './components/validation-bar.js';
 import './components/ai-assistant.js';
+import './components/projects-modal.js';

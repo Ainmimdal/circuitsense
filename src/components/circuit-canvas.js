@@ -398,6 +398,7 @@ class CircuitCanvas extends LitElement {
                 exitDir2,
                 stagger1: stagger.s1,
                 stagger2: stagger.s2,
+                sharp: store.sharpCorners,
             });
             const color = wire.color || '#4CAF50';
             const isSelected = store.selectedWireId === wire.id;
@@ -415,6 +416,16 @@ class CircuitCanvas extends LitElement {
             const world = this._screenToWorld(e.clientX - rect.left, e.clientY - rect.top);
             store.addWireWaypoint(wire.id, world.x, world.y);
           }}
+        />
+        <path
+          class="wire-outline"
+          d="${path}"
+          stroke="#ffffff"
+          stroke-width="${6 / this._scale}"
+          fill="none"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          opacity="0.15"
         />
         <path
           class="wire ${isSelected ? 'selected' : ''}"
