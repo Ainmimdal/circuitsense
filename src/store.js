@@ -13,9 +13,11 @@
  *  - Structural vs cosmetic change events (for efficient validation)
  */
 import { getComponentDef } from './component-library.js';
-import { generateWireColor } from './utils/wire-path.js';
+import { generateWireColor, normalizeOrthogonalPoints } from './utils/wire-path.js';
 import { PIN_ALIASES } from './component-library.js';
 import { routeAll, clearRoutingCache } from './services/routing-engine.js';
+
+const APP_PREFS_STORAGE_KEY = 'elera_app_preferences';
 
 function distToSegment(px, py, x1, y1, x2, y2) {
     const l2 = (x1 - x2) ** 2 + (y1 - y2) ** 2;
@@ -61,6 +63,10 @@ class CircuitStore extends EventTarget {
         // Sharp wire corners toggle (off by default = rounded)
         this.sharpCorners = false;
 
+        // Manual wire editing preferences
+        this.manualWireMode = 'orthogonal';
+        this.manualWireSnap = true;
+
         // Undo/redo history
         this._history = [];
         this._historyIndex = -1;
@@ -68,6 +74,8 @@ class CircuitStore extends EventTarget {
 
         // Auto-save debounce timer
         this._saveTimer = null;
+
+        this._loadPreferences();
 
         // Load any saved project
         this._loadFromStorage();
@@ -117,6 +125,37 @@ class CircuitStore extends EventTarget {
     toggleSharpCorners() {
         this.sharpCorners = !this.sharpCorners;
         this._notify();
+    }
+
+    setManualWireMode(mode) {
+        if (!['orthogonal', 'freestyle'].includes(mode)) return;
+        this.manualWireMode = mode;
+        this._savePreferences();
+        this._notify();
+    }
+
+    toggleManualWireMode() {
+        this.setManualWireMode(this.manualWireMode === 'orthogonal' ? 'freestyle' : 'orthogonal');
+    }
+
+    setManualWireSnap(enabled) {
+        this.manualWireSnap = Boolean(enabled);
+        this._savePreferences();
+        this._notify();
+    }
+
+    toggleManualWireSnap() {
+        this.setManualWireSnap(!this.manualWireSnap);
+    }
+
+    snapWirePoint(point) {
+        if (!this.manualWireSnap) {
+            return { x: point.x, y: point.y };
+        }
+        return {
+            x: this.snapToGrid(point.x),
+            y: this.snapToGrid(point.y),
+        };
     }
 
     // ——— Anti-Overlap Collision Detection ————————————————
@@ -451,8 +490,9 @@ class CircuitStore extends EventTarget {
      * Determine which edge of the component a pin exits from.
      * Returns 'up', 'down', 'left', or 'right'.
      *
-     * Checks component def's pinExitOverride first (for components like resistors
-     * whose wokwi pins exit horizontally), then falls back to geometric detection.
+     * Uses geometric detection for board headers because Arduino GND numbering can
+     * differ between Wokwi versions. Component overrides are still used for parts
+     * whose pins need semantic exits, such as horizontal resistors.
      */
     getPinExitDirection(instanceId, pinName) {
         const inst = this.getInstance(instanceId);
@@ -464,15 +504,15 @@ class CircuitStore extends EventTarget {
         const pin = pinInfo.find(p => p.name === resolvedName);
         if (!pin) return 'up';
 
-        // Compute actual bounding box from ALL pin positions
+        // Compute actual bounding box from all pin positions and declared visual size.
         let maxX = 0, maxY = 0;
         for (const p of pinInfo) {
             if (p.x > maxX) maxX = p.x;
             if (p.y > maxY) maxY = p.y;
         }
-        // Add small margin so edge pins aren't at exactly 0 distance
-        const width = maxX + 5;
-        const height = maxY + 5;
+        const def = getComponentDef(inst.componentId);
+        const width = Math.max(maxX + 5, def?.size?.width || 0);
+        const height = Math.max(maxY + 5, def?.size?.height || 0);
 
         const distTop = pin.y;
         const distBottom = height - pin.y;
@@ -482,9 +522,9 @@ class CircuitStore extends EventTarget {
         const min = Math.min(distTop, distBottom, distLeft, distRight);
         let baseDir = 'up';
         
-        // Check component-level exit direction override first
-        const def = getComponentDef(inst.componentId);
-        if (def && def.pinExitOverride && (def.pinExitOverride[resolvedName] || def.pinExitOverride[pinName])) {
+        // Boards use actual pin geometry first. This prevents a top Arduino GND
+        // pin from being forced downward through the board by stale name overrides.
+        if (!def?.isBoard && def && def.pinExitOverride && (def.pinExitOverride[resolvedName] || def.pinExitOverride[pinName])) {
             baseDir = def.pinExitOverride[resolvedName] || def.pinExitOverride[pinName];
         } else {
             if (min === distBottom) baseDir = 'down';
@@ -534,7 +574,12 @@ class CircuitStore extends EventTarget {
 
     // ——— Wiring ———————————————————————————————————————
     startWiring(instanceId, pinName) {
-        this.wiringState = { instanceId, pinName };
+        this.wiringState = {
+            instanceId,
+            pinName,
+            waypoints: [],
+            mode: this.manualWireMode,
+        };
         this._notify();
     }
 
@@ -545,13 +590,26 @@ class CircuitStore extends EventTarget {
             this.cancelWiring();
             return;
         }
+        const mode = this.wiringState.mode || this.manualWireMode;
         const signals = this.getPinSignals(this.wiringState.instanceId, this.wiringState.pinName);
+        const waypoints = this._finalizeManualWaypoints(
+            this.wiringState.instanceId,
+            this.wiringState.pinName,
+            instanceId,
+            pinName,
+            this.wiringState.waypoints || [],
+            mode
+        );
         const wire = {
             id: `wire_${this._nextId++}`,
-            from: { ...this.wiringState },
+            from: {
+                instanceId: this.wiringState.instanceId,
+                pinName: this.wiringState.pinName,
+            },
             to: { instanceId, pinName },
-            waypoints: [],
+            waypoints,
             color: generateWireColor(signals),
+            mode,
         };
         this.wires = [...this.wires, wire];
         this.wiringState = null;
@@ -580,6 +638,7 @@ class CircuitStore extends EventTarget {
             to: { instanceId: toInstanceId, pinName: toPinName },
             waypoints: [],
             color: generateWireColor(signals, pinType),
+            mode: 'orthogonal',
         };
         this.wires = [...this.wires, wire];
         this._notify(); // no individual history for batch auto-wires
@@ -594,6 +653,50 @@ class CircuitStore extends EventTarget {
     cancelWiring() {
         this.wiringState = null;
         this._notify();
+    }
+
+    addDraftWirePoint(x, y) {
+        if (!this.wiringState) return;
+        const point = this.snapWirePoint({ x, y });
+        const waypoints = this.wiringState.waypoints || [];
+        const last = waypoints[waypoints.length - 1];
+        if (last && Math.abs(last.x - point.x) < 0.5 && Math.abs(last.y - point.y) < 0.5) return;
+
+        this.wiringState = {
+            ...this.wiringState,
+            waypoints: [...waypoints, point],
+        };
+        this._notify();
+    }
+
+    removeLastDraftWirePoint() {
+        if (!this.wiringState || !this.wiringState.waypoints?.length) return false;
+        this.wiringState = {
+            ...this.wiringState,
+            waypoints: this.wiringState.waypoints.slice(0, -1),
+        };
+        this._notify();
+        return true;
+    }
+
+    _finalizeManualWaypoints(fromInstanceId, fromPinName, toInstanceId, toPinName, waypoints, mode) {
+        const from = this.getPinAbsolutePosition(fromInstanceId, fromPinName);
+        const to = this.getPinAbsolutePosition(toInstanceId, toPinName);
+        if (!from || !to) return waypoints || [];
+
+        const snapped = (waypoints || []).map(point => this.snapWirePoint(point));
+        if (mode === 'freestyle') return snapped;
+
+        const fullPath = normalizeOrthogonalPoints([
+            from,
+            ...snapped,
+            to,
+        ], {
+            exitDir1: this.getPinExitDirection(fromInstanceId, fromPinName),
+            exitDir2: this.getPinExitDirection(toInstanceId, toPinName),
+        });
+
+        return fullPath.slice(1, fullPath.length - 1);
     }
 
     /**
@@ -647,6 +750,25 @@ class CircuitStore extends EventTarget {
         return this.wires.find(w => w.id === id);
     }
 
+    _getWireFullPoints(wire) {
+        const from = this.getPinAbsolutePosition(wire.from.instanceId, wire.from.pinName);
+        const to = this.getPinAbsolutePosition(wire.to.instanceId, wire.to.pinName);
+        if (!from || !to) return null;
+        return [from, ...(wire.waypoints || []), to];
+    }
+
+    _applyWireFullPoints(wire, points) {
+        if (!wire || !points || points.length < 2) return;
+        const mode = wire.mode || 'orthogonal';
+        const fullPath = mode === 'freestyle'
+            ? points
+            : normalizeOrthogonalPoints(points, {
+                exitDir1: this.getPinExitDirection(wire.from.instanceId, wire.from.pinName),
+                exitDir2: this.getPinExitDirection(wire.to.instanceId, wire.to.pinName),
+            });
+        wire.waypoints = fullPath.slice(1, fullPath.length - 1);
+    }
+
     /**
      * Add a waypoint to a wire at the given position.
      * Inserts at the closest segment.
@@ -656,8 +778,7 @@ class CircuitStore extends EventTarget {
         if (!wire) return;
         if (!wire.waypoints) wire.waypoints = [];
 
-        const sx = this.snapToGrid(x);
-        const sy = this.snapToGrid(y);
+        const point = this.snapWirePoint({ x, y });
 
         // Get start/end points
         const from = this.getPinAbsolutePosition(wire.from.instanceId, wire.from.pinName);
@@ -670,14 +791,15 @@ class CircuitStore extends EventTarget {
         let bestDist = Infinity;
 
         for (let i = 0; i < pts.length - 1; i++) {
-            const d = distToSegment(sx, sy, pts[i].x, pts[i].y, pts[i + 1].x, pts[i + 1].y);
+            const d = distToSegment(point.x, point.y, pts[i].x, pts[i].y, pts[i + 1].x, pts[i + 1].y);
             if (d < bestDist) {
                 bestDist = d;
                 bestIdx = i;
             }
         }
 
-        wire.waypoints.splice(bestIdx, 0, { x: sx, y: sy });
+        wire.waypoints.splice(bestIdx, 0, point);
+        this._applyWireFullPoints(wire, this._getWireFullPoints(wire));
         this._pushHistory();
         this._notifyStructural();
     }
@@ -685,12 +807,63 @@ class CircuitStore extends EventTarget {
     moveWireWaypoint(wireId, wpIndex, x, y) {
         const wire = this.getWire(wireId);
         if (!wire || !wire.waypoints || !wire.waypoints[wpIndex]) return;
-        wire.waypoints[wpIndex].x = this.snapToGrid(x);
-        wire.waypoints[wpIndex].y = this.snapToGrid(y);
+        const point = this.snapWirePoint({ x, y });
+        wire.waypoints[wpIndex].x = point.x;
+        wire.waypoints[wpIndex].y = point.y;
         this._notify();
     }
 
-    moveWireWaypointDone() {
+    moveWireSegment(wireId, segmentIndex, x, y) {
+        const wire = this.getWire(wireId);
+        if (!wire || (wire.mode || 'orthogonal') === 'freestyle') return;
+
+        const fullPoints = this._getWireFullPoints(wire);
+        if (!fullPoints || segmentIndex < 0 || segmentIndex >= fullPoints.length - 1) return;
+
+        const a = fullPoints[segmentIndex];
+        const b = fullPoints[segmentIndex + 1];
+        const horizontal = Math.abs(a.y - b.y) < 0.5;
+        const vertical = Math.abs(a.x - b.x) < 0.5;
+        if (!horizontal && !vertical) return;
+
+        const point = this.snapWirePoint({ x, y });
+        const lastIndex = fullPoints.length - 1;
+
+        if (horizontal) {
+            const newY = point.y;
+            if (segmentIndex === 0) {
+                fullPoints.splice(1, 0, { x: a.x, y: newY });
+                if (segmentIndex + 2 < fullPoints.length - 1) fullPoints[segmentIndex + 2].y = newY;
+            } else if (segmentIndex + 1 === lastIndex) {
+                fullPoints[segmentIndex].y = newY;
+                fullPoints.splice(lastIndex, 0, { x: b.x, y: newY });
+            } else {
+                fullPoints[segmentIndex].y = newY;
+                fullPoints[segmentIndex + 1].y = newY;
+            }
+        } else {
+            const newX = point.x;
+            if (segmentIndex === 0) {
+                fullPoints.splice(1, 0, { x: newX, y: a.y });
+                if (segmentIndex + 2 < fullPoints.length - 1) fullPoints[segmentIndex + 2].x = newX;
+            } else if (segmentIndex + 1 === lastIndex) {
+                fullPoints[segmentIndex].x = newX;
+                fullPoints.splice(lastIndex, 0, { x: newX, y: b.y });
+            } else {
+                fullPoints[segmentIndex].x = newX;
+                fullPoints[segmentIndex + 1].x = newX;
+            }
+        }
+
+        this._applyWireFullPoints(wire, fullPoints);
+        this._notify();
+    }
+
+    moveWireWaypointDone(wireId) {
+        if (wireId) {
+            const wire = this.getWire(wireId);
+            if (wire) this._applyWireFullPoints(wire, this._getWireFullPoints(wire));
+        }
         this._pushHistory();
         this._notifyStructural();
     }
@@ -699,6 +872,7 @@ class CircuitStore extends EventTarget {
         const wire = this.getWire(wireId);
         if (!wire || !wire.waypoints) return;
         wire.waypoints.splice(wpIndex, 1);
+        this._applyWireFullPoints(wire, this._getWireFullPoints(wire));
         this._pushHistory();
         this._notifyStructural();
     }
@@ -711,7 +885,10 @@ class CircuitStore extends EventTarget {
      */
     async cleanupWires() {
         clearRoutingCache();
-        this.resetWireRouting();
+        for (const wire of this.wires) {
+            wire.waypoints = [];
+            wire.mode = 'orthogonal';
+        }
         return await routeAll();
     }
 
@@ -719,6 +896,7 @@ class CircuitStore extends EventTarget {
     resetWireRouting() {
         for (const wire of this.wires) {
             wire.waypoints = [];
+            wire.mode = 'orthogonal';
         }
         this._pushHistory();
         this._notifyStructural();
@@ -778,7 +956,7 @@ class CircuitStore extends EventTarget {
 
     _restoreSnapshot(snapshot) {
         this.instances = JSON.parse(JSON.stringify(snapshot.instances));
-        this.wires = JSON.parse(JSON.stringify(snapshot.wires));
+        this.wires = JSON.parse(JSON.stringify(snapshot.wires)).map(w => ({ mode: 'orthogonal', ...w }));
         this._nextId = snapshot._nextId || this._nextId;
         this.wiringState = null;
         this.selectedInstanceIds = new Set();
@@ -788,6 +966,35 @@ class CircuitStore extends EventTarget {
     }
 
     // ——— Persistence ——————————————————————————————————
+    _savePreferences() {
+        try {
+            const current = JSON.parse(localStorage.getItem(APP_PREFS_STORAGE_KEY) || '{}');
+            localStorage.setItem(APP_PREFS_STORAGE_KEY, JSON.stringify({
+                ...current,
+                manualWireMode: this.manualWireMode,
+                manualWireSnap: this.manualWireSnap,
+            }));
+        } catch (e) {
+            console.warn('[CircuitSense] Preference save failed:', e);
+        }
+    }
+
+    _loadPreferences() {
+        try {
+            const raw = localStorage.getItem(APP_PREFS_STORAGE_KEY);
+            if (!raw) return;
+            const prefs = JSON.parse(raw);
+            if (['orthogonal', 'freestyle'].includes(prefs.manualWireMode)) {
+                this.manualWireMode = prefs.manualWireMode;
+            }
+            if (typeof prefs.manualWireSnap === 'boolean') {
+                this.manualWireSnap = prefs.manualWireSnap;
+            }
+        } catch (e) {
+            console.warn('[CircuitSense] Preference load failed:', e);
+        }
+    }
+
     _scheduleSave() {
         clearTimeout(this._saveTimer);
         this._saveTimer = setTimeout(() => this._saveToStorage(), 500);
@@ -813,7 +1020,7 @@ class CircuitStore extends EventTarget {
             if (!raw) return;
             const data = JSON.parse(raw);
             if (data.instances) this.instances = data.instances;
-            if (data.wires) this.wires = data.wires;
+            if (data.wires) this.wires = data.wires.map(w => ({ mode: 'orthogonal', ...w }));
             if (data._nextId) this._nextId = data._nextId;
             this._pushHistory(); // initial state as first history entry
         } catch (e) {
@@ -835,7 +1042,7 @@ class CircuitStore extends EventTarget {
         try {
             const parsed = typeof data === 'string' ? JSON.parse(data) : data;
             this.instances = parsed.instances || [];
-            this.wires = parsed.wires || [];
+            this.wires = (parsed.wires || []).map(w => ({ mode: 'orthogonal', ...w }));
             this._nextId = parsed._nextId || 1;
             
             this.pinInfoMap.clear();

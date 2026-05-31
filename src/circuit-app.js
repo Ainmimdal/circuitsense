@@ -19,6 +19,8 @@ class CircuitApp extends LitElement {
         _loginOpen: { state: true },
         _mockUser: { state: true },
         _settingsInitialTab: { state: true },
+        _manualWireMode: { state: true },
+        _manualWireSnap: { state: true },
     };
 
     static styles = css `
@@ -249,11 +251,15 @@ class CircuitApp extends LitElement {
         this._loginOpen = false;
         this._mockUser = this._loadMockUser();
         this._settingsInitialTab = 'account';
+        this._manualWireMode = store.manualWireMode;
+        this._manualWireSnap = store.manualWireSnap;
         this._storeHandler = () => {
             this._antiOverlap = store.antiOverlap;
             this._fanOut = store.fanOut;
             this._gridSize = store.gridSize;
             this._sharpCorners = store.sharpCorners;
+            this._manualWireMode = store.manualWireMode;
+            this._manualWireSnap = store.manualWireSnap;
         };
     }
 
@@ -262,6 +268,7 @@ class CircuitApp extends LitElement {
         store.addEventListener('change', this._storeHandler);
         
         this._keydownHandler = (e) => {
+            if (store.wiringState) return;
             if (e.key === 'Delete' || e.key === 'Backspace') {
                 if (document.activeElement.tagName === 'INPUT') return;
                 store.deleteSelected();
@@ -293,6 +300,14 @@ class CircuitApp extends LitElement {
 
     _toggleSharpCorners() {
         store.toggleSharpCorners();
+    }
+
+    _toggleManualWireMode() {
+        store.toggleManualWireMode();
+    }
+
+    _toggleManualWireSnap() {
+        store.toggleManualWireSnap();
     }
 
     _setGridSize(size) {
@@ -508,6 +523,22 @@ class CircuitApp extends LitElement {
           >
             <span class="icon">${faIcon('ruler')}</span>
             Sharp
+          </button>
+          <button
+            class="toolbar-btn ${this._manualWireMode === 'orthogonal' ? 'active' : ''}"
+            @click=${this._toggleManualWireMode}
+            title="Manual wire mode: ${this._manualWireMode === 'orthogonal' ? 'Orthogonal' : 'Freestyle'}"
+          >
+            <span class="icon">${faIcon(this._manualWireMode === 'orthogonal' ? 'ruler' : 'shuffle')}</span>
+            ${this._manualWireMode === 'orthogonal' ? 'Ortho' : 'Free'}
+          </button>
+          <button
+            class="toolbar-btn ${this._manualWireSnap ? 'active' : ''}"
+            @click=${this._toggleManualWireSnap}
+            title="Toggle manual wire grid snapping"
+          >
+            <span class="icon">${faIcon('thumbtack')}</span>
+            Snap
           </button>
           <div class="toolbar-divider"></div>
           <select class="grid-size-select"

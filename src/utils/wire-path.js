@@ -37,19 +37,19 @@ export function wirePath(x1, y1, x2, y2, options = {}) {
         stagger1,
         stagger2,
         sharp = false,
+        mode = 'orthogonal',
     } = options;
 
     if (style === 'smooth') {
         return smoothPath(x1, y1, x2, y2);
     }
 
-    // User waypoints override everything
-    if (waypoints.length > 0) {
-        return buildPathThroughPoints([
+    if (waypoints.length > 0 || mode === 'freestyle') {
+        return buildManualWirePath([
             { x: x1, y: y1 },
             ...waypoints,
             { x: x2, y: y2 },
-        ], sharp);
+        ], mode, sharp, { exitDir1, exitDir2 });
     }
 
     if (style === 'orthogonal') {
@@ -58,6 +58,87 @@ export function wirePath(x1, y1, x2, y2, options = {}) {
 
     // Smart routing: approach each pin perpendicular to its component edge
     return smartRoute(x1, y1, exitDir1, x2, y2, exitDir2, index, stagger1, stagger2);
+}
+
+export function buildManualWirePath(points, mode = 'orthogonal', sharp = false, options = {}) {
+    const normalized = mode === 'freestyle'
+        ? cleanDuplicatePoints(points)
+        : normalizeOrthogonalPoints(points, options);
+    return buildPathThroughPoints(normalized, sharp);
+}
+
+export function getManualWirePoints(points, mode = 'orthogonal', options = {}) {
+    return mode === 'freestyle'
+        ? cleanDuplicatePoints(points)
+        : normalizeOrthogonalPoints(points, options);
+}
+
+export function normalizeOrthogonalPoints(points, options = {}) {
+    const input = cleanDuplicatePoints(points);
+    if (input.length <= 1) return input;
+
+    const result = [input[0]];
+    let lastDir = axisFromExitDir(options.exitDir1);
+
+    for (let i = 1; i < input.length; i++) {
+        const target = input[i];
+        const current = result[result.length - 1];
+        const dx = target.x - current.x;
+        const dy = target.y - current.y;
+
+        if (Math.abs(dx) < 0.5 || Math.abs(dy) < 0.5) {
+            pushUniquePoint(result, target);
+            lastDir = Math.abs(dx) < 0.5 ? 'v' : 'h';
+            continue;
+        }
+
+        const isFinal = i === input.length - 1;
+        const finalAxis = isFinal ? axisFromExitDir(options.exitDir2) : null;
+        let firstAxis = lastDir ? oppositeAxis(lastDir) : 'h';
+
+        if (i === 1 && axisFromExitDir(options.exitDir1)) {
+            firstAxis = axisFromExitDir(options.exitDir1);
+        }
+        if (finalAxis) {
+            firstAxis = oppositeAxis(finalAxis);
+        }
+
+        const elbow = firstAxis === 'h'
+            ? { x: target.x, y: current.y }
+            : { x: current.x, y: target.y };
+
+        pushUniquePoint(result, elbow);
+        pushUniquePoint(result, target);
+        lastDir = firstAxis === 'h' ? 'v' : 'h';
+    }
+
+    return cleanCollinear(result);
+}
+
+function axisFromExitDir(dir) {
+    if (dir === 'up' || dir === 'down') return 'v';
+    if (dir === 'left' || dir === 'right') return 'h';
+    return null;
+}
+
+function oppositeAxis(axis) {
+    return axis === 'h' ? 'v' : 'h';
+}
+
+function cleanDuplicatePoints(points) {
+    const result = [];
+    for (const point of points) {
+        if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.y)) continue;
+        pushUniquePoint(result, point);
+    }
+    return result;
+}
+
+function pushUniquePoint(points, point) {
+    const last = points[points.length - 1];
+    if (!last || Math.abs(last.x - point.x) >= 0.5 || Math.abs(last.y - point.y) >= 0.5) {
+        points.push({ x: point.x, y: point.y });
+    }
 }
 
 // ─── Smart Routing (new) ─────────────────────────────────────

@@ -63,176 +63,192 @@ export function autoWireAll() {
  */
 export async function autoLayoutAll() {
     clearRoutingCache();
-    // 1. Ensure auto-wiring is done to establish logical connections
-    autoWireAll();
-
     const board = store.instances.find(i => getComponentDef(i.componentId)?.isBoard);
     if (!board) return;
 
-    const topRow = [];
-    const bottomRow = [];
-    const resistors = new Map(); // compId -> resistorInstance
+    const boardDef = getComponentDef(board.componentId);
+    const boardSize = boardDef?.size || { width: 275, height: 200 };
+    const topItems = [];
+    const bottomItems = [];
+    const resistors = new Map();
+    const COMPONENT_GAP = 70;
+    const ROW_GAP = 140;
 
-    // Helper to check if a pin is a top header pin on Arduino Uno
     const isTopPin = (pinName) => {
-        if (pinName.startsWith('GND') || pinName === 'AREF') return true;
-        const num = parseInt(pinName, 10);
-        return !isNaN(num) && num >= 0 && num <= 13;
+        const exitDir = store.getPinExitDirection(board.id, pinName);
+        if (exitDir === 'up') return true;
+        if (exitDir === 'down') return false;
+        if (pinName === 'GND.3' || pinName === 'AREF') return true;
+        if (!/^\d+$/.test(pinName)) return false;
+        const num = Number(pinName);
+        return num >= 0 && num <= 13;
     };
 
-    // Find all primary components and map their series resistors
+    const isPowerOrGround = (pinName) => {
+        const name = String(pinName).toUpperCase();
+        return name.includes('VCC') || name.includes('VDD') || name.includes('VIN') ||
+            name.includes('5V') || name.includes('3.3V') || name.includes('GND') ||
+            name.includes('VSS');
+    };
+
+    const touches = (wire, id) => wire.from.instanceId === id || wire.to.instanceId === id;
+    const otherEnd = (wire, id) => wire.from.instanceId === id ? wire.to : wire.from;
+    const boardPinFromWire = (wire) => {
+        if (wire.from.instanceId === board.id) return wire.from.pinName;
+        if (wire.to.instanceId === board.id) return wire.to.pinName;
+        return null;
+    };
+
+    // First identify series resistors before classifying components. The old
+    // implementation discovered them while iterating, so components that came
+    // before their helper resistor were grouped using incomplete information.
+    for (const inst of store.instances) {
+        const def = getComponentDef(inst.componentId);
+        if (!def || def.id !== 'resistor') continue;
+
+        const connected = store.wires.filter(w => touches(w, inst.id));
+        const boardWire = connected.find(w => touches(w, board.id));
+        const componentWire = connected.find(w => !touches(w, board.id));
+        if (boardWire && componentWire) {
+            const primary = otherEnd(componentWire, inst.id);
+            if (primary.instanceId !== board.id) {
+                resistors.set(primary.instanceId, inst);
+            }
+        }
+    }
+
+    const getPinOffsetX = (inst, pinName) => {
+        const pinInfo = store.pinInfoMap.get(inst.id);
+        const resolved = pinInfo ? store.resolvePinName(pinInfo, pinName) : pinName;
+        const pin = pinInfo?.find(p => p.name === resolved);
+        return pin ? pin.x : (getComponentDef(inst.componentId)?.size?.width || 80) / 2;
+    };
+
+    const getPrimaryConnection = (inst, res) => {
+        const directWires = store.wires.filter(w => touches(w, inst.id) && touches(w, board.id));
+        const resistorBoardWires = res
+            ? store.wires.filter(w => touches(w, res.id) && touches(w, board.id))
+            : [];
+        const wires = [...directWires, ...resistorBoardWires];
+        if (wires.length === 0) return null;
+
+        const signalWire = wires.find(w => !isPowerOrGround(boardPinFromWire(w)));
+        const wire = signalWire || wires[0];
+        const boardPin = boardPinFromWire(wire);
+        const boardPinAbs = store.getPinAbsolutePosition(board.id, boardPin);
+        return {
+            wire,
+            boardPin,
+            side: isTopPin(boardPin) ? 'top' : 'bottom',
+            targetX: boardPinAbs ? boardPinAbs.x : board.x + boardSize.width / 2,
+        };
+    };
+
+    const getComponentAnchorX = (inst, res, connection) => {
+        let componentWire = null;
+        if (res) {
+            componentWire = store.wires.find(w => touches(w, inst.id) && touches(w, res.id));
+        }
+        if (!componentWire && connection) {
+            componentWire = store.wires.find(w => touches(w, inst.id) && touches(w, board.id));
+        }
+        if (!componentWire) return (getComponentDef(inst.componentId)?.size?.width || 80) / 2;
+
+        const compPin = componentWire.from.instanceId === inst.id
+            ? componentWire.from.pinName
+            : componentWire.to.pinName;
+        return getPinOffsetX(inst, compPin);
+    };
+
     for (const inst of store.instances) {
         if (inst.id === board.id) continue;
         const def = getComponentDef(inst.componentId);
-        
-        if (def.id === 'resistor') {
-            const wires = store.wires.filter(w => w.from.instanceId === inst.id || w.to.instanceId === inst.id);
-            const otherCompWire = wires.find(w => w.from.instanceId !== board.id && w.to.instanceId !== board.id);
-            if (otherCompWire) {
-                const primaryId = otherCompWire.from.instanceId === inst.id ? otherCompWire.to.instanceId : otherCompWire.from.instanceId;
-                resistors.set(primaryId, inst);
-            }
-            continue; 
-        }
+        if (!def || def.id === 'resistor') continue;
 
         let topCount = 0;
         let botCount = 0;
-        
-        const connectedWires = store.wires.filter(w => 
-            w.from.instanceId === inst.id || w.to.instanceId === inst.id
-        );
-        
-        // Also count wires connected to its series resistor
-        const myResistor = resistors.get(inst.id);
-        if (myResistor) {
-            connectedWires.push(...store.wires.filter(w => w.from.instanceId === myResistor.id || w.to.instanceId === myResistor.id));
+        const res = resistors.get(inst.id);
+        const directWires = store.wires.filter(w => touches(w, inst.id) && touches(w, board.id));
+        const resistorBoardWires = res
+            ? store.wires.filter(w => touches(w, res.id) && touches(w, board.id))
+            : [];
+
+        for (const w of [...directWires, ...resistorBoardWires]) {
+            const boardPin = boardPinFromWire(w);
+            if (!boardPin) continue;
+            if (isTopPin(boardPin)) topCount++;
+            else botCount++;
         }
 
-        for (const w of connectedWires) {
-            let boardPin = null;
-            if (w.from.instanceId === board.id) boardPin = w.from.pinName;
-            if (w.to.instanceId === board.id) boardPin = w.to.pinName;
-            
-            if (boardPin) {
-                if (isTopPin(boardPin)) topCount++;
-                else botCount++;
-            }
-        }
+        const connection = getPrimaryConnection(inst, res);
+        const side = connection?.side || (topCount >= botCount ? 'top' : 'bottom');
+        const targetX = connection?.targetX || (board.x + boardSize.width / 2);
+        const anchorX = getComponentAnchorX(inst, res, connection);
+        const item = { inst, res, side, targetX, anchorX };
 
-        if (topCount >= botCount) topRow.push(inst);
-        else bottomRow.push(inst);
+        if (side === 'top') topItems.push(item);
+        else bottomItems.push(item);
     }
 
-    // Helper to compute target X for sorting and placement
-    const getTargetX = (inst, res) => {
-        let wireToArduino = null;
-        if (res) {
-            wireToArduino = store.wires.find(w => 
-                (w.from.instanceId === board.id && w.to.instanceId === res.id) ||
-                (w.to.instanceId === board.id && w.from.instanceId === res.id)
-            );
+    const placeResistor = (item) => {
+        const { inst, res, side } = item;
+        if (!res) return;
+
+        const def = getComponentDef(inst.componentId);
+        const componentWire = store.wires.find(w => touches(w, inst.id) && touches(w, res.id));
+        const compPinName = componentWire
+            ? (componentWire.from.instanceId === inst.id ? componentWire.from.pinName : componentWire.to.pinName)
+            : null;
+        const resPinName = componentWire
+            ? (componentWire.from.instanceId === res.id ? componentWire.from.pinName : componentWire.to.pinName)
+            : null;
+
+        res.rotation = 90;
+        res.y = side === 'top'
+            ? store.snapToGrid(inst.y + (def?.size?.height || 60) + 48)
+            : store.snapToGrid(inst.y - 86);
+
+        const targetAbsX = compPinName
+            ? store.getPinAbsolutePosition(inst.id, compPinName)?.x
+            : inst.x + item.anchorX;
+
+        res.x = 0;
+        const tempPinAbs = resPinName ? store.getPinAbsolutePosition(res.id, resPinName) : null;
+        if (tempPinAbs && targetAbsX !== undefined) {
+            res.x = store.snapToGrid(targetAbsX - tempPinAbs.x);
+        } else {
+            res.x = store.snapToGrid(inst.x + item.anchorX - 30);
         }
-        if (!wireToArduino) {
-            wireToArduino = store.wires.find(w => 
-                (w.from.instanceId === board.id && w.to.instanceId === inst.id) ||
-                (w.to.instanceId === board.id && w.from.instanceId === inst.id)
-            );
-        }
-        if (wireToArduino) {
-            const arduinoPinName = wireToArduino.from.instanceId === board.id ? wireToArduino.from.pinName : wireToArduino.to.pinName;
-            const arduinoPinAbs = store.getPinAbsolutePosition(board.id, arduinoPinName);
-            if (arduinoPinAbs) return arduinoPinAbs.x;
-        }
-        return board.x; // default fallback
     };
 
-    const placeRow = (rowInsts, startX, startY, isTopRow) => {
-        // Pre-compute targetX and sort them so they are placed in physical order matching the Arduino pins
-        const sortedInsts = rowInsts.map(inst => {
-            const res = resistors.get(inst.id);
-            return { inst, res, targetX: getTargetX(inst, res) };
-        }).sort((a, b) => a.targetX - b.targetX);
+    const placeRow = (items, side) => {
+        const sorted = items.sort((a, b) => {
+            const rankA = a.res ? 0 : 1;
+            const rankB = b.res ? 0 : 1;
+            if (rankA !== rankB) return rankA - rankB;
+            return a.targetX - b.targetX;
+        });
+        let rightEdge = -Infinity;
+        const topBaseline = store.snapToGrid(board.y - ROW_GAP);
+        const bottomBaseline = store.snapToGrid(board.y + boardSize.height + ROW_GAP);
 
-        let currentX = startX;
-        for (const item of sortedInsts) {
-            const { inst, res, targetX } = item;
-            const def = getComponentDef(inst.componentId);
-            
-            // 2. Find local offset of the component's signal pin
-            let pinOffset = (def.size?.width || 80) / 2;
-            
-            // Prioritize the wire connected to the resistor for alignment
-            let alignWire = null;
-            if (res) {
-                alignWire = store.wires.find(w => 
-                    (w.from.instanceId === inst.id && w.to.instanceId === res.id) ||
-                    (w.to.instanceId === inst.id && w.from.instanceId === res.id)
-                );
-            }
-            if (!alignWire) {
-                alignWire = store.wires.find(w => 
-                    (w.from.instanceId === inst.id && w.to.instanceId === board.id) ||
-                    (w.to.instanceId === inst.id && w.from.instanceId === board.id)
-                );
-            }
+        for (const item of sorted) {
+            const def = getComponentDef(item.inst.componentId);
+            const width = def?.size?.width || 80;
+            const height = def?.size?.height || 60;
+            const desiredX = store.snapToGrid(item.targetX - item.anchorX);
+            item.inst.x = store.snapToGrid(Math.max(desiredX, rightEdge + COMPONENT_GAP));
+            item.inst.y = side === 'top'
+                ? store.snapToGrid(topBaseline - height)
+                : bottomBaseline;
 
-            if (alignWire) {
-                const compPinName = alignWire.from.instanceId === inst.id ? alignWire.from.pinName : alignWire.to.pinName;
-                const pinInfo = store.pinInfoMap.get(inst.id);
-                const resolvedName = store.resolvePinName(pinInfo, compPinName);
-                const pin = pinInfo?.find(p => p.name === resolvedName);
-                if (pin) pinOffset = pin.x;
-            }
-            
-            // 3. Place component so its signal pin perfectly aligns with the Arduino pin
-            inst.x = targetX - pinOffset;
-            inst.y = store.snapToGrid(startY);
-            
-            // Enforce minimum X to prevent overlapping components if they connect to adjacent pins
-            if (inst.x < currentX) {
-                inst.x = store.snapToGrid(currentX);
-            }
-            
-            if (res) {
-                res.rotation = 90; // Vertical
-                res.y = isTopRow ? inst.y + (def.size?.height || 60) + 60 : inst.y - 120;
-                
-                // We want the resistor's pin to perfectly align with the component's signal pin.
-                // Because SVG internal pin.y offsets can shift the horizontal position when rotated, 
-                // we temporarily place res at x=0, measure the absolute pin X, and shift by the difference.
-                res.x = 0;
-                
-                let aligned = false;
-                if (alignWire) {
-                    const resPinName = alignWire.from.instanceId === res.id ? alignWire.from.pinName : alignWire.to.pinName;
-                    const targetAbsX = inst.x + pinOffset;
-                    
-                    const tempPinAbs = store.getPinAbsolutePosition(res.id, resPinName);
-                    if (tempPinAbs) {
-                        res.x = targetAbsX - tempPinAbs.x;
-                        aligned = true;
-                    }
-                }
-                
-                // Fallback if pinInfo is not ready or wire not found
-                if (!aligned) {
-                    const resWidth = getComponentDef(res.componentId)?.size?.width || 110;
-                    res.x = inst.x + pinOffset - (resWidth / 2);
-                }
-                currentX = inst.x + (def.size?.width || 80) + 60; 
-            } else {
-                currentX = inst.x + (def.size?.width || 80) + 40;
-            }
+            placeResistor(item);
+            rightEdge = Math.max(rightEdge, item.inst.x + width);
         }
     };
-    
-    // Place components in rows
-    // Top Row: components that need to be above the Arduino (e.g. LED)
-    // Start them higher up to give plenty of room for wires and resistors
-    placeRow(topRow, board.x, board.y - 250, true);
-    
-    // Bottom Row: components that need to be below
-    placeRow(bottomRow, board.x, board.y + 250, false);
+
+    placeRow(topItems, 'top');
+    placeRow(bottomItems, 'bottom');
 
     store._pushHistory();
     store._notifyStructural();
@@ -398,9 +414,13 @@ function _insertResistorInSeries(boardId, arduinoPin, compInstanceId, compPinNam
     const resistorInst = store.addInstance('resistor', resistorX, resistorY);
 
     const isTopPin = (pinName) => {
-        if (pinName.startsWith('GND') || pinName === 'AREF') return true;
-        const num = parseInt(pinName, 10);
-        return !isNaN(num) && num >= 0 && num <= 13;
+        const exitDir = store.getPinExitDirection(boardId, pinName);
+        if (exitDir === 'up') return true;
+        if (exitDir === 'down') return false;
+        if (pinName === 'GND.3' || pinName === 'AREF') return true;
+        if (!/^\d+$/.test(pinName)) return false;
+        const num = Number(pinName);
+        return num >= 0 && num <= 13;
     };
     const isTopRow = isTopPin(arduinoPin);
 

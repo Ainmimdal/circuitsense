@@ -1,7 +1,7 @@
 import { LitElement, html, css, svg } from 'lit';
 import { repeat } from 'lit/directives/repeat.js';
 import { store } from '../store.js';
-import { wirePath, WIRE_COLORS } from '../utils/wire-path.js';
+import { buildManualWirePath, getManualWirePoints, wirePath, WIRE_COLORS } from '../utils/wire-path.js';
 import { getComponentDef } from '../component-library.js';
 import { faIcon } from '../utils/fa-icons.js';
 
@@ -83,6 +83,17 @@ class CircuitCanvas extends LitElement {
 
     .waypoint-handle:hover {
       r: 6;
+    }
+
+    .segment-handle {
+      cursor: move;
+      pointer-events: stroke;
+      stroke: transparent;
+      fill: none;
+    }
+
+    .segment-handle:hover {
+      stroke: rgba(255, 255, 255, 0.12);
     }
 
     .temp-wire {
@@ -341,7 +352,7 @@ class CircuitCanvas extends LitElement {
 
         ${store.wiringState ? html`
           <div class="wiring-indicator">
-            ${faIcon('plug')} Click another pin to connect · ESC to cancel
+            ${faIcon('plug')} Click canvas for bends - click another pin to finish - Backspace removes bend - ESC cancels
           </div>
         ` : ''}
 
@@ -353,7 +364,7 @@ class CircuitCanvas extends LitElement {
         </div>
 
         <div class="shortcut-hint">
-          Scroll to zoom · Middle-drag to pan · Ctrl+A select all · Ctrl+Z undo · Ctrl+Y redo · Delete = remove
+          Scroll to zoom - Middle-drag to pan - Ctrl+A select all - Ctrl+Z undo - Ctrl+Y redo - Delete = remove
         </div>
 
         ${store.selectedWireId ? this._renderColorPicker() : ''}
@@ -420,6 +431,7 @@ class CircuitCanvas extends LitElement {
                 stagger1: stagger.s1,
                 stagger2: stagger.s2,
                 sharp: store.sharpCorners,
+                mode: wire.mode || 'orthogonal',
             });
             const color = wire.color || '#4CAF50';
             const isSelected = store.selectedWireId === wire.id;
@@ -465,9 +477,46 @@ class CircuitCanvas extends LitElement {
             store.addWireWaypoint(wire.id, world.x, world.y);
           }}
         />
+        ${isSelected ? this._renderSegmentHandles(wire, from, to, exitDir1, exitDir2) : svg``}
         ${isSelected ? this._renderWaypointHandles(wire, color) : svg``}
       `;
         });
+    }
+
+    _renderSegmentHandles(wire, from, to, exitDir1, exitDir2) {
+        if ((wire.mode || 'orthogonal') === 'freestyle') return svg``;
+        if (!wire.waypoints || wire.waypoints.length === 0) return svg``;
+        const points = getManualWirePoints([
+            from,
+            ...(wire.waypoints || []),
+            to,
+        ], 'orthogonal', { exitDir1, exitDir2 });
+
+        const segments = [];
+        for (let i = 0; i < points.length - 1; i++) {
+            const a = points[i];
+            const b = points[i + 1];
+            const horizontal = Math.abs(a.y - b.y) < 0.5;
+            const vertical = Math.abs(a.x - b.x) < 0.5;
+            if (!horizontal && !vertical) continue;
+            if (Math.abs(a.x - b.x) + Math.abs(a.y - b.y) < 12) continue;
+            segments.push(svg`
+              <line
+                class="segment-handle"
+                x1="${a.x}"
+                y1="${a.y}"
+                x2="${b.x}"
+                y2="${b.y}"
+                stroke-width="${14 / this._scale}"
+                @pointerdown=${(e) => {
+                    e.stopPropagation();
+                    this._startSegmentDrag(e, wire.id, i);
+                }}
+              />
+            `);
+        }
+
+        return segments;
     }
 
     _renderWaypointHandles(wire, color) {
@@ -511,7 +560,28 @@ class CircuitCanvas extends LitElement {
         const onUp = () => {
             el.removeEventListener('pointermove', onMove);
             el.removeEventListener('pointerup', onUp);
-            store.moveWireWaypointDone();
+            store.moveWireWaypointDone(wireId);
+        };
+
+        el.addEventListener('pointermove', onMove);
+        el.addEventListener('pointerup', onUp);
+    }
+
+    _startSegmentDrag(e, wireId, segmentIndex) {
+        e.preventDefault();
+        const el = this.shadowRoot.querySelector('.canvas-area');
+        el.setPointerCapture(e.pointerId);
+
+        const onMove = (ev) => {
+            const rect = el.getBoundingClientRect();
+            const world = this._screenToWorld(ev.clientX - rect.left, ev.clientY - rect.top);
+            store.moveWireSegment(wireId, segmentIndex, world.x, world.y);
+        };
+
+        const onUp = () => {
+            el.removeEventListener('pointermove', onMove);
+            el.removeEventListener('pointerup', onUp);
+            store.moveWireWaypointDone(wireId);
         };
 
         el.addEventListener('pointermove', onMove);
@@ -527,7 +597,14 @@ class CircuitCanvas extends LitElement {
         );
         if (!from) return svg``;
 
-        const path = wirePath(from.x, from.y, store.mousePos.x, store.mousePos.y, { style: 'smooth' });
+        const cursor = store.snapWirePoint(store.mousePos);
+        const path = buildManualWirePath([
+            from,
+            ...(store.wiringState.waypoints || []),
+            cursor,
+        ], store.wiringState.mode || store.manualWireMode, store.sharpCorners, {
+            exitDir1: store.getPinExitDirection(store.wiringState.instanceId, store.wiringState.pinName),
+        });
 
         return svg`
       <path
@@ -726,8 +803,13 @@ class CircuitCanvas extends LitElement {
         if (store.wiringState) {
             const path = e.composedPath();
             const isPin = path.some(el => el.classList && el.classList.contains('pin-dot'));
-            if (!isPin) {
-                store.cancelWiring();
+            const isComponent = path.some(el => el.tagName && el.tagName.toLowerCase() === 'placed-component');
+            const isWire = path.some(el => el.classList && (el.classList.contains('wire') || el.classList.contains('wire-hitarea') || el.classList.contains('segment-handle')));
+            const isActionButton = path.some(el => el.classList && el.classList.contains('action-btn'));
+            if (!isPin && !isComponent && !isWire && !isActionButton) {
+                const rect = this._canvasRect;
+                const world = this._screenToWorld(e.clientX - rect.left, e.clientY - rect.top);
+                store.addDraftWirePoint(world.x, world.y);
             }
         } else {
             const path = e.composedPath();
@@ -748,6 +830,12 @@ class CircuitCanvas extends LitElement {
         if (e.key === 'Escape' && store.wiringState) {
             store.cancelWiring();
             e.preventDefault();
+        }
+
+        if ((e.key === 'Backspace' || e.key === 'Delete') && store.wiringState) {
+            store.removeLastDraftWirePoint();
+            e.preventDefault();
+            return;
         }
 
         if ((e.key === 'Delete' || e.key === 'Backspace') && (store.selectedInstanceIds.size > 0 || store.selectedWireId)) {
