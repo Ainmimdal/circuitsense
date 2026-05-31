@@ -181,7 +181,7 @@ function _ruleNoBoard(ctx, results) {
             id: 'no-board',
             severity: SEV.WARNING,
             message: 'No Arduino board on the canvas. Add an Arduino Uno to connect components.',
-            icon: '🔌',
+            icon: 'plug',
         });
     }
 }
@@ -202,7 +202,7 @@ function _ruleLedWithoutResistor(ctx, results) {
                 severity: SEV.ERROR,
                 message: `${def.name} (${inst.id}) has no current-limiting resistor. This will burn the LED!`,
                 instanceId: inst.id,
-                icon: '🔥',
+                icon: 'fire',
             });
         }
     }
@@ -226,14 +226,14 @@ function _ruleCurrentOverload(ctx, results) {
             id: 'current-overload',
             severity: SEV.ERROR,
             message: `Total current draw is ~${totalCurrent}mA, exceeding the Arduino's ${ARDUINO_PINS.maxCurrent_mA}mA USB limit!`,
-            icon: '⚡',
+            icon: 'bolt',
         });
     } else if (totalCurrent > ARDUINO_PINS.maxCurrent_mA * 0.8) {
         results.push({
             id: 'current-high',
             severity: SEV.WARNING,
             message: `Total current draw is ~${totalCurrent}mA (${Math.round(totalCurrent / ARDUINO_PINS.maxCurrent_mA * 100)}% of USB limit). Consider external power.`,
-            icon: '⚡',
+            icon: 'bolt',
         });
     }
 }
@@ -259,7 +259,7 @@ function _ruleDuplicatePinAssignment(ctx, results) {
                 id: 'duplicate-pin',
                 severity: SEV.ERROR,
                 message: `Arduino pin ${pinName} is connected to multiple components: ${names.join(', ')}. Each I/O pin should drive one signal.`,
-                icon: '🔀',
+                icon: 'shuffle',
                 relatedIds: usages.map(u => u.instanceId),
             });
         }
@@ -282,7 +282,7 @@ function _ruleServoOnSerial(ctx, results) {
                     severity: SEV.WARNING,
                     message: `Servo (${inst.id}) is on pin ${pinName} which is used for Serial communication. This may cause upload/debug issues.`,
                     instanceId: inst.id,
-                    icon: '⚠️',
+                    icon: 'triangleExclamation',
                 });
             }
         }
@@ -316,7 +316,7 @@ function _ruleMissingPowerOrGround(ctx, results) {
                         message: `${def.name} (${inst.id}) is missing a power (VCC) connection.`,
                         instanceId: inst.id,
                         pinName: vccPin[0],
-                        icon: '🔌',
+                        icon: 'plug',
                     });
                 }
             }
@@ -333,7 +333,7 @@ function _ruleMissingPowerOrGround(ctx, results) {
                         message: `${def.name} (${inst.id}) is missing a ground (GND) connection.`,
                         instanceId: inst.id,
                         pinName: gndPin[0],
-                        icon: '🔌',
+                        icon: 'plug',
                     });
                 }
             }
@@ -367,7 +367,7 @@ function _ruleI2cWrongPins(ctx, results) {
                             severity: SEV.ERROR,
                             message: `${def.name} SDA must be connected to Arduino pin A4 (currently on ${other.pinName}).`,
                             instanceId: inst.id,
-                            icon: '📍',
+                            icon: 'locationDot',
                         });
                     }
                 }
@@ -388,7 +388,7 @@ function _ruleI2cWrongPins(ctx, results) {
                             severity: SEV.ERROR,
                             message: `${def.name} SCL must be connected to Arduino pin A5 (currently on ${other.pinName}).`,
                             instanceId: inst.id,
-                            icon: '📍',
+                            icon: 'locationDot',
                         });
                     }
                 }
@@ -413,7 +413,7 @@ function _ruleUnconnectedComponent(ctx, results) {
                 severity: SEV.INFO,
                 message: `${def.name} (${inst.id}) is not connected to anything.`,
                 instanceId: inst.id,
-                icon: '🔗',
+                icon: 'link',
             });
         }
     }
@@ -448,7 +448,7 @@ function _ruleFloatingPin(ctx, results) {
                     message: `${def.name} pin "${pinName}" is not connected.`,
                     instanceId: inst.id,
                     pinName,
-                    icon: '📌',
+                    icon: 'thumbtack',
                 });
             }
         }

@@ -1,0 +1,32 @@
+/* CSS HEX */
+--#fa9b45: #fa9b45;
+--#fdb44c: #fdb44c;
+--#43a5ca: #43a5ca;
+--#6bd8c3: #6bd8c3;
+--#f0d4a9: #f0d4a9;
+--#3ab3be: #3ab3be;
+--#b9dfe0: #b9dfe0;
+--#e3b769: #e3b769;
+--#adc18b: #adc18b;
+
+/* SCSS HEX */
+$#fa9b45: #fa9b45;
+$#fdb44c: #fdb44c;
+$#43a5ca: #43a5ca;
+$#6bd8c3: #6bd8c3;
+$#f0d4a9: #f0d4a9;
+$#3ab3be: #3ab3be;
+$#b9dfe0: #b9dfe0;
+$#e3b769: #e3b769;
+$#adc18b: #adc18b;
+
+/* SCSS RGB */
+$#fa9b45: rgba(250,155,69,1);
+$#fdb44c: rgba(253,180,76,1);
+$#43a5ca: rgba(67,165,202,1);
+$#6bd8c3: rgba(107,216,195,1);
+$#f0d4a9: rgba(240,212,169,1);
+$#3ab3be: rgba(58,179,190,1);
+$#b9dfe0: rgba(185,223,224,1);
+$#e3b769: rgba(227,183,105,1);
+$#adc18b: rgba(173,193,139,1);

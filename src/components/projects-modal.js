@@ -1,5 +1,6 @@
 import { LitElement, html, css } from 'lit';
 import { store } from '../store.js';
+import { faIcon } from '../utils/fa-icons.js';
 
 class ProjectsModal extends LitElement {
     static properties = {
@@ -62,6 +63,14 @@ class ProjectsModal extends LitElement {
             font-size: 20px;
             line-height: 1;
             padding: 4px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .close-btn svg {
+            width: 0.8em;
+            height: 0.8em;
         }
 
         .close-btn:hover {
@@ -265,7 +274,7 @@ class ProjectsModal extends LitElement {
             <div class="modal">
                 <div class="header">
                     <h2>My Projects (Local Mock)</h2>
-                    <button class="close-btn" @click=${this._close}>&times;</button>
+                    <button class="close-btn" @click=${this._close}>${faIcon('xmark')}</button>
                 </div>
                 <div class="body">
                     <div class="save-section">

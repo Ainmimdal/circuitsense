@@ -1,6 +1,12 @@
 import { LitElement, html, css } from 'lit';
 import { store } from './store.js';
 import { autoWireAll, autoLayoutAll } from './services/auto-wire-engine.js';
+import { faIcon } from './utils/fa-icons.js';
+import './components/component-builder-modal.js';
+import './components/login-modal.js';
+
+const MOCK_USER_STORAGE_KEY = 'elera_mock_user';
+const ELERA_LOGO_URL = new URL('../diagram images/eleraLogo.svg', import.meta.url).href;
 
 class CircuitApp extends LitElement {
     static properties = {
@@ -9,6 +15,10 @@ class CircuitApp extends LitElement {
         _gridSize: { state: true },
         _aiOpen: { state: true },
         _sharpCorners: { state: true },
+        _builderOpen: { state: true },
+        _loginOpen: { state: true },
+        _mockUser: { state: true },
+        _settingsInitialTab: { state: true },
     };
 
     static styles = css `
@@ -20,35 +30,43 @@ class CircuitApp extends LitElement {
     }
 
     .header {
-      height: 48px;
+      min-height: 52px;
       background: #18181b;
       border-bottom: 1px solid #27272a;
       display: flex;
       align-items: center;
-      padding: 0 20px;
+      padding: 0 12px 0 16px;
       flex-shrink: 0;
-      gap: 16px;
+      gap: 12px;
+      overflow: hidden;
     }
 
     .logo {
-      font-size: 16px;
-      font-weight: 600;
-      color: #fafafa;
-      letter-spacing: -0.3px;
+      font-size: 18px;
+      font-weight: 700;
+      color: #43a5ca;
+      letter-spacing: 0;
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 8px;
+      flex: 0 0 auto;
+      text-transform: lowercase;
     }
 
-    .logo span {
-      color: #0ea5e9;
+    .logo-mark {
+      width: 28px;
+      height: 28px;
+      display: block;
+      flex: 0 0 auto;
     }
 
     .subtitle {
       font-size: 11px;
       color: #71717a;
       border-left: 1px solid #3f3f46;
-      padding-left: 16px;
+      padding-left: 12px;
+      white-space: nowrap;
+      flex: 0 1 auto;
     }
 
     .spacer {
@@ -58,14 +76,24 @@ class CircuitApp extends LitElement {
     .toolbar {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
+      min-width: 0;
+      overflow-x: auto;
+      scrollbar-width: none;
+      padding-bottom: 1px;
+    }
+
+    .toolbar::-webkit-scrollbar {
+      display: none;
     }
 
     .toolbar-btn {
       display: flex;
       align-items: center;
       gap: 6px;
-      padding: 6px 14px;
+      min-width: 34px;
+      height: 34px;
+      padding: 0 10px;
       border-radius: 6px;
       border: 1px solid #3f3f46;
       background: #27272a;
@@ -76,6 +104,7 @@ class CircuitApp extends LitElement {
       cursor: pointer;
       transition: all 0.1s ease;
       white-space: nowrap;
+      justify-content: center;
     }
 
     .toolbar-btn:hover {
@@ -97,7 +126,8 @@ class CircuitApp extends LitElement {
     }
 
     .grid-size-select {
-      padding: 4px 8px;
+      height: 34px;
+      padding: 0 8px;
       border-radius: 6px;
       border: 1px solid #3f3f46;
       background: #27272a;
@@ -112,13 +142,18 @@ class CircuitApp extends LitElement {
     }
 
     .toolbar-btn .icon {
-      font-size: 13px;
+      font-size: 14px;
+      line-height: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
     }
 
     .toolbar-divider {
       width: 1px;
       height: 20px;
       background: #3f3f46;
+      flex: 0 0 auto;
     }
 
     .toolbar-btn.danger:hover {
@@ -134,7 +169,7 @@ class CircuitApp extends LitElement {
     }
 
     component-sidebar {
-      width: 240px;
+      width: 260px;
       flex-shrink: 0;
     }
 
@@ -157,6 +192,50 @@ class CircuitApp extends LitElement {
     validation-bar {
       /* positioned absolute inside canvas-wrapper */
     }
+
+    @media (max-width: 1380px) {
+      .subtitle {
+        display: none;
+      }
+    }
+
+    @media (max-width: 1050px) {
+      .toolbar-btn {
+        width: 34px;
+        padding: 0;
+        gap: 0;
+        font-size: 0;
+      }
+
+      .toolbar-btn .icon {
+        font-size: 15px;
+      }
+
+      .grid-size-select {
+        width: 78px;
+        font-size: 10px;
+      }
+    }
+
+    @media (max-width: 900px) {
+      .header {
+        padding-left: 10px;
+        gap: 8px;
+      }
+
+      .logo {
+        font-size: 16px;
+      }
+
+      .logo-mark {
+        width: 24px;
+        height: 24px;
+      }
+
+      component-sidebar {
+        width: 220px;
+      }
+    }
   `;
 
     constructor() {
@@ -166,6 +245,10 @@ class CircuitApp extends LitElement {
         this._gridSize = store.gridSize;
         this._aiOpen = false;
         this._sharpCorners = store.sharpCorners;
+        this._builderOpen = false;
+        this._loginOpen = false;
+        this._mockUser = this._loadMockUser();
+        this._settingsInitialTab = 'account';
         this._storeHandler = () => {
             this._antiOverlap = store.antiOverlap;
             this._fanOut = store.fanOut;
@@ -224,6 +307,7 @@ class CircuitApp extends LitElement {
 
     _undoAction() { store.undo(); }
     _redoAction() { store.redo(); }
+    _saveProject() { store._saveToStorage(); }
     async _cleanupWires() {
         const result = await store.cleanupWires();
         // routeAll() now returns { routed, failed, errors }
@@ -307,8 +391,37 @@ class CircuitApp extends LitElement {
         input.click();
     }
 
-    _loginDummy() {
-        alert("Login functionality is coming soon! (Google Auth setup planned)");
+    _loadMockUser() {
+        try {
+            return JSON.parse(localStorage.getItem(MOCK_USER_STORAGE_KEY)) || null;
+        } catch {
+            return null;
+        }
+    }
+
+    _openLogin(tab = 'account') {
+        this._settingsInitialTab = typeof tab === 'string' ? tab : 'account';
+        this._loginOpen = true;
+    }
+
+    _openAiSettings() {
+        this._openLogin('keys');
+    }
+
+    _closeLogin() {
+        this._loginOpen = false;
+    }
+
+    _handleLogin(e) {
+        this._mockUser = e.detail.user;
+        localStorage.setItem(MOCK_USER_STORAGE_KEY, JSON.stringify(this._mockUser));
+        this._loginOpen = false;
+    }
+
+    _handleLogout() {
+        this._mockUser = null;
+        localStorage.removeItem(MOCK_USER_STORAGE_KEY);
+        this._loginOpen = false;
     }
 
     _openProjects() {
@@ -318,43 +431,58 @@ class CircuitApp extends LitElement {
         }
     }
 
+    _openBuilder() {
+        this._builderOpen = true;
+    }
+
+    _closeBuilder() {
+        this._builderOpen = false;
+    }
+
     render() {
         return html `
       <div class="header">
-        <div class="logo">El<span>era</span></div>
+        <div class="logo">
+          <img class="logo-mark" src=${ELERA_LOGO_URL} alt="" />
+          <span>elera</span>
+        </div>
         <div class="subtitle">Intelligent Arduino Circuit Builder</div>
         <div class="spacer"></div>
         <div class="toolbar">
           <button class="toolbar-btn" @click=${this._undoAction} title="Undo (Ctrl+Z)">
-            <span class="icon">↩</span>
+            <span class="icon">${faIcon('undo')}</span>
           </button>
           <button class="toolbar-btn" @click=${this._redoAction} title="Redo (Ctrl+Y)">
-            <span class="icon">↪</span>
+            <span class="icon">${faIcon('redo')}</span>
           </button>
           <div class="toolbar-divider"></div>
+          <button class="toolbar-btn" @click=${this._saveProject} title="Save project locally">
+            <span class="icon">${faIcon('save')}</span>
+            Save
+          </button>
           <button class="toolbar-btn" @click=${this._exportProject} title="Export Project to File">
-            <span class="icon">💾</span>
+            <span class="icon">${faIcon('download')}</span>
             Export
           </button>
           <button class="toolbar-btn" @click=${this._importProject} title="Import Project from File">
-            <span class="icon">📂</span>
+            <span class="icon">${faIcon('folderOpen')}</span>
             Import
           </button>
           <div class="toolbar-divider"></div>
           <button class="toolbar-btn" @click=${this._cleanupWires} title="Auto-route wires around components">
-            <span class="icon">🔧</span>
-            Clean wires
+            <span class="icon">${faIcon('wrench')}</span>
+            Clean
           </button>
           <button class="toolbar-btn" @click=${this._resetWires} title="Reset all wires to default routing">
-            <span class="icon">↺</span>
+            <span class="icon">${faIcon('rotateLeft')}</span>
           </button>
           <button class="toolbar-btn" @click=${this._autoWireAll} title="Auto-wire all components to Arduino">
-            <span class="icon">⚡</span>
-            Auto-wire all
+            <span class="icon">${faIcon('bolt')}</span>
+            Wire
           </button>
           <button class="toolbar-btn" @click=${this._autoLayoutAll} title="Auto-layout and wire all components">
-            <span class="icon">🪄</span>
-            Auto-layout
+            <span class="icon">${faIcon('wand')}</span>
+            Layout
           </button>
           <div class="toolbar-divider"></div>
           <button
@@ -362,23 +490,23 @@ class CircuitApp extends LitElement {
             @click=${this._toggleAntiOverlap}
             title="Toggle anti-overlap: components won't stack on each other"
           >
-            <span class="icon">${this._antiOverlap ? '🔒' : '🔓'}</span>
-            Anti-overlap
+            <span class="icon">${faIcon(this._antiOverlap ? 'lock' : 'unlock')}</span>
+            Overlap
           </button>
           <button
             class="toolbar-btn ${this._fanOut ? 'active' : ''}"
             @click=${this._toggleFanOut}
             title="Toggle wire fan-out: wires spread cleanly from header rows"
           >
-            <span class="icon">📐</span>
-            Fan-out
+            <span class="icon">${faIcon('shareNodes')}</span>
+            Fan
           </button>
           <button
             class="toolbar-btn ${this._sharpCorners ? 'active' : ''}"
             @click=${this._toggleSharpCorners}
             title="Toggle sharp wire corners (no rounding)"
           >
-            <span class="icon">📏</span>
+            <span class="icon">${faIcon('ruler')}</span>
             Sharp
           </button>
           <div class="toolbar-divider"></div>
@@ -393,7 +521,7 @@ class CircuitApp extends LitElement {
           </select>
           <div class="toolbar-divider"></div>
           <button class="toolbar-btn danger" @click=${this._clearProject} title="Clear all">
-            <span class="icon">🗑</span>
+            <span class="icon">${faIcon('trash')}</span>
           </button>
           <div class="toolbar-divider"></div>
           <button
@@ -401,25 +529,46 @@ class CircuitApp extends LitElement {
             @click=${this._toggleAi}
             title="Toggle AI Assistant"
           >
-            <span class="icon">✨</span>
-            Elera AI
+            <span class="icon">${faIcon('wand')}</span>
+            AI
           </button>
           <div class="toolbar-divider"></div>
           <button class="toolbar-btn" @click=${this._openProjects} title="My Projects">
-            <span class="icon">📁</span>
-            My Projects
+            <span class="icon">${faIcon('folder')}</span>
+            Projects
+          </button>
+          <button
+            class="toolbar-btn ${this._mockUser ? 'active' : ''}"
+            @click=${this._openLogin}
+            title=${this._mockUser ? this._mockUser.name : 'Sign in'}
+          >
+            <span class="icon">${faIcon(this._mockUser ? 'user' : 'rightToBracket')}</span>
+            ${this._mockUser ? this._mockUser.name.split(/\s+/)[0] : 'Login'}
           </button>
         </div>
       </div>
       <div class="main">
-        <component-sidebar></component-sidebar>
+        <component-sidebar @open-component-builder=${this._openBuilder}></component-sidebar>
         <div class="canvas-wrapper ${this._aiOpen ? 'ai-open' : ''}">
           <circuit-canvas></circuit-canvas>
           <validation-bar></validation-bar>
         </div>
       </div>
-      <ai-assistant></ai-assistant>
+      <ai-assistant @open-ai-settings=${this._openAiSettings}></ai-assistant>
       <projects-modal></projects-modal>
+      <login-modal
+        .open=${this._loginOpen}
+        .user=${this._mockUser}
+        .initialTab=${this._settingsInitialTab}
+        @close=${this._closeLogin}
+        @login-success=${this._handleLogin}
+        @logout=${this._handleLogout}
+      ></login-modal>
+      <component-builder-modal
+        .open=${this._builderOpen}
+        @close=${this._closeBuilder}
+        @component-created=${this._closeBuilder}
+      ></component-builder-modal>
     `;
     }
 }

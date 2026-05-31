@@ -6,6 +6,7 @@
 import { LitElement, html, css } from 'lit';
 import { store } from '../store.js';
 import { autoWire } from '../services/auto-wire-engine.js';
+import { faIcon } from '../utils/fa-icons.js';
 
 // ── Hardcoded demo scenario ──────────────────────────────
 const DEMO_PROMPT = 'Build me an LED blink circuit with a push button to toggle it on and off';
@@ -143,6 +144,7 @@ class AiAssistant extends LitElement {
 
     .panel-header .icon {
       font-size: 16px;
+      display: inline-flex;
     }
 
     .panel-header .title {
@@ -159,6 +161,12 @@ class AiAssistant extends LitElement {
       border-radius: 10px;
       color: white;
       font-weight: 500;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 4px;
     }
 
     .close-btn {
@@ -210,6 +218,7 @@ class AiAssistant extends LitElement {
     .empty-state .sparkle {
       font-size: 36px;
       opacity: 0.6;
+      display: inline-flex;
     }
 
     .empty-state p {
@@ -298,6 +307,15 @@ class AiAssistant extends LitElement {
     .toolcall-header .fn-icon {
       font-size: 11px;
       color: #6366f1;
+      display: inline-flex;
+    }
+
+    .panel-header svg,
+    .empty-state svg,
+    .toolcall-header svg,
+    .code-header svg {
+      width: 1em;
+      height: 1em;
     }
 
     .toolcall-header .fn-name {
@@ -626,6 +644,14 @@ class AiAssistant extends LitElement {
         if (el) el.scrollTop = el.scrollHeight;
     }
 
+    _openSettings() {
+        this.dispatchEvent(new CustomEvent('open-ai-settings', {
+            detail: { tab: 'keys' },
+            bubbles: true,
+            composed: true,
+        }));
+    }
+
     _renderToolCallBody(args) {
         if (args.components) {
             return args.components.map(c =>
@@ -651,18 +677,21 @@ class AiAssistant extends LitElement {
         return html`
       <div class="panel">
         <div class="panel-header">
-          <span class="icon">✨</span>
+          <span class="icon">${faIcon('wand')}</span>
           <span class="title">Elera AI</span>
           <span class="badge">PREVIEW</span>
-          <button class="close-btn" @click=${() => this.toggle()} title="Close">✕</button>
+          <div class="header-actions">
+            <button class="close-btn" @click=${this._openSettings} title="AI settings">${faIcon('gear')}</button>
+            <button class="close-btn" @click=${() => this.toggle()} title="Close">${faIcon('xmark')}</button>
+          </div>
         </div>
 
         <div class="messages">
           ${!hasMessages ? html`
             <div class="empty-state">
-              <div class="sparkle">✨</div>
+              <div class="sparkle">${faIcon('wand')}</div>
               <p>Describe the Arduino circuit you want to build, and Elera AI will design and wire it for you.</p>
-              <p class="hint">Powered by Google Gemini (coming soon)</p>
+              <p class="hint">Configure BYOK providers from AI settings</p>
             </div>
           ` : ''}
 
@@ -690,7 +719,7 @@ class AiAssistant extends LitElement {
           </div>
         </div>
 
-        <div class="powered-by">Elera AI · Gemini integration coming in FYP2</div>
+        <div class="powered-by">Elera AI · BYOK-ready mock integration</div>
       </div>
     `;
     }
@@ -719,9 +748,9 @@ class AiAssistant extends LitElement {
                 return html`
           <div class="toolcall">
             <div class="toolcall-header">
-              <span class="fn-icon">⚡</span>
+              <span class="fn-icon">${faIcon('bolt')}</span>
               <span class="fn-name">${m.label}()</span>
-              <span class="status ${m.status}">${m.status === 'running' ? '● Running' : '✓ Done'}</span>
+              <span class="status ${m.status}">${m.status === 'running' ? 'Running' : 'Done'}</span>
             </div>
             <div class="toolcall-body">${this._renderToolCallBody(m.args)}</div>
           </div>`;
@@ -729,7 +758,7 @@ class AiAssistant extends LitElement {
                 return html`
           <div class="code-block">
             <div class="code-header">
-              <span>📄</span> ${m.language || 'code'}
+              <span>${faIcon('fileLines')}</span> ${m.language || 'code'}
             </div>
             <div class="code-content">${m.content}</div>
           </div>`;

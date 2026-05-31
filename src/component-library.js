@@ -59,9 +59,9 @@ export const componentLibrary = {
         tag: 'wokwi-arduino-uno',
         category: 'board',
         description: 'ATmega328P microcontroller board',
-        icon: '🔵',
+        icon: 'microchip',
         attrs: {},
-        size: { width: 230, height: 200 },
+        size: { width: 275, height: 200 },
         currentDraw_mA: 0,
         pinMeta: {},
         isBoard: true,
@@ -81,9 +81,9 @@ export const componentLibrary = {
         tag: 'wokwi-led',
         category: 'output',
         description: 'Light Emitting Diode',
-        icon: '💡',
+        icon: 'lightbulb',
         attrs: { color: 'red' },
-        size: { width: 40, height: 60 },
+        size: { width: 40, height: 50 },
         currentDraw_mA: 20,
         pinMeta: {
             'A': PIN.SIGNAL,
@@ -100,9 +100,9 @@ export const componentLibrary = {
         tag: 'wokwi-resistor',
         category: 'passive',
         description: '220 ohm resistor',
-        icon: '\u3030\uFE0F',
+        icon: 'wave-square',
         attrs: { value: '220' },
-        size: { width: 110, height: 30 },
+        size: { width: 60, height: 10 },
         currentDraw_mA: 0,
         pinMeta: {
             '1': PIN.SIGNAL,
@@ -122,9 +122,9 @@ export const componentLibrary = {
         tag: 'wokwi-pushbutton',
         category: 'input',
         description: 'Momentary push button',
-        icon: '🔘',
+        icon: 'circle-dot',
         attrs: {},
-        size: { width: 50, height: 50 },
+        size: { width: 70, height: 50 },
         snapAnchor: { x: 25, y: 25 },
         currentDraw_mA: 0,
         pinMeta: {
@@ -144,7 +144,7 @@ export const componentLibrary = {
         tag: 'wokwi-buzzer',
         category: 'output',
         description: 'Piezo buzzer',
-        icon: '🔊',
+        icon: 'volume-high',
         attrs: {},
         size: { width: 60, height: 70 },
         snapAnchor: { x: 30, y: 60 },
@@ -163,9 +163,9 @@ export const componentLibrary = {
         tag: 'wokwi-hc-sr04',
         category: 'sensor',
         description: 'Ultrasonic distance sensor',
-        icon: '📡',
+        icon: 'satellite-dish',
         attrs: {},
-        size: { width: 130, height: 60 },
+        size: { width: 170, height: 90 },
         snapAnchor: { x: 65, y: 30 },
         currentDraw_mA: 15,
         pinMeta: {
@@ -190,9 +190,9 @@ export const componentLibrary = {
         tag: 'wokwi-servo',
         category: 'actuator',
         description: 'SG90 Micro Servo',
-        icon: '\u2699\uFE0F',
+        icon: 'gear',
         attrs: {},
-        size: { width: 100, height: 80 },
+        size: { width: 170, height: 80 },
         snapAnchor: { x: 50, y: 70 },
         currentDraw_mA: 200,
         pinMeta: {
@@ -211,9 +211,9 @@ export const componentLibrary = {
         tag: 'wokwi-potentiometer',
         category: 'input',
         description: 'Variable resistor / knob',
-        icon: '🎛\uFE0F',
+        icon: 'sliders',
         attrs: {},
-        size: { width: 60, height: 60 },
+        size: { width: 75, height: 80 },
         snapAnchor: { x: 30, y: 50 },
         currentDraw_mA: 1,
         pinMeta: {
@@ -233,7 +233,7 @@ export const componentLibrary = {
         tag: 'wokwi-dht22',
         category: 'sensor',
         description: 'Temperature & humidity sensor',
-        icon: '🌡\uFE0F',
+        icon: 'temperature-half',
         attrs: {},
         size: { width: 60, height: 120 }, // Adjusted to prevent text overlap
         snapAnchor: { x: 30, y: 110 },
@@ -254,7 +254,7 @@ export const componentLibrary = {
         tag: 'wokwi-lcd1602',
         category: 'output',
         description: '16\u00D72 character LCD with I2C backpack',
-        icon: '🖥\uFE0F',
+        icon: 'display',
         attrs: {},
         size: { width: 260, height: 80 },
         snapAnchor: { x: 130, y: 70 },
@@ -275,9 +275,9 @@ export const componentLibrary = {
         tag: 'wokwi-pir-motion-sensor',
         category: 'sensor',
         description: 'Passive infrared motion sensor',
-        icon: '👁\uFE0F',
+        icon: 'eye',
         attrs: {},
-        size: { width: 120, height: 140 }, // Adjusted to prevent bounding box cutoff
+        size: { width: 90, height: 90 }, // Adjusted to prevent bounding box cutoff
         snapAnchor: { x: 60, y: 130 },
         currentDraw_mA: 5,
         pinMeta: {
@@ -295,9 +295,9 @@ export const componentLibrary = {
         tag: 'wokwi-ir-receiver',
         category: 'sensor',
         description: 'Infrared remote receiver (TSOP38238)',
-        icon: '📲',
+        icon: 'mobile-screen',
         attrs: {},
-        size: { width: 50, height: 50 },
+        size: { width: 60, height: 90 },
         snapAnchor: { x: 25, y: 40 },
         currentDraw_mA: 5,
         pinMeta: {
@@ -315,7 +315,7 @@ export const componentLibrary = {
         tag: 'wokwi-neopixel',
         category: 'output',
         description: 'WS2812B addressable RGB LED',
-        icon: '🌈',
+        icon: 'rainbow',
         attrs: {},
         size: { width: 40, height: 40 },
         snapAnchor: { x: 20, y: 20 },
@@ -338,7 +338,7 @@ export const componentLibrary = {
         tag: 'wokwi-slide-switch',
         category: 'input',
         description: 'SPDT slide switch',
-        icon: '🔀',
+        icon: 'shuffle',
         attrs: {},
         size: { width: 60, height: 30 },
         snapAnchor: { x: 30, y: 15 },
@@ -360,11 +360,97 @@ export const categories = [
     { id: 'output', name: 'Output' },
     { id: 'actuator', name: 'Actuators' },
     { id: 'passive', name: 'Passive' },
+    { id: 'custom', name: 'Custom' },
 ];
 
 /**
  * Helper — get component definition for an instance
  */
+const CUSTOM_COMPONENTS_KEY = 'elera_custom_components';
+
+function _pinSignalsForType(type) {
+    if (type === PIN.VCC) return [{ signal: 'VCC' }];
+    if (type === PIN.GND) return [{ signal: 'GND' }];
+    return [{ signal: 'SIGNAL' }];
+}
+
+function _normalizeCustomComponent(raw) {
+    if (!raw || !raw.id || !raw.imageUrl || !raw.size) return null;
+    const pinMeta = raw.pinMeta || {};
+    const customPins = (raw.customPins || []).map(pin => {
+        const type = pin.type || pinMeta[pin.name] || PIN.SIGNAL;
+        return {
+            name: pin.name,
+            x: Number(pin.x) || 0,
+            y: Number(pin.y) || 0,
+            type,
+            signals: pin.signals || _pinSignalsForType(type),
+        };
+    }).filter(pin => pin.name);
+
+    const normalizedPinMeta = {};
+    const autoWire = {};
+    for (const pin of customPins) {
+        normalizedPinMeta[pin.name] = pin.type || PIN.SIGNAL;
+        if (pin.type && pin.type !== PIN.SIGNAL) {
+            autoWire[pin.name] = pin.type;
+        }
+    }
+
+    return {
+        ...raw,
+        type: 'custom',
+        category: 'custom',
+        icon: raw.icon || 'image',
+        attrs: {},
+        currentDraw_mA: Number(raw.currentDraw_mA) || 0,
+        size: {
+            width: Math.max(20, Number(raw.size.width) || 120),
+            height: Math.max(20, Number(raw.size.height) || 80),
+        },
+        customPins,
+        pinMeta: normalizedPinMeta,
+        autoWire: Object.keys(autoWire).length > 0 ? autoWire : undefined,
+    };
+}
+
+export function getStoredCustomComponents() {
+    if (typeof localStorage === 'undefined') return [];
+    try {
+        const raw = localStorage.getItem(CUSTOM_COMPONENTS_KEY);
+        const parsed = raw ? JSON.parse(raw) : [];
+        return Array.isArray(parsed) ? parsed.map(_normalizeCustomComponent).filter(Boolean) : [];
+    } catch (e) {
+        console.warn('[Elera] Failed to load custom components:', e);
+        return [];
+    }
+}
+
+export function registerCustomComponent(componentDef, { persist = true } = {}) {
+    const normalized = _normalizeCustomComponent(componentDef);
+    if (!normalized) return null;
+
+    componentLibrary[normalized.id] = normalized;
+
+    if (persist && typeof localStorage !== 'undefined') {
+        const existing = getStoredCustomComponents().filter(comp => comp.id !== normalized.id);
+        existing.push(normalized);
+        localStorage.setItem(CUSTOM_COMPONENTS_KEY, JSON.stringify(existing));
+    }
+
+    if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('elera-custom-components-change', {
+            detail: { component: normalized },
+        }));
+    }
+
+    return normalized;
+}
+
+for (const customComponent of getStoredCustomComponents()) {
+    componentLibrary[customComponent.id] = customComponent;
+}
+
 export function getComponentDef(componentId) {
     return componentLibrary[componentId] || null;
 }

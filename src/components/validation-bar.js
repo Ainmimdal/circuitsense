@@ -12,6 +12,7 @@ import { LitElement, html, css } from 'lit';
 import { store } from '../store.js';
 import { validateCircuit, SEV } from '../services/validation-engine.js';
 import { getComponentDef } from '../component-library.js';
+import { faIcon } from '../utils/fa-icons.js';
 
 class ValidationBar extends LitElement {
     static properties = {
@@ -70,6 +71,13 @@ class ValidationBar extends LitElement {
       align-items: center;
       gap: 4px;
       font-weight: 600;
+    }
+
+    .count svg,
+    .issue-icon svg,
+    .toggle-icon svg {
+      width: 1em;
+      height: 1em;
     }
 
     .count.error { color: #EF5350; }
@@ -224,6 +232,13 @@ class ValidationBar extends LitElement {
         return def ? def.name : instanceId;
     }
 
+    _iconForIssue(issue) {
+        if (issue.icon) return issue.icon;
+        if (issue.severity === SEV.ERROR) return 'circleXmark';
+        if (issue.severity === SEV.WARNING) return 'triangleExclamation';
+        return 'circleInfo';
+    }
+
     render() {
         const { errors, warnings, info, all } = this._results;
         const hasIssues = all.length > 0;
@@ -233,7 +248,7 @@ class ValidationBar extends LitElement {
         <div class="bar ${this._collapsed ? 'collapsed' : ''}">
           ${all.map(issue => html`
             <div class="issue" @click=${() => this._onIssueClick(issue)}>
-              <div class="issue-icon">${issue.icon || '•'}</div>
+              <div class="issue-icon">${faIcon(this._iconForIssue(issue))}</div>
               <div class="issue-severity ${issue.severity}"></div>
               <div class="issue-message">
                 ${issue.message}
@@ -248,20 +263,20 @@ class ValidationBar extends LitElement {
 
       <div class="summary" @click=${this._toggle}>
         ${errors.length > 0 ? html`
-          <span class="count error">✕ ${errors.length} error${errors.length > 1 ? 's' : ''}</span>
+          <span class="count error">${faIcon('circleXmark')} ${errors.length} error${errors.length > 1 ? 's' : ''}</span>
         ` : ''}
         ${warnings.length > 0 ? html`
-          <span class="count warning">⚠ ${warnings.length} warning${warnings.length > 1 ? 's' : ''}</span>
+          <span class="count warning">${faIcon('triangleExclamation')} ${warnings.length} warning${warnings.length > 1 ? 's' : ''}</span>
         ` : ''}
         ${info.length > 0 ? html`
-          <span class="count info">ℹ ${info.length} info</span>
+          <span class="count info">${faIcon('circleInfo')} ${info.length} info</span>
         ` : ''}
         ${all.length === 0 ? html`
-          <span class="count ok">✓ No issues</span>
+          <span class="count ok">${faIcon('circleCheck')} No issues</span>
         ` : ''}
         <span class="save-indicator">auto-saved</span>
         ${hasIssues ? html`
-          <span class="toggle-icon ${this._collapsed ? '' : 'open'}">▲</span>
+          <span class="toggle-icon ${this._collapsed ? '' : 'open'}">${faIcon('chevronUp')}</span>
         ` : ''}
       </div>
     `;

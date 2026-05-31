@@ -1,0 +1,1656 @@
+ 
+ 
+ 
+BIT FINAL YEAR PROJECT 
+REPORT WRITING 
+GUIDELINES 
+INFO 4401 (FYP 1) & INFO 4402 (FYP 2) 
+FYP Coordinator 
+Version 3.1 
+ 
+FYP Report Writing Guidelines V 3.1                                                                                                          Last modified: October 2024 
+ 
+Department Of Information Systems  
+Kulliyyah of Information Communication and Technology 
+International Islamic University Malaysia 
+
+ 
+1 
+ 
+TABLE OF CONTENTS 
+TABLE OF CONTENTS 
+ 
+CONTENTS  
+ 
+ 
+ 
+ 
+ 
+ 
+                PAGE 
+ 
+TABLE OF CONTENTS 
+1 
+1.0 
+PREAMBLE 
+7 
+1.1 
+PROBLEM DESCRIPTION 
+7 
+1.1.1 
+Background of the problem 
+7 
+1.1.2 
+Problem Statement 
+8 
+1.2 
+PROJECT OBJECTIVE 
+8 
+1.3 
+PROJECT SCOPE 
+8 
+1.3.1 
+Scope 
+8 
+1.3.2 
+Target Audience 
+9 
+1.3.3 
+Specific Platform 
+9 
+1.4 
+CONSTRAINTS 
+9 
+1.5 
+PROJECT STAGES 
+9 
+1.6 
+SIGNIFICANCE OF THE PROJECT 
+10 
+1.7 
+SUMMARY 
+10 
+CHAPTER THREE: METHODOLOGY 
+11 
+2.1 
+INTRODUCTION 
+11 
+2.2 
+SYSTEM REVIEW 
+11 
+2.2.1 
+Existing System 
+11 
+2.2.2 
+Advantages 
+11 
+2.2.3 
+Disadvantages 
+11 
+2.3 
+DISCUSSION 
+11 
+CHAPTER THREE: METHODOLOGY 
+13 
+3.0 
+INTRODUCTION 
+13 
+3.1 
+SYSTEM REVIEW 
+13 
+3.1.1 
+Existing System 
+13 
+3.1.2 
+Advantages 
+13 
+3.1.3 
+Disadvantages 
+13 
+3.2 
+DISCUSSION 
+13 
+
+ 
+2 
+ 
+CHAPTER FOUR: RESULTS AND FINDINGS 
+15 
+4.0 
+INTRODUCTION 
+15 
+4.1 
+DEVELOPMENT APPROACH 
+15 
+4.2 
+REQUIREMENTS SPECIFICATION 
+15 
+4.3 
+LOGICAL DESIGN 
+16 
+4.3.1 
+System Analysis and Design Diagram 
+16 
+4.3.2 
+Data Flow Diagram (if applicable) 
+17 
+4.4 
+DATABASE DESIGN 
+17 
+4.5 
+USER INTERFACE/PROTTYPE DESIGN 
+17 
+4.6 
+SUMMARY 
+17 
+CHAPTER FOUR: RESULTS AND FINDINGS 
+18 
+5.1 
+INTRODUCTION 
+18 
+5.2 
+REQUIREMENT SPECIFICATIONS/DATA COLLECTIONS 
+18 
+5.2.1 
+The Findings 
+18 
+5.3 
+CONCEPTUAL DESIGN 
+18 
+5.4 
+STORY STRUCTURE 
+19 
+5.4.1 
+Story Plot/Script 
+19 
+5.4.2 
+Character Design 
+19 
+5.5 
+STORYBOARD 
+19 
+CHAPTER FOUR: RESULTS AND FINDINGS 
+20 
+3.0 
+INTRODUCTION 
+20 
+3.1 
+DEVELOPMENT APPROACH 
+20 
+3.2 
+REQUIREMENT SPECIFICATION/DATA COLLECTIONS 
+20 
+3.2.1 
+The Findings 
+20 
+3.3 
+THE NEEDS ANALYSIS 
+21 
+3.4 
+THE APPLICATION DESIGN 
+21 
+3.5 
+CONTENT DEVELOPMENT 
+22 
+3.6 
+NAVIGATION FLOW OF THE APPLICATION 
+22 
+3.7 
+STORYBOARD 
+22 
+CHAPTER FOUR: RESULTS AND FINDINGS 
+23 
+3.0 
+INTRODUCTION 
+23 
+3.1 
+DEVELOPMENT APPROACH 
+23 
+3.2 
+STRUCTURE 
+23 
+
+ 
+3 
+ 
+3.2.1 
+Story Plot 
+23 
+3.2.2 
+Character Design 
+23 
+3.3 
+STORYBOARD 
+23 
+CHAPTER FOUR: RESULTS AND FINDINGS 
+24 
+4.0 
+INTRODUCTION 
+24 
+4.1 
+SYSTEM INTEGRATION 
+24 
+4.2 
+SYSTEM OUTPUT 
+24 
+4.2.1 
+Administrator 
+24 
+4.2.2 
+User(s) 
+24 
+4.3 
+SYSTEM TESTING 
+24 
+4.3.1 
+Test Plan 
+24 
+4.3.2 
+Enhancement 
+24 
+CHAPTER FOUR: RESULTS AND FINDINGS 
+25 
+5.0 
+INTRODUCTION 
+25 
+5.1 
+FINAL COMPOSITION (Production) 
+25 
+5.1.1 
+Digitizing Art 
+25 
+5.1.2 
+2D/3D Modelling and Animation 
+25 
+5.2 
+RECORDING AND DIGITIZING AUDIO 
+25 
+5.3 
+IMPLEMENTATION 
+26 
+5.4 
+EVALUATION/TESTING (Post-Production) 
+26 
+5.4.1 
+Test Plan 
+26 
+5.4.2 
+Enhancement 
+26 
+CHAPTER FOUR: RESULTS AND FINDINGS 
+27 
+6.1 
+INTRODUCTION 
+27 
+6.2 
+APPLICATION DEVELOPMENT (Production) 
+27 
+6.2.1 
+Digitizing 2D/3D Art 
+27 
+6.2.2 
+Digitizing Scenes 
+27 
+6.2.3 
+Recording and Digitizing Audio 
+27 
+6.2.4 
+Authoring 
+27 
+6.3 
+IMPLEMENTATION 
+28 
+6.4 
+EVALUATION/TESTING (Post-Production) 
+28 
+6.4.1 
+Test Plan 
+28 
+6.4.2 
+Enhancement 
+28 
+CHAPTER FOUR: RESULTS AND FINDINGS 
+29 
+
+ 
+4 
+ 
+7.0 
+PROJET REQUIREMENT 
+29 
+7.1 
+PROJECT CONSTRAINT 
+29 
+7.2 
+FUTURE ENHANCEMENT 
+29 
+7.3 
+CONCLUSION 
+29 
+ 
+ 
+ 
+
+ 
+5 
+ 
+GENERAL GUIDELINES 
+ 
+This document is to be read together with the seminar slides.  
+1. A final year project report is an intellectual work for the university. Thus, the written 
+report must be in formal English. 
+2. Avoid using daily language for the report. For example, do not use the word “I” in the 
+report, instead use third person forms (e.g., the developer, the researcher). 
+For example: 
+Use of Daily Language: (Wrong) 
+I have come to conclusion that the system works well with Linux operating system. 
+Use of Formal Words: (Correct) 
+The researcher concludes that the system works well with Linux operating system. 
+3. Any idea, word and reference cited from the Internet, published paper, journal and book 
+must be clearly stated by the original author. All work is considered plagiarism if you 
+failed to provide any form of reference (In-text citation or reference list) for the report, 
+which resulted in an F grade or dismissal from the university. 
+ 
+4. Any term (acronym) used in the report must be clearly defined in full words in the early 
+chapter (including glossary page) and then follow with the repeated term in other 
+chapters. 
+For example: 
+The web assessment application (WAA) provides a mechanism to control lab tests and 
+quizzes. The WAA has the full capabilities to prevent cheating in formal tests. 
+5. Any diagram, figure and table used in the report must be clearly stated/labelled based 
+on the chapter and follow with the title. 
+For example: 
+Chapter 3, first figure the label must be “Figure 3.1 Client-Server Interaction.” Chapter 3, 
+second figure the label must be “Figure 3.2 Client Interaction.” 
+6. Move any topic/heading or subtopic/subheading at the bottom of the page without any 
+content to the new page. 
+ 
+7. The report should have a continuity from one chapter to another; make sure there is a 
+consistency of content flow for the report. 
+ 
+ 
+
+ 
+6 
+ 
+TYPES OF FINAL YEAR PROJECTS 
+System Development  
+a. 
+Types 
+i. 
+Web Application 
+ii. 
+System/Desktop/Tablet Application 
+iii. 
+Mobile Application 
+iv. 
+Cloud Application 
+ 
+b. 
+Platforms 
+i. 
+Windows 
+ii. 
+OSX 
+iii. 
+Linux 
+iv. 
+Android 
+v. 
+IOS 
+vi. 
+Windows Phone 
+ 
+2. 
+Multimedia  
+a. 
+Types 
+i. 
+Digital Storytelling  
+ii. 
+E-Learning Application  
+iii. 
+Game Development  
+ 
+b. 
+Platforms 
+i. 
+Desktop 
+ii. 
+Mobile 
+ 
+ 
+
+ 
+7 
+ 
+CHAPTER 1 
+1 
+Introduction 
+INTRODUCTION 
+(System Development, Digital Storytelling, E-Learning Application, and Game Development) 
+ 
+1.0 PREAMBLE 
+ 
+(System Development) 
+The selected organization that you have decided to create/automate/enhance/upgrade its 
+current system/mobile application and contribution to your final year project 
+development. For example, if you choose to develop a class scheduling for the department 
+of Information Systems, you need to provide a brief description about the department 
+itself. 
+ 
+(Digital Storytelling, E-Learning Application, and Game Development) 
+The organization that you have identified needs interactive learning/media/audio visual to 
+simplify user tasks. For example, if you choose to develop a digital learning tool for learning 
+Arabic interactively for CELPAD, you need to provide a brief description about the Arabic 
+department at CELPAD. 
+(One paragraph only) 
+ 
+1.1 PROBLEM DESCRIPTION 
+ 
+Overview statements or subject of introductory to this subtopic. 
+ 
+1.1.1 Background of the problem 
+ 
+(System Development) 
+Based on the conducted interview and users’ clarification of the current system. Discuss the 
+problems that the users are currently having with the manual system. 
+ 
+(Digital Storytelling, E-Learning Application, and Game Development)  
+
+ 
+8 
+ 
+Based on the conducted interview and users’ clarification of the current storytelling/info. 
+Discuss the problems that the users are currently having with the current product or 
+situation. 
+1.1.2 Problem Statement 
+ 
+(System Development) 
+Describe the specific problems that the users are currently having with the current system. 
+The problems resulted from manual or inefficient system in terms of implementation 
+(system architecture, network, paper-based system, etc.) 
+ 
+(Digital Storytelling, E-Learning Application, and Game Development)  
+Describe the specific problem that the users are currently having with the current product. 
+The problems resulted from lacking society benefits/elements, features, Islamic 
+components, etc. 
+ 
+1.2 PROJECT OBJECTIVE 
+Overview statements or subject of introductory to this subtopic. 
+(System Development, Digital Storytelling, E-Learning Application, and Game Development) 
+What are the main purposes of developing the proposed system/product? Describe the 
+solution/answer to your problem statement(s). 
+1.3 PROJECT SCOPE 
+ 
+Overview statements or subject of introductory to this subtopic. 
+1.3.1 Scope 
+(System Development) 
+Define the system area and entities of the project. For example, if you create a class 
+scheduling system for KICT, the scope of the project will be students, facilities, and courses, 
+which are within KICT. 
+ 
+(Digital Storytelling, E-Learning Application, and Game Development)  
+
+ 
+9 
+ 
+Describe the product area and entities of the project. For example, learning Arabic for PRSS 
+student at CELPAD, the scope of the project will be students, facilities, and courses within 
+CELPAD. 
+ 
+1.3.2 Target Audience 
+(System Development) 
+Describe in detail the organization of the department including the users and their job 
+position. The details must focus on the actual users of your system. For example, the facilities 
+officer will use a class scheduling system for scheduling and monitoring. Thus, include the 
+description of facilities officer in this section. 
+ 
+(Digital Storytelling, E-Learning Application, and Game Development)  
+Describe your target audience such as age group (e.g. age 10 to 12), state (Selangor, 
+Terengganu, etc.), country (Malaysia, Sri Lanka, Bosnia, Pakistan, etc.), gender, etc. 
+ 
+1.3.3 Specific Platform 
+(System Development, Digital Storytelling, E-Learning Application, and Game Development) 
+Specification of hardware and software for project development and ideal system 
+requirement to run your system for target users. The specifications include operating 
+system, computer memory, network, processor power, etc. 
+ 
+1.4 CONSTRAINTS 
+Overview statements or subject of introductory to this subtopic. 
+(System Development, Digital Storytelling, E-Learning Application, and Game Development) 
+Project limitations such as uncooperative user, high cost of hardware and software 
+requirements, etc. Reasons for exclusion of certain features. Do not include time constraint! 
+(This indicates that you are doing your work at the last minute). 
+ 
+1.5 PROJECT STAGES 
+(System Development, Digital Storytelling, E-Learning Application, and Game Development) 
+Explain the proposed milestones (weekly plan) for your project development and a brief 
+explanation for each milestones (Gantt chart). 
+
+ 
+10 
+ 
+(Use Microsoft Project or other software that can generate a proper Gantt chart). 
+ 
+ 
+1.6 SIGNIFICANCE OF THE PROJECT 
+ 
+(System Development, Digital Storytelling, E-Learning Application, and Game Development) 
+Explain the benefits of the project to the target users, the contributions to society and Islam. 
+Provide at least five (5) benefits of the project. (You can use point or bullet form to state the 
+significance of the project). 
+ 
+1.7 SUMMARY 
+(System Development, Digital Storytelling, E-Learning Application, and Game Development) 
+Summarise or conclude the all the important points in this chapter. 
+ 
+(One paragraph only) 
+ 
+
+ 
+11 
+ 
+CHAPTER 2 
+CHAPTER THREE: METHODOLOGY 
+2 
+Literature Review 
+LITERATURE REVIEW 
+(System Development) 
+ 
+2.1 INTRODUCTION 
+Discuss the importance of literature reviews for your project. This contributes to the 
+preliminary research or survey (general requirements/features) towards completing the 
+project. 
+2.2 SYSTEM REVIEW  
+ 
+Overview statements or subject of introductory to this subtopic. 
+ 
+2.2.1 Existing System 
+ 
+Discuss at least three (3) existing products on the market or products that exist within the 
+organization. You need to provide detailed screenshots for the existing products together 
+with the information of the developer. If the products are currently available on the Internet, 
+please include their URLs. 
+Use an APA citation for the product/system review (Developer/Company, Year of release). 
+For example (Facebook, 2016). Refer to APA Style for details. 
+ 
+2.2.2 Advantages 
+Discuss the advantages of the selected products and describe them in detail. Please provide 
+relevant screenshots. 
+(Compare each of the products) 
+ 
+2.2.3 Disadvantages 
+Discuss the disadvantages of the selected products and describe them in detail. Please 
+provide relevant screenshots.  
+ 
+(Compare each of the products) 
+ 
+2.3 DISCUSSION 
+Include the comparisons in a table.  
+ 
+
+ 
+12 
+ 
+Table 2-1 A Table 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Based on advantages and disadvantages listed in the table, discuss which existing features 
+and improvements that you want to include in your project. 
+ 
+
+ 
+13 
+ 
+CHAPTER 2 
+CHAPTER THREE: METHODOLOGY 
+3 
+Literature Review 
+LITERATURE REVIEW 
+(Digital Storytelling, E-Learning Application, and Game Development) 
+3.0 INTRODUCTION 
+Discuss the importance of literature reviews for your project. This contributes to the 
+preliminary research or survey (general requirements/features) towards completing the 
+project. 
+3.1 SYSTEM REVIEW  
+ 
+Overview statements or subject of introductory to this subtopic. 
+ 
+3.1.1 Existing System 
+ 
+Discuss at least three (3) existing products on the market or products that exist within the 
+organization. You need to provide detailed screenshots for the existing products together 
+with the information of the developer. If the products are currently available on the Internet, 
+please include their URLs. 
+Use an APA citation for the product/system review (Developer/Company, Year of release). 
+For example (Facebook, 2016). Refer to APA Style for details. 
+ 
+3.1.2 Advantages 
+Discuss in detail the advantages of the selected digital storytelling/e-learning 
+application/game products. Please provide relevant screenshots. 
+(Compare each of the products) 
+3.1.3 Disadvantages 
+Discuss in detail the disadvantages of the selected digital storytelling/e- learning 
+application/game products. Please provide relevant screenshots. 
+(Compare each of the products) 
+ 
+3.2 DISCUSSION 
+Include the comparisons in a table.  
+ 
+ 
+ 
+ 
+ 
+
+ 
+14 
+ 
+Table 3-1 A Table 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Based on advantages and disadvantages listed in the table, discuss which existing features 
+and improvements that you want to include in your project. 
+ 
+ 
+
+ 
+15 
+ 
+CHAPTER 3 
+CHAPTER FOUR: RESULTS AND FINDINGS 
+4 
+Methodology 
+METHODOLOGY 
+(Pre-Production of System Development) 
+4.0 INTRODUCTION 
+Explain in general the purpose of this chapter and its significance to the analysis and design 
+of your project. 
+(One paragraph only) 
+4.1 DEVELOPMENT APPROACH 
+State in detail the development approach that you used to develop the system. This can 
+either be extreme programming, agile software development, rapid prototyping, and unified 
+software process. State your reason for choosing that approach and its relation to your 
+project. 
+(Refer to System Development Methodology) 
+ 
+4.2 REQUIREMENTS SPECIFICATION 
+For user requirements specification, you can use any of the method below to gather user 
+requirements. This includes all possible users (end users, system admin, system owner, etc.) 
+for the project. 
+(Refer to INFO 2304 (SAD) – Requirement Gathering chapter) 
+- 
+Survey questionnaire 
+- 
+End user, system user interview 
+- 
+Forms documentation 
+- 
+Existing system, application, or database 
+- 
+Research and site visit 
+- 
+Observation 
+- 
+Prototyping 
+ 
+For technical system requirements, you can write your analysis of the user requirements in 
+general use case development and including some non- functional requirements for the 
+system (e.g. performance, information, economy, control and security, efficiency, service for 
+hardware and software). 
+ 
+
+ 
+16 
+ 
+Explain in detail each of the features or functions that the user has agreed to include as part 
+of the system or the proposed features or functions to be included in the system. 
+ 
+4.3 LOGICAL DESIGN 
+Overview statements or subject of introductory to this subtopic. 
+4.3.1 System Analysis and Design Diagram 
+ 
+Specify and create details flow chart for all the functions and features. Provide a list of 
+diagrams based on functions or modules. Below are the list of diagrams needed (as 
+applicable) for this section: 
+ 
+a. System 
+Architecture 
+(block 
+diagram 
+to 
+show 
+the 
+entire 
+system 
+input, 
+processing/application and storage/database, network connectivity, hardware or 
+interface specification). 
+b. Use Case Diagram (Show interaction between system and user / capture business 
+scenario). 
+c. Use Case Narrative (Detail explanation of the interaction between system and user / 
+capture business scenario). 
+d. Activity Diagram (Business process flow – Details flow chart). 
+e. Sequence Diagram (Interactions between objects). 
+f. Class Diagram (Physical/system design phase and a class diagram can be translated to an 
+ERD). 
+g. Package Diagram (How the classes are organized into package (related with item and 
+interdependencies of those packages) 
+Note: 
+Lists (f) and (g) are more meaningful if a student is using Object-Oriented Programming 
+language such as Java, C++, and C #. 
+(Use Star UML, Microsoft Visio, Draw.io or any software design utilities) 
+  
+ 
+ 
+ 
+
+ 
+17 
+ 
+4.3.2 Data Flow Diagram (if applicable) 
+ 
+Specify and display data flow diagram begins with context diagram, DFD level 0 and DFD level 
+1 based on features, functions, and data flow of your system. This would include the input 
+and output of the data. Provides a list of diagrams based on functions or modules. 
+ 
+4.4 DATABASE DESIGN 
+ 
+Specify the overall entity relationship diagram (ERD) for database tables that are required 
+for the system. Provides every table with a list of attributes and data type. 
+ 
+4.5 USER INTERFACE/PROTTYPE DESIGN 
+ 
+Provide the details navigation or page flow of your system starting from login until the user 
+signs out (e.g. dialogue chart). Include details of the screen design and reports layout. 
+(Refer to INFO 2304 (SAD) - Input & output design & HCI chapters) 
+ 
+4.6 SUMMARY 
+Summarise the content of this chapter. 
+ 
+ 
+ 
+
+ 
+18 
+ 
+CHAPTER 3 
+CHAPTER FOUR: RESULTS AND FINDINGS 
+5 
+Methodology 
+METHODOLOGY 
+(Pre-Production of Digital Storytelling) 
+5.1 INTRODUCTION 
+ 
+Explain in general about this chapter and its significance to the analysis and design of your 
+digital story. 
+(One paragraph only) 
+ 
+5.2 REQUIREMENT SPECIFICATIONS/DATA COLLECTIONS 
+ 
+For user requirements specification, you can use any of the methods below to gather user 
+requirements. This includes all possible users for the project. 
+(Refer to INFO 2304 (SAD) - Requirement Gathering chapter) 
+- 
+Survey questionnaire 
+- 
+End user, application user interview 
+- 
+Research and site visit 
+- 
+Observation 
+ 
+5.2.1 The Findings 
+Report the descriptive analysis of your data collection findings. You may use statistical tools 
+(such as Excel or SPSS) to generate the visual results in the form of a table or chart. 
+ 
+Explain in detail each of the features or functions that the user has agreed to include as part 
+of the system or the proposed features or functions to be included in the system. 
+ 
+5.3 CONCEPTUAL DESIGN 
+The design stage comprises of the following activities: 
+- 
+The concept of the story 
+- 
+The theme 
+- 
+The Islamic value/da’wah 
+ 
+ 
+
+ 
+19 
+ 
+5.4 STORY STRUCTURE 
+Describe your digital story. Your story must have a beginning, the middle and the ending, as 
+well as character(s) and background design. 
+ 
+5.4.1 Story Plot/Script 
+Describe in detail your story plot, role of all the characters involved, etc. 
+ 
+5.4.2 Character Design 
+Describe in detail each of your characters, including antagonist/protagonist character (if 
+any). Please provide a sketch of model sheet for each character. 
+ 
+5.5 STORYBOARD 
+ 
+Provide scene-by-scene descriptions accompanied by a storyboard. Your storyboard must 
+include drawn out scenes, dialogue and multimedia elements embedded (e.g. audio or 
+video). 
+ 
+ 
+
+ 
+20 
+ 
+CHAPTER 3 
+CHAPTER FOUR: RESULTS AND FINDINGS 
+3 
+Methodology 
+METHODOLOGY 
+(Pre-Production of E-Learning Application) 
+3.0 INTRODUCTION 
+ 
+Explain in general about this chapter and its significance to the analysis and design of your 
+e-learning application. 
+(One paragraph only) 
+ 
+3.1 DEVELOPMENT APPROACH 
+State in detail the development approach that you used to develop the application for e-
+learning. This can either be ADDIE (classic model), ASSURE model, Rapid ISD Model, 
+Successive Approximation Model (SAM) or any other suitable model. State your reason for 
+choosing that approach and its relation to your project. 
+ 
+3.2 REQUIREMENT SPECIFICATION/DATA COLLECTIONS 
+For user requirements specification, you can use any of the methods below to gather user 
+requirements. This includes all possible users for the project. 
+(Refer to INFO 2304 (SAD) – Requirement Gathering chapter) 
+ 
+- 
+Survey questionnaire 
+- 
+End user, application user interview 
+- 
+Research and site visit 
+- 
+Observation 
+ 
+3.2.1 The Findings 
+Report the descriptive analysis of your data collection findings. You may use statistical tools 
+(such as Excel or SPSS) to generate the visual results in the form of a table or chart. 
+ 
+Explain in detail each of the features or functions that the user has agreed to include as part 
+of the system or the proposed features or functions to be included in the system. 
+ 
+
+ 
+21 
+ 
+3.3 THE NEEDS ANALYSIS 
+ 
+The purpose of conducting the needs analysis to determine whether: 
+- 
+The learning application is required to fill a gap in public/student/professional knowledge 
+and skills. 
+- 
+E-learning is the best solution to deliver knowledge/training. 
+ 
+The needs analysis allows the identification of general, high-level course goals. 
+ 
+Target audience analysis is a crucial step. The design and delivery of e-learning will be 
+influenced by key characteristics of the learners (e.g. their previous knowledge/skills, 
+geographical provenance, learning context and access to technology). 
+ 
+Analysis also is needed to determine the course content: 
+ 
+- 
+Task analysis identifies the learning tasks that learners/users should follow to improve 
+their knowledge and skills that need to be developed. 
+- 
+Topic analysis is carried out to identify and classify the course content. This is typical of 
+those courses that are primarily designed to provide information. 
+ 
+3.4 THE APPLICATION DESIGN 
+ 
+The design stage encompasses the following activities: 
+- 
+Formulating a set of learning objectives required 
+- 
+Defining the order in which the objectives should be achieved (sequencing) 
+- 
+Selecting instructional, media, evaluation and delivery strategies 
+ 
+The outcome of the design stage is a blueprint that will be used as a reference to develop 
+the course. The blueprint illustrates the curriculum structure (e.g. college/school courses, 
+topics, lessons, activities). 
+ 
+
+ 
+22 
+ 
+3.5 CONTENT DEVELOPMENT 
+Writing or collecting all the required knowledge and information. 
+ 
+3.6 NAVIGATION FLOW OF THE APPLICATION 
+Provide the details navigation or page flow of your system starting from login until the user 
+signs out (e.g. dialogue chart). 
+ 
+3.7 STORYBOARD 
+Integrating instructional methods (all the pedagogical elements needed to support the 
+learning process) and media elements. Storyboard is a document that describes all the 
+components of the final interactive products, including images, text, interactions, and 
+assessment tests. 
+ 
+
+ 
+23 
+ 
+CHAPTER 3 
+CHAPTER FOUR: RESULTS AND FINDINGS 
+3 
+Methodology 
+METHODOLOGY 
+(Pre-Production of Game Development) 
+3.0 INTRODUCTION 
+Explain in general about this chapter and its significance to the analysis and design of your 
+game. 
+(One paragraph only) 
+ 
+3.1 DEVELOPMENT APPROACH 
+State in detail the development approach that you used to develop the whole project. State 
+why you choose the approach and its relation to your project. 
+(Pre-production stage, production stage and post-production stage) 
+ 
+3.2 STRUCTURE 
+Describe your game. Your game must have the beginning, the middle and the ending, as well 
+as character(s) and background design. 
+ 
+3.2.1 Story Plot 
+Describe in details your story plot, theme, etc. 
+ 
+3.2.2 Character Design 
+Describe in detail each of your character. Please provide a sketch of model sheet for each 
+character. 
+ 
+3.3 STORYBOARD 
+Provide scene-by-scene descriptions accompanied by a storyboard. A storyboard must 
+include drawn out scenes, dialogue and special effects. 
+ 
+ 
+
+ 
+24 
+ 
+FOR INFO 4402 (FYP2) ONLY. PLEASE REMOVE FROM INFO 4401 (FYP1) 
+REPORT 
+ 
+CHAPTER 4 
+CHAPTER FOUR: RESULTS AND FINDINGS 
+4 
+Methodology 
+PROJECT DEVELOPMENT, IMPLEMENTATION AND EVALUATION  
+(Production and Post-Production of System Development) 
+4.0 INTRODUCTION 
+Briefly describe the chapter and the completed project (final product). 
+ 
+4.1 SYSTEM INTEGRATION 
+This part must include the main page or main website for the system, and it must be a 
+screenshot of the main system. For a group project, you need to combine and complete the 
+whole system. 
+ 
+4.2 SYSTEM OUTPUT 
+ 
+Preface statements or subject of introductory to this subtopic. 
+ 
+4.2.1 Administrator 
+Screen shots for all administrator functions or modules. 
+ 
+4.2.2 User(s) 
+Screen shots for all users’ functions and modules. 
+ 
+4.3 SYSTEM TESTING 
+Preface statements or subject of introductory to this subtopic. 
+ 
+4.3.1 Test Plan 
+ 
+State the test plan and activities involved and draw a conclusion from the test plan and state 
+the comments given by the users (e.g. User Acceptance Test (UAT), etc.). 
+ 
+4.3.2 Enhancement 
+ 
+Based on user testing, what are the functions and modules that need improvement? 
+
+ 
+25 
+ 
+FOR INFO 4402 (FYP2) ONLY. PLEASE REMOVE FROM INFO 4401 (FYP1) 
+REPORT 
+ 
+CHAPTER 4 
+CHAPTER FOUR: RESULTS AND FINDINGS 
+5 
+Methodology 
+PROJECT DEVELOPMENT, IMPLEMENTATION AND EVALUATION  
+(Production and Post-Production of Digital Storytelling) 
+5.0 INTRODUCTION 
+Briefly describe about the chapter and the final product of the project. This stage focuses on 
+the production of the project’s content. The content can vary considerably, depending on 
+the available resources (e.g. the combination of various media such as animation and video). 
+ 
+5.1 FINAL COMPOSITION (Production) 
+Explain the development of media and interactive components. 
+ 
+5.1.1 Digitizing Art 
+Existing icons, buttons, photographs, illustrations, and graphics are digitized for use in an 
+electronic medium. Electronically generated art as well as digitized art must be ready for use. 
+These include the number of colours, palettes, resolution, format, and size that need to be 
+addressed. 
+(Require Screenshots) 
+ 
+5.1.2 2D/3D Modelling and Animation 
+Describe the production of 3-D artwork through the selected authoring tool (rendering, 
+preparing for production of 3-D artwork). 3-D animation development needs to follow the 
+story flow in the storyboards and scheduled period in the Gantt chart. 
+(Require Screenshots) 
+ 
+5.2 RECORDING AND DIGITIZING AUDIO 
+Explain the voice-over process (or a composer, if music is used) to be embedded in the 
+project (application), performers and time schedules after the recording session is 
+scheduled. 
+ 
+
+ 
+26 
+ 
+5.3 IMPLEMENTATION 
+ 
+This stage focuses on project (application) delivery to the users. The rendered application is 
+now accessible to users (e.g. installed on a server). Elaborate the process of producing the 
+application in the chosen formats: 
+- 
+CD-ROM 
+- 
+Web 
+- 
+Mobile 
+- 
+Etc. 
+Explain the reason for the selected delivery format. 
+ 
+5.4 EVALUATION/TESTING (Post-Production) 
+ 
+Overview statements or subject of introductory to this subtopic. 
+ 
+The evaluation of digital storytelling project is done through alpha and beta testing for 
+specific evaluation purposes. You may want to evaluate: 
+ 
+- 
+Learners’ reactions. 
+- 
+The achievement of learning objectives. 
+- 
+The transfer of knowledge and skills. 
+- 
+The impact of the project on the organization. 
+ 
+5.4.1 Test Plan 
+State the test plan and activities involved. Write a conclusion from the test plan and state 
+the comments given by the users. 
+ 
+5.4.2 Enhancement 
+ 
+Based on user testing, what are the elements that need improvement? 
+ 
+ 
+
+ 
+27 
+ 
+CHAPTER 4 
+CHAPTER FOUR: RESULTS AND FINDINGS 
+6 
+Methodology 
+PROJECT DEVELOPMENT, IMPLEMENTATION AND EVALUATION  
+(Production and Post-Production of E-Learning Application and Game Development) 
+6.1 INTRODUCTION 
+Briefly describe the chapter and the final product of the project. 
+ 
+This stage focuses on the production of project’s content. The content can vary considerably, 
+depending on the available resources (e.g. the combination of various media such as 
+animation and video). 
+ 
+6.2 APPLICATION DEVELOPMENT (Production) 
+Explain the development of media and interactive components. 
+ 
+6.2.1 Digitizing 2D/3D Art 
+Digitization of all the characters for electronic medium. Electronically generated art as well 
+as digitized art must be prepared for implementation. These include the number of colours, 
+palettes, resolution, format, and size that need to be addressed. 
+(Require Screenshots) 
+ 
+6.2.2 Digitizing Scenes 
+The whole storyline should be transformed into visual format (digital) according to the 
+storyboard.  
+ 
+(Require Screenshots) 
+ 
+6.2.3 Recording and Digitizing Audio 
+Explain the voice-over process (or a composer, if using music) to be embedded for the 
+application, performers and time schedules after which the recording session is scheduled. 
+ 
+6.2.4 Authoring 
+All the pieces come together in the authoring tool. Functionality is programmed, and 2-D 
+animation is developed. At this stage, the final working product is created. 
+(Require Screenshots) 
+
+ 
+28 
+ 
+6.3 IMPLEMENTATION 
+ 
+This stage focuses of project (application) delivery to the users (learners). The rendered 
+application is now accessible to users (e.g. installed on a server). Elaborate the process of 
+producing the application in the chosen formats: 
+- 
+CD-ROM 
+- 
+Web 
+- 
+Mobile 
+- 
+Etc. 
+Explain the reason for the selected delivery format. 
+ 
+6.4 EVALUATION/TESTING (Post-Production) 
+ 
+Overview statements or subject of introductory to this subtopic. 
+ 
+The evaluation of the project is done through alpha and beta testing for specific evaluation 
+purposes. You may want to evaluate: 
+- 
+Users’ reactions. 
+- 
+The achievement of storytelling objectives. 
+- 
+The transfer of knowledge and skills. 
+- 
+The impact of the project on the organization. 
+ 
+6.4.1 Test Plan 
+State the test plan and activities involved. Write a conclusion from the test plan and state 
+the comments given by the users. 
+6.4.2 Enhancement 
+ 
+Based on user testing/comments, what are the elements that need for improvement? 
+
+ 
+29 
+ 
+FOR INFO 4402 (FYP2) ONLY. PLEASE REMOVE FROM INFO 4401 (FYP1) 
+REPORT 
+ 
+CHAPTER 5 
+CHAPTER FOUR: RESULTS AND FINDINGS 
+7 
+Methodology 
+CONCLUSION  
+(System Development, Digital Storytelling, E-Learning Application and Game Development) 
+ 
+7.0 PROJET REQUIREMENT 
+State the completed and uncompleted requirements for your project. Refer to chapter 3. 
+Explain why the requirements are not completed. 
+ 
+7.1 PROJECT CONSTRAINT 
+State the limitations of the project and explain why. For example, a mobile app that uses 
+internal storage would not be able to share data with other users. Do not include time 
+constraint! (This indicates that you are doing your work at the last minute). 
+ 
+7.2 FUTURE ENHANCEMENT 
+ 
+What are the modules, functions, features, or system capabilities that need improvements 
+in the future? State them in this section. This will allow other students to extend or 
+implement the stated enhancements in the future. 
+ 
+7.3 CONCLUSION 
+Summarize the important points, the limitations and enhancements for the project. 
+ 
+ 
+
+ 
+30 
+ 
+REFERENCES AND GUIDELINES 
+ 
+i. 
+An APA citation (in-text and reference list) is required for the report. Details on 
+various citation formats can be referred at Purdue Online Writing Lab: 
+https://owl.purdue.edu/owl/index.html 
+ii. 
+You may use Mendeley as your referencing tool:  
+https://www.mendeley.com/ 
+https://www.youtube.com/watch?v=OzFHGFnAM2Q 
+ 
+ 
+ 
+
+ 
+31 
+ 
+REPORT FORMAT GUIDELINES 
+ 
+i. 
+Please refer to the FYP REPORT TEMPLATE. 
+ii. 
+For INFO 4401 (FYP 1), Here is the content for the report. 
+- 
+COVER PAGE  
+- 
+ABSTRACT 
+- 
+TABLE OF CONTENTS  
+- 
+LIST OF TABLES 
+- 
+LIST OF FIGURES / ILLUSTRATIONS 
+- 
+LIST OF ABBREVIATIONS / SYMBOLS  
+- 
+CHAPTER 1 INTRODUCTION 
+- 
+CHAPTER 2 LITERATURE REVIEW  
+- 
+CHAPTER 3 METHODOLOGY  
+- 
+REFERENCES 
+- 
+APPENDICES - Gantt chart to be included as Appendix.  
+- 
+GLOSSARY - Definition of Terms and Abbreviations (if needed) 
+- 
+INDEX (if needed) 
+iii. 
+For INFO 4402 (FYP 2), Here is the content for the report. 
+ 
+- 
+COVER PAGE  
+- 
+ABSTRACT 
+- 
+TABLE OF CONTENTS  
+- 
+LIST OF TABLES 
+- 
+LIST OF FIGURES / ILLUSTRATIONS 
+- 
+LIST OF ABBREVIATIONS / SYMBOLS  
+- 
+CHAPTER 1 INTRODUCTION 
+- 
+CHAPTER 2 LITERATURE REVIEW  
+- 
+CHAPTER 3 METHODOLOGY  
+- 
+CHAPTER 4- PROJECT DEVELOPMENT, IMPLEMENTATION AND EVALUATION 
+- 
+CHAPTER 5- CONCLUSION 
+- 
+REFERENCES 
+- 
+APPENDICES - Gantt chart to be included as Appendix.  
+- 
+GLOSSARY - Definition of Terms and Abbreviations (if needed) 
+- 
+INDEX (if needed) 
+
+ 
+32 
+ 
+For INFO 4401 (FYP1), students are required to write a report according to the above format 
+and 100% completion of interface/prototype design. This format is just a guideline, but your 
+supervisor has the right to determine the actual contents of the report. 
+ 
+This subject requires rigor readings, writings and weekly consultancy with supervisor. 
+Students will have another semester for system development and multimedia production 
+for INFO 4402 (FYP 2). 
+ 
+ 
+
+ 
+33 
+ 
+GENERAL REPORT FORMAT GUIDELINES 
+ 
+1.0 
+Language 
+ 
+The language of the project paper is English. 
+ 
+2.0 
+Font Size and Type 
+Students MUST use Arial. Other fonts are NOT ACCEPTABLE. 
+Font Size: 
+• 
+For Headings and subheadings, use 12-point font. 
+• 
+For Table of Contents, use 11-point font. 
+• 
+For Text, use 11-point font. 
+• 
+For Tables and Figures, use 11-point. 
+• 
+For Footnotes, use 9-point font. 
+ 
+Please type in bold for headings and subheadings. Headings must use all upper case letters, 
+and sub-headings must use upper and lower case letters. 
+ 
+3.0 
+Line spacing 
+The project report should be written on single sided page. Line spacing is 1.5 lines for the 
+text, with single-spacing for exceptional circumstances only: 
+• 
+Footnotes 
+• 
+Long headings or subheadings 
+• 
+Long captions to tables, or figures 
+• 
+References 
+• 
+Appendices 
+• 
+Tables 
+• 
+Quotations 
+  
+4.0 
+Margins and Justification 
+Set the justification to “full” and the margins to the following measurements:  
+TOP 
+ 
+: 1” 
+BOTTOM 
+: 1” 
+LEFT 
+ 
+: 1.5” 
+RIGHT  
+: 1” 
+ 
+5.0 
+Pagination 
+The page-numbering format is standardized and must be observed. Alignment of all page 
+numbers is on the right at the bottom of the page (footer). 
+ 
+a. Preliminary pages. Preliminary pages include all the sections that precede the 
+text. They are arranged and numbered using small Roman numerals (i, ii, iii, etc.). 
+b. Text pages. Use format <page number>. 
+c. Supplementary pages. No pagination. 
+ 
+
+ 
+34 
+ 
+6.0 
+Use of Footnotes 
+Footnotes MUST NOT be used for citing references. They should be used only for 
+useful extensions and excursions of information in the body of the text. Footnotes 
+should be numbered consecutively with superscript numerals. Footnotes should be 
+in single spacing, using font size 9-point. 
+ 
+7.0 
+Header and Footer 
+Alignment of the chapter or topic is on the right at the top of page, using font size 9-
+point. 
+ 
+Footer: 
+Alignment of the page numbers is on the right at the bottom of the page, using font 
+size 9-point. The page number format: 
+• 
+Roman numerals for preliminary pages. 
+• 
+<Page Number> for text pages. 
+ 
+ 
+ 
+ 
+
+ 
+35 
+ 
+COVER PAGE EXAMPLE FOR INFO 4401 (FYP 1) /INFO 4402 (FYP 2) REPORT 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Arial 18 
+Arial 16 
+Arial 14 
+1”/2.5cm 
+ 
+1”/2.5cm 
+ 
+1”/2.5cm 
+ 
+1”/2.5cm 
+ 
+
+ 
+36 
+ 
+ 
+Supervisor Approval page for INFO 4402 (FYP 2) REPORT 
+ 
+ 
+ 
+ 
+ 
+ 
+1”/2.5cm 
+ 
+1”/2.5cm 
+ 
+1.5”/4cm 
+ 
+1”/2.5cm 
+ 
+Arial 14 
+
+ 
+37 
+ 
+Certificate of Originality page for INFO 4402 (FYP 2) REPORT 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+1”/2.5cm 
+ 
+1”/2.5cm 
+ 
+1.5”/4cm 
+ 
+1”/2.5cm 
+ 
+Arial 14 
+
+ 
+38 
+ 
+Acknowledgment page for INFO 4402 (FYP 2) REPORT 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+1”/2.5cm 
+ 
+1”/2.5cm 
+ 
+1.5”/4cm 
+ 
+1”/2.5cm 
+ 
+Arial 14 
+
+ 
+39 
+ 
+Abstract page for INFO 4401 (FYP 1) and INFO 4402 (FYP 2) REPORT 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+1”/2.5cm 
+ 
+1”/2.5cm 
+ 
+1.5”/4cm 
+ 
+1”/2.5cm 
+ 
+Arial 14 
+
+ 
+40 
+ 
+Table of Content page for INFO 4401 (FYP 1) and INFO 4402 (FYP 2) REPORT 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+1”/2.5cm 
+ 
+1.5”/4cm 
+ 
+1”/2.5cm 
+ 
+Arial 14 
+1”/2.5cm 
+ 
+
+ 
+41 
+ 
+List of Figures page for INFO 4401 (FYP 1) and INFO 4402 (FYP 2) REPORT 
+ 
+ 
+ 
+ 
+ 
+1”/2.5cm 
+ 
+ 
+1.5”/4cm 
+ 
+1”/2.5cm 
+ 
+Arial 14 
+1”/2.5cm 
+ 
+
+ 
+42 
+ 
+List of Tables page for INFO 4401 (FYP 1) and INFO 4402 (FYP 2) REPORT 
+ 
+ 
+ 
+ 
+ 
+ 
+1”/2.5cm 
+ 
+1”/2.5cm 
+ 
+1.5”/4cm 
+ 
+1”/2.5cm 
+ 

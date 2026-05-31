@@ -15,7 +15,16 @@
 import { getComponentDef } from './component-library.js';
 import { generateWireColor } from './utils/wire-path.js';
 import { PIN_ALIASES } from './component-library.js';
-import { routeAll } from './services/routing-engine.js';
+import { routeAll, clearRoutingCache } from './services/routing-engine.js';
+
+function distToSegment(px, py, x1, y1, x2, y2) {
+    const l2 = (x1 - x2) ** 2 + (y1 - y2) ** 2;
+    if (l2 === 0) return Math.hypot(px - x1, py - y1);
+    let t = ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / l2;
+    t = Math.max(0, Math.min(1, t));
+    return Math.hypot(px - (x1 + t * (x2 - x1)), py - (y1 + t * (y2 - y1)));
+}
+
 class CircuitStore extends EventTarget {
     constructor() {
         super();
@@ -701,6 +710,8 @@ class CircuitStore extends EventTarget {
      * @returns {Promise<{ routed: number, failed: number, errors: string[] }>}
      */
     async cleanupWires() {
+        clearRoutingCache();
+        this.resetWireRouting();
         return await routeAll();
     }
 

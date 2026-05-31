@@ -3,6 +3,7 @@ import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { componentLibrary, getComponentDef } from '../component-library.js';
 import { store } from '../store.js';
 import { autoWire } from '../services/auto-wire-engine.js';
+import { faIcon } from '../utils/fa-icons.js';
 
 class PlacedComponent extends LitElement {
     static properties = {
@@ -54,6 +55,16 @@ class PlacedComponent extends LitElement {
 
     .wokwi-container {
       pointer-events: none;
+    }
+
+    .custom-image {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      pointer-events: none;
+      user-select: none;
+      -webkit-user-drag: none;
     }
 
     /* Pin dots — hidden by default, shown on hover (like Tinkercad) */
@@ -161,6 +172,11 @@ class PlacedComponent extends LitElement {
       line-height: 1;
       transition: all 0.15s;
       opacity: 0.7;
+    }
+
+    .action-btn svg {
+      width: 10px;
+      height: 10px;
     }
 
     .action-btn:hover {
@@ -277,6 +293,14 @@ class PlacedComponent extends LitElement {
     }
 
     _readPinInfo(retries = 50) {
+        const def = getComponentDef(this.componentId);
+        if (def?.type === 'custom') {
+            this._pinInfo = [...(def.customPins || [])];
+            store.registerPinInfo(this.instanceId, this._pinInfo);
+            this.requestUpdate();
+            return;
+        }
+
         const container = this.shadowRoot && this.shadowRoot.querySelector('.wokwi-container');
         if (!container) return;
 
@@ -315,14 +339,14 @@ class PlacedComponent extends LitElement {
           ${showAutoWire ? html`
             <button class="action-btn autowire-btn"
               @click=${this._onAutoWire}
-              title="Auto-wire to Arduino">⚡</button>
+              title="Auto-wire to Arduino">${faIcon('bolt')}</button>
           ` : ''}
           <button class="action-btn rotate-btn"
             @click=${this._onRotate}
-            title="Rotate (R)">↻</button>
+            title="Rotate (R)">${faIcon('rotateRight')}</button>
           <button class="action-btn delete-btn"
             @click=${this._onDelete}
-            title="Remove component (Del)">×</button>
+            title="Remove component (Del)">${faIcon('xmark')}</button>
         </div>
 
         ${this._autoWireMsg ? html`
@@ -332,9 +356,13 @@ class PlacedComponent extends LitElement {
         ` : ''}
 
         <div class="rotatable-group" style="width: ${width}px; height: ${height}px; transform: rotate(${rot}deg);">
-          <div class="wokwi-container" style="position: absolute; left: 0; top: 0; width: 100%; height: 100%;">
-            ${unsafeHTML(tagHtml)}
-          </div>
+          ${def.type === 'custom' ? html`
+            <img class="custom-image" src=${def.imageUrl} alt=${def.name} />
+          ` : html`
+            <div class="wokwi-container" style="position: absolute; left: 0; top: 0; width: 100%; height: 100%;">
+              ${unsafeHTML(tagHtml)}
+            </div>
+          `}
           ${this._pinInfo.map(pin => this._renderPin(pin))}
         </div>
 
@@ -373,6 +401,14 @@ class PlacedComponent extends LitElement {
     }
 
     _getPinClass(pin) {
+        const normalizedType = String(pin?.type || '').toUpperCase();
+        const normalizedName = String(pin?.name || '').toUpperCase();
+        const powerNames = new Set(['VCC', 'VDD', 'VIN', 'V+', 'PWR', 'POWER', '5V', '3.3V']);
+        const groundNames = new Set(['GND', 'VSS', 'GND2', 'DGND', 'AGND']);
+
+        if (powerNames.has(normalizedType) || powerNames.has(normalizedName)) return 'power';
+        if (groundNames.has(normalizedType) || groundNames.has(normalizedName)) return 'ground';
+
         const sigs = pin.signals || [];
         for (const sig of sigs) {
             if (sig.signal === 'GND') return 'ground';
@@ -406,9 +442,9 @@ class PlacedComponent extends LitElement {
         store.commitAutoWire();
 
         if (result.success) {
-            let text = '✓ Wired: ' + result.wired.join(', ');
+            let text = 'Wired: ' + result.wired.join(', ');
             if (result.added && result.added.length > 0) {
-                text += ' · Added: ' + [...new Set(result.added)].join(', ');
+                text += ' | Added: ' + [...new Set(result.added)].join(', ');
             }
             this._autoWireMsg = { ok: true, text };
         } else if (result.wired.length > 0) {

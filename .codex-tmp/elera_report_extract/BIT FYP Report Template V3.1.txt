@@ -1,0 +1,416 @@
+KULLIYYAH OF INFORMATION AND COMMUNICATION TECHNOLOGY
+DEPARTMENT OF INFORMATION SYSTEMS
+INFO 440X REPORT
+THE AWARENESS OF PRIVACY ISSUES ON INTERNET
+MOHD HANAS HUSIN
+20014586
+SUPERVISED BY
+MOHD ABU BAKAR
+Report submitted in fulfilment of the requirements for Bachelor of Information Technology (Hons)
+Kulliyyah of Information and Communication Technology
+MARCH 2024
+SEMESTER 2, 2023/2024
+SUPERVISOR APPROVAL
+SUPERVISOR APPROVAL
+FOR INFO 4402 (FYP2) ONLY. PLEASE REMOVE FROM INFO 4401 (FYP1) REPORT
+PROJECT TITLE
+By
+STUDENT NAME
+STUDENT’S ID
+This report was prepared under the supervision of the project supervisor, Supervisor’s name. It was submitted to the Department of Information Systems, Kulliyyah of Information and Communication Technology and was accepted in partial fulfilment of the requirements for the degree of Bachelor of Information Technology (Hons).
+Approved by
+……………………………………………
+Supervisor’s name
+Supervisor,
+Department of Information Systems,
+Kulliyyah of Information and Communication Technology
+MARCH 2024
+SEMESTER 2, 2023/2024
+CERTIFICATE OF ORIGINALITY
+FOR INFO 4402 (FYP2) ONLY. PLEASE REMOVE FROM INFO 4401 (FYP1) REPORT
+This is to certify that I am responsible for the work submitted in this project, that the original work is my own except as specified in the references and acknowledgements, and that the original work contained herein have not been taken or done by unspecified sources or persons.
+……………………………………………
+STUDENT’S NAME
+STUDENT ID
+MARCH 2024
+SEMESTER 2, 2023/2024
+ACKNOWLEDGEMENT
+ACKNOWLEDGEMENT
+FOR INFO 4402 (FYP2) ONLY. PLEASE REMOVE FROM INFO 4401 (FYP1) REPORT
+Praise and thanks to Allah first and foremost whose blessing enabled me to accomplish this project.
+I wish to express my deepest appreciation to my supervisor, supervisor’s name for relentless guidance, helpful suggestion, close supervision and moral encouragement to complete this task.
+A special thank you to my parents and to all the lecturers I have had. Thank you to Lecturer’s name (you can put more than one).
+Special appreciation also goes to my beloved parents, Parent’s name.
+Last but not least, I would like to give my gratitude to my dearest friend, Friends’ name (you can put more than one).
+ABSTRACT
+ABSTRACT
+Must be between 250 – 300 words.
+For INFO 4401 (FPY1), must contain project motivation/problem statement, methodology.
+For INFO 4402 (FYP2), must contain project motivation/problem statement, methodology, result and discussion.
+TABLE OF CONTENTS
+TABLE OF CONTENTS
+CONTENTS								                PAGE
+SUPERVISOR APPROVAL	ii
+CERTIFICATE OF ORIGINALITY	iii
+ACKNOWLEDGEMENT	1
+ABSTRACT	2
+TABLE OF CONTENTS	3
+LIST OF FIGURES	7
+LIST OF TABLES	8
+1.0	PREAMBLE	9
+1.1	PROBLEM DESCRIPTION	9
+1.1.1	Background of the problem	9
+1.1.2	Problem Statement	9
+1.2	PROJECT OBJECTIVE	10
+1.3	PROJECT SCOPE	10
+1.3.1	Scope	10
+1.3.2	Target Audience	10
+1.3.3	Specific Platform	10
+1.4	CONSTRAINTS	10
+1.5	PROJECT STAGES	10
+1.6	SIGNIFICANCE OF THE PROJECT	11
+1.7	SUMMARY	11
+CHAPTER THREE: METHODOLOGY	12
+2.0	INTRODUCTION	12
+2.1	SYSTEM REVIEW DIGITAL STORYTELLING/E-LEARNING APPLICATION/GAME REVIEW (Please remove the unnecessary).	12
+2.1.1	Existing System/ Digital Storytelling/E-Learning Application/Game Development (Please slash the unnecessary).	12
+2.1.2	Advantages	12
+2.1.3	Disadvantages	12
+2.2	DISCUSSION	13
+CHAPTER FOUR: RESULTS AND FINDINGS	14
+3.0	INTRODUCTION	14
+3.1	DEVELOPMENT APPROACH	14
+3.2	REQUIREMENTS SPECIFICATION	14
+3.3	LOGICAL DESIGN	14
+3.3.1	System Analysis and Design Diagram	14
+3.3.2	Data Flow Diagram (if applicable)	14
+3.4	DATABASE DESIGN	15
+3.5	USER INTERFACE/PROTTYPE DESIGN	15
+3.6	SUMMARY	15
+CHAPTER FOUR: RESULTS AND FINDINGS	16
+4.1	INTRODUCTION	16
+4.2	REQUIREMENT SPECIFICATIONS/DATA COLLECTIONS	16
+4.2.1	The Findings	16
+4.3	CONCEPTUAL DESIGN	16
+4.4	STORY STRUCTURE	16
+4.4.1	Story Plot/Script	16
+4.4.2	Character Design	17
+4.5	STORYBOARD	17
+CHAPTER FOUR: RESULTS AND FINDINGS	18
+3.0	INTRODUCTION	18
+3.1	DEVELOPMENT APPROACH	18
+3.2	REQUIREMENT SPECIFICATION/DATA COLLECTIONS	18
+3.2.1	The Findings	18
+3.3	THE NEEDS ANALYSIS	18
+3.4	THE APPLICATION DESIGN	18
+3.5	CONTENT DEVELOPMENT	18
+3.6	NAVIGATION FLOW OF THE APPLICATION	19
+3.7	STORYBOARD	19
+CHAPTER FOUR: RESULTS AND FINDINGS	20
+3.0	INTRODUCTION	20
+3.1	DEVELOPMENT APPROACH	20
+3.2	STRUCTURE	20
+3.2.1	Story Plot	20
+3.2.2	Character Design	20
+3.3	STORYBOARD	20
+CHAPTER FOUR: RESULTS AND FINDINGS	21
+4.0	INTRODUCTION	21
+4.1	SYSTEM INTEGRATION	21
+4.2	SYSTEM OUTPUT	21
+4.2.1	Administrator	21
+4.2.2	User(s)	21
+4.3	SYSTEM TESTING	21
+4.3.1	Test Plan	21
+4.3.2	Enhancement	22
+CHAPTER FOUR: RESULTS AND FINDINGS	23
+5.1	INTRODUCTION	23
+5.2	FINAL COMPOSITION (Production)	23
+5.2.1	Digitizing Art	23
+5.2.2	2D//3D Modelling and Animation	23
+5.3	RECORDING AND DIGITIZING AUDIO	23
+5.4	IMPLEMENTATION	24
+5.5	EVALUATION/TESTING (Post-Production)	24
+5.5.1	Test Plan	24
+5.5.2	Enhancement	24
+CHAPTER FOUR: RESULTS AND FINDINGS	25
+6.1	INTRODUCTION	25
+6.2	APPLICATION DEVELOPMENT (Production)	25
+6.2.1	Digitizing 2D/3D Art	25
+6.2.2	Digitizing Scenes	25
+6.2.3	Recording And Digitizing Audio	25
+6.2.4	Authoring	25
+6.3	IMPLEMENTATION	25
+6.4	EVALUATION/TESTING (Post-Production)	26
+6.4.1	Test Plan	26
+6.4.2	Enhancement	26
+CHAPTER FOUR: RESULTS AND FINDINGS	27
+7.0	PROJET REQUIREMENT	27
+7.1	PROJECT CONSTRAINT	27
+7.2	FUTURE ENHANCEMENT	27
+7.3	CONCLUSION	27
+REFERENCE	28
+APPENDICES	29
+LIST OF FIGURES
+LIST OF FIGURES
+FIGURE									        PAGE
+Figure 1 Scene 1.	23
+LIST OF TABLES
+LIST OF TABLES
+TABLE									PAGE
+Table 2-1 A Table	13
+CHAPTER 1
+Introduction
+INTRODUCTION
+(System Development, Digital Storytelling, E-Learning Application, and Game Development) – Remove this.
+PREAMBLE
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+PROBLEM DESCRIPTION
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+Background of the problem
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+Problem Statement
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+PROJECT OBJECTIVE
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+PROJECT SCOPE
+Overview statements or subject of introductory to this subtopic.
+Scope
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+Target Audience
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+Specific Platform
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+CONSTRAINTS
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+PROJECT STAGES
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+SIGNIFICANCE OF THE PROJECT
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+SUMMARY
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+CHAPTER 2
+CHAPTER THREE: METHODOLOGY
+Literature Review
+LITERATURE REVIEW
+(System Development, Digital Storytelling, E-Learning Application, and Game Development) – Remove this.
+INTRODUCTION
+(System Development, Digital Storytelling, E-Learning Application, and Game Development)
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+SYSTEM REVIEW DIGITAL STORYTELLING/E-LEARNING APPLICATION/GAME REVIEW (Please remove the unnecessary).
+Overview statements or subject of introductory to this subtopic.
+Existing System/ Digital Storytelling/E-Learning Application/Game Development (Please slash the unnecessary).
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+Use an APA citation for the product/system review (Developer/Company, Year of release). For example (Facebook, 2016). Refer to APA Style for details.
+Advantages
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+Disadvantages
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+(Compare each of the products)
+DISCUSSION
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+Table 2-1 A Table
+CHAPTER 3
+CHAPTER FOUR: RESULTS AND FINDINGS
+Methodology
+METHODOLOGY
+(Pre-Production of System Development) – Remove this.
+INTRODUCTION
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+DEVELOPMENT APPROACH
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+REQUIREMENTS SPECIFICATION
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+LOGICAL DESIGN
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+System Analysis and Design Diagram
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+Data Flow Diagram (if applicable)
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+DATABASE DESIGN
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+USER INTERFACE/PROTTYPE DESIGN
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+SUMMARY
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+CHAPTER 3
+CHAPTER FOUR: RESULTS AND FINDINGS
+Methodology
+METHODOLOGY
+(Pre-Production of Digital Storytelling) – Please remove this.
+INTRODUCTION
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+REQUIREMENT SPECIFICATIONS/DATA COLLECTIONS
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+The Findings
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+CONCEPTUAL DESIGN
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+STORY STRUCTURE
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+Story Plot/Script
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+Character Design
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+STORYBOARD
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+CHAPTER 3
+CHAPTER FOUR: RESULTS AND FINDINGS
+Methodology
+METHODOLOGY
+(Pre-Production of E-Learning Application) – Please remove this.
+INTRODUCTION
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+DEVELOPMENT APPROACH
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+REQUIREMENT SPECIFICATION/DATA COLLECTIONS
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+The Findings
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+THE NEEDS ANALYSIS
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+THE APPLICATION DESIGN
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+CONTENT DEVELOPMENT
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+NAVIGATION FLOW OF THE APPLICATION
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+STORYBOARD
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+CHAPTER 3
+CHAPTER FOUR: RESULTS AND FINDINGS
+Methodology
+METHODOLOGY
+(Pre-Production of Game Development) – Please remove this.
+INTRODUCTION
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+DEVELOPMENT APPROACH
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+STRUCTURE
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+Story Plot
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+Character Design
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+STORYBOARD
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+FOR INFO 4402 (FYP2) ONLY. PLEASE REMOVE FROM INFO 4401 (FYP1) REPORT
+CHAPTER 4
+CHAPTER FOUR: RESULTS AND FINDINGS
+Methodology
+PROJECT DEVELOPMENT, IMPLEMENTATION AND EVALUATION 
+(Production and Post-Production of System Development) – Please remove this.
+INTRODUCTION
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+SYSTEM INTEGRATION
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+SYSTEM OUTPUT
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+Administrator
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+User(s)
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+SYSTEM TESTING
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+Test Plan
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+Enhancement
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+FOR INFO 4402 (FYP2) ONLY. PLEASE REMOVE FROM INFO 4401 (FYP1) REPORT
+CHAPTER 4
+CHAPTER FOUR: RESULTS AND FINDINGS
+Methodology
+PROJECT DEVELOPMENT, IMPLEMENTATION AND EVALUATION 
+(Production and Post-Production of Digital Storytelling) – Please emove this.
+INTRODUCTION
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+FINAL COMPOSITION (Production)
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum in Figure 1
+Figure  SEQ Figure \* ARABIC 1 Scene 1.
+Figure  SEQ Figure \* ARABIC 1 Scene 1.
+Digitizing Art
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+2D//3D Modelling and Animation
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+RECORDING AND DIGITIZING AUDIO
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+IMPLEMENTATION
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+EVALUATION/TESTING (Post-Production)
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+Test Plan
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+Enhancement
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+FOR INFO 4402 (FYP2) ONLY. PLEASE REMOVE FROM INFO 4401 (FYP1) REPORT
+CHAPTER 4
+CHAPTER FOUR: RESULTS AND FINDINGS
+Methodology
+PROJECT DEVELOPMENT, IMPLEMENTATION AND EVALUATION 
+(Production and Post-Production of E-Learning Application and Game Development) – Please remove this.
+INTRODUCTION
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+APPLICATION DEVELOPMENT (Production)
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+Digitizing 2D/3D Art
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+Digitizing Scenes
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+Recording And Digitizing Audio
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+Authoring
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+IMPLEMENTATION
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+EVALUATION/TESTING (Post-Production)
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+Test Plan
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+Enhancement
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+FOR INFO 4402 (FYP2) ONLY. PLEASE REMOVE FROM INFO 4401 (FYP1) REPORT
+CHAPTER 5
+CHAPTER FOUR: RESULTS AND FINDINGS
+Methodology
+CONCLUSION 
+(System Development, Digital Storytelling, E-Learning Application and Game Development) – Please remove this.
+PROJET REQUIREMENT
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+PROJECT CONSTRAINT
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+FUTURE ENHANCEMENT
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+CONCLUSION
+Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum
+REFERENCES
+REFERENCE
+APPENDICES
+APPENDICES
+NOTE:
+Remember to update the numbering as it may not be in sequence due to any updating or deleting of sections.

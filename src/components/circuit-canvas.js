@@ -3,6 +3,7 @@ import { repeat } from 'lit/directives/repeat.js';
 import { store } from '../store.js';
 import { wirePath, WIRE_COLORS } from '../utils/wire-path.js';
 import { getComponentDef } from '../component-library.js';
+import { faIcon } from '../utils/fa-icons.js';
 
 class CircuitCanvas extends LitElement {
     static properties = {
@@ -25,7 +26,8 @@ class CircuitCanvas extends LitElement {
       width: 100%;
       height: 100%;
       overflow: hidden;
-      background-image: radial-gradient(circle, #3f3f46 1.5px, transparent 1.5px);
+      background-color: #121214;
+      background-image: radial-gradient(circle, rgba(113, 113, 122, 0.42) 1px, transparent 1px);
     }
 
     .canvas-world {
@@ -97,17 +99,20 @@ class CircuitCanvas extends LitElement {
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      color: #2a2a40;
-      font-size: 16px;
+      color: #52525b;
+      font-size: 14px;
+      line-height: 1.45;
       pointer-events: none;
       text-align: center;
       z-index: 1;
+      max-width: 260px;
     }
 
     .drop-hint .icon {
-      font-size: 48px;
-      display: block;
-      margin-bottom: 12px;
+      font-size: 42px;
+      display: inline-flex;
+      margin-bottom: 10px;
+      filter: drop-shadow(0 8px 18px rgba(14, 165, 233, 0.18));
     }
 
     .wiring-indicator {
@@ -133,8 +138,8 @@ class CircuitCanvas extends LitElement {
     /* Zoom controls */
     .zoom-controls {
       position: absolute;
-      bottom: 48px;
-      right: 16px;
+      bottom: 56px;
+      right: 14px;
       display: flex;
       flex-direction: column;
       gap: 4px;
@@ -144,7 +149,7 @@ class CircuitCanvas extends LitElement {
     .zoom-btn {
       width: 32px;
       height: 32px;
-      border-radius: 8px;
+      border-radius: 6px;
       border: 1px solid #3f3f46; /* Zinc 700 */
       background: rgba(39, 39, 42, 0.9); /* Zinc 800 */
       color: #a1a1aa; /* Zinc 400 */
@@ -173,13 +178,19 @@ class CircuitCanvas extends LitElement {
 
     .shortcut-hint {
       position: absolute;
-      bottom: 48px;
-      left: 16px;
+      bottom: 54px;
+      left: 14px;
       font-size: 11px;
       color: #71717a; /* Zinc 500 */
       z-index: 200;
       pointer-events: none;
-      line-height: 1.6;
+      line-height: 1.5;
+      max-width: min(560px, calc(100% - 110px));
+      padding: 6px 9px;
+      border: 1px solid rgba(63, 63, 70, 0.7);
+      border-radius: 6px;
+      background: rgba(18, 18, 20, 0.72);
+      backdrop-filter: blur(8px);
     }
 
     .color-picker-panel {
@@ -212,6 +223,16 @@ class CircuitCanvas extends LitElement {
     }
     .color-swatch.active {
       border-color: white;
+    }
+
+    @media (max-width: 900px) {
+      .shortcut-hint {
+        display: none;
+      }
+
+      .zoom-controls {
+        right: 10px;
+      }
     }
   `;
 
@@ -313,22 +334,22 @@ class CircuitCanvas extends LitElement {
 
         ${isEmpty && this._scale === 1 && this._panX === 0 ? html`
           <div class="drop-hint">
-            <span class="icon">⚡</span>
+            <span class="icon">${faIcon('bolt')}</span>
             Drag components from the sidebar to get started
           </div>
         ` : ''}
 
         ${store.wiringState ? html`
           <div class="wiring-indicator">
-            🔌 Click another pin to connect · ESC to cancel
+            ${faIcon('plug')} Click another pin to connect · ESC to cancel
           </div>
         ` : ''}
 
         <div class="zoom-controls">
-          <button class="zoom-btn" @click=${() => this._zoomTo(this._scale * 1.2)} title="Zoom in">+</button>
+          <button class="zoom-btn" @click=${() => this._zoomTo(this._scale * 1.2)} title="Zoom in">${faIcon('plus')}</button>
           <div class="zoom-label">${zoomPct}%</div>
-          <button class="zoom-btn" @click=${() => this._zoomTo(this._scale / 1.2)} title="Zoom out">−</button>
-          <button class="zoom-btn" @click=${this._resetView} title="Reset view" style="margin-top: 4px; font-size: 12px;">⌂</button>
+          <button class="zoom-btn" @click=${() => this._zoomTo(this._scale / 1.2)} title="Zoom out">${faIcon('minus')}</button>
+          <button class="zoom-btn" @click=${this._resetView} title="Reset view" style="margin-top: 4px; font-size: 12px;">${faIcon('house')}</button>
         </div>
 
         <div class="shortcut-hint">
