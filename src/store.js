@@ -954,6 +954,46 @@ class CircuitStore extends EventTarget {
         this._historyIndex = this._history.length - 1;
     }
 
+    beginHistoryBatch() {
+        if (this._historyIndex < 0) {
+            this._pushHistory();
+        }
+        const snapshot = this._history[this._historyIndex];
+        return {
+            index: this._historyIndex,
+            snapshot: JSON.parse(JSON.stringify(snapshot)),
+        };
+    }
+
+    squashHistorySince(batch) {
+        if (!batch || !batch.snapshot || this._historyIndex < 0) return;
+
+        const finalSnapshot = this._history[this._historyIndex];
+        const baseKey = JSON.stringify(batch.snapshot);
+        const finalKey = JSON.stringify(finalSnapshot);
+        let boundaryIndex = Number.isInteger(batch.index) ? batch.index : -1;
+
+        const foundIndex = this._history.findIndex(snapshot => JSON.stringify(snapshot) === baseKey);
+        if (foundIndex >= 0) {
+            boundaryIndex = foundIndex;
+        }
+
+        if (boundaryIndex < 0 || boundaryIndex >= this._history.length) {
+            this._history = baseKey === finalKey ? [batch.snapshot] : [batch.snapshot, finalSnapshot];
+            this._historyIndex = this._history.length - 1;
+            return;
+        }
+
+        if (this._historyIndex <= boundaryIndex) return;
+
+        const baseHistory = this._history.slice(0, boundaryIndex + 1);
+        this._history = baseKey === finalKey ? baseHistory : [...baseHistory, finalSnapshot];
+        if (this._history.length > this._maxHistory) {
+            this._history = this._history.slice(this._history.length - this._maxHistory);
+        }
+        this._historyIndex = this._history.length - 1;
+    }
+
     _restoreSnapshot(snapshot) {
         this.instances = JSON.parse(JSON.stringify(snapshot.instances));
         this.wires = JSON.parse(JSON.stringify(snapshot.wires)).map(w => ({ mode: 'orthogonal', ...w }));

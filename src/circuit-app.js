@@ -335,6 +335,7 @@ class CircuitApp extends LitElement {
     _resetWires() { store.resetWireRouting(); }
 
     _autoLayoutAll() {
+        const historyBatch = store.beginHistoryBatch();
         const result = autoWireAll();
         if (result.total === 0) {
             alert('No components to layout. Add components with pins first.');
@@ -344,10 +345,16 @@ class CircuitApp extends LitElement {
         // autoWireAll may have just inserted helper components (like resistors).
         // We must wait until their <placed-component> DOM elements have mounted 
         // and registered their exact SVG pin coordinates before computing layout.
-        const waitAndLayout = () => {
+        const waitAndLayout = async () => {
             const allReady = store.instances.every(inst => store.pinInfoMap.has(inst.id));
             if (allReady) {
-                autoLayoutAll();
+                try {
+                    await autoLayoutAll();
+                } catch (error) {
+                    console.error('[CircuitSense] Auto layout failed:', error);
+                } finally {
+                    store.squashHistorySince(historyBatch);
+                }
             } else {
                 requestAnimationFrame(waitAndLayout);
             }
@@ -356,11 +363,13 @@ class CircuitApp extends LitElement {
     }
 
     _autoWireAll() {
+        const historyBatch = store.beginHistoryBatch();
         const result = autoWireAll();
         if (result.total === 0) {
             alert('No components to auto-wire. Add components with pins first.');
             return;
         }
+        store.squashHistorySince(historyBatch);
         const msg = [
             `Auto-wired ${result.success} pins across ${result.total} components.`,
             result.errors.length > 0 ? `${result.errors.length} errors.` : '',
