@@ -5,7 +5,7 @@ Format: booth showcase, examiners arrive at their own pace
 
 ## Core Message
 
-Elera is an intelligent web-based Arduino circuit design assistant for students. Its main contribution is not circuit simulation. Its contribution is proactive design-stage guidance: real-time rule-based validation, metadata-driven auto-wiring, readable wire cleanup, and AI-assisted circuit building while keeping deterministic validation as the final checker.
+Elera is an intelligent web-based circuit-building platform for students. Its current FYP scope focuses on Arduino Uno circuits, but the long-term direction is a free learning platform that can grow to support more boards and components. Its main contribution is not circuit simulation. Its contribution is proactive design-stage guidance: real-time rule-based validation, metadata-driven auto-wiring, readable wire cleanup, and AI-assisted circuit building while keeping deterministic validation as the final checker.
 
 Keep returning to this sentence:
 
@@ -13,11 +13,11 @@ Keep returning to this sentence:
 
 ## 30-Second Opening
 
-Good morning Dr., my project is Elera, an intelligent web-based Arduino circuit design assistant for beginner students.
+Good morning Dr., my project is Elera, an intelligent web-based circuit-building platform for beginner students.
 
 The problem is that students often make wiring mistakes such as missing ground, using the wrong pin, connecting an LED without a resistor, or assigning two components to the same Arduino pin. Existing tools like Tinkercad, Wokwi, and Fritzing are useful, but they usually show problems only after simulation, through compiler output, or not at all.
 
-Elera addresses this by giving real-time validation while the circuit is being built. It also includes metadata-based auto-wiring, wire cleanup, a BYOK AI assistant, and a custom component builder.
+Elera addresses this by giving real-time validation while the circuit is being built. For this FYP, the prototype focuses on Arduino Uno because it is common in beginner lab courses, but the architecture is designed so more boards and components can be added later. It also includes metadata-based auto-wiring, wire cleanup, a BYOK AI assistant, and a custom component builder.
 
 ## 2-Minute Booth Pitch
 
@@ -28,7 +28,7 @@ Elera addresses this by giving real-time validation while the circuit is being b
    Tinkercad and Wokwi support simulation, Fritzing supports documentation, and Cirkit Designer supports AI-assisted guidance. However, they do not combine real-time deterministic validation, automatic pin assignment, educational feedback, and wire management in one free browser-based learning tool.
 
 3. Solution:
-   Elera provides a drag-and-drop Arduino circuit workspace with a validation engine called EVE. EVE checks nine wiring issue categories in real time and explains the problem in beginner-friendly language.
+   Elera provides a drag-and-drop circuit workspace with a validation engine called EVE. In the current prototype, EVE checks nine Arduino Uno wiring issue categories in real time and explains the problem in beginner-friendly language.
 
 4. Technical contribution:
    The system uses Lit 3 Web Components, Vite, JavaScript ES modules, @wokwi/elements, Supabase, and a metadata-driven component library. Each component stores pin roles, current draw, validation flags, and auto-wiring rules.
@@ -121,7 +121,7 @@ The current scope focuses on Arduino Uno and beginner-level components. It does 
 
 ### What would be improved next?
 
-Future work can include more boards such as ESP32, richer component libraries, Arduino code execution, stronger AI evaluation, more user testing, and a deeper simulation layer.
+   Future work can include more boards such as ESP32, richer component libraries, code execution, stronger AI evaluation, more user testing, and a deeper simulation layer.
 
 ## Booth Setup Checklist
 
@@ -146,4 +146,4 @@ Before leaving for the showcase:
 
 ## Final Closing
 
-To conclude, Elera helps beginner Arduino students by giving immediate feedback while they design circuits. The system reduces trial-and-error through real-time validation, metadata-based auto-wiring, wire cleanup, and AI-assisted guidance, while keeping the core checking rule-based and predictable.
+To conclude, Elera helps beginner students by giving immediate feedback while they design circuits. The current prototype focuses on Arduino Uno, but the long-term goal is a free intelligent circuit-building platform that can expand to more hardware. The system reduces trial-and-error through real-time validation, metadata-based auto-wiring, wire cleanup, and AI-assisted guidance, while keeping the core checking rule-based and predictable.
