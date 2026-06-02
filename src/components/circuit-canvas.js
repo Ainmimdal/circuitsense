@@ -154,7 +154,8 @@ class CircuitCanvas extends LitElement {
       display: flex;
       flex-direction: column;
       gap: 4px;
-      z-index: 200;
+      z-index: 320;
+      pointer-events: auto;
     }
 
     .zoom-btn {
@@ -356,11 +357,15 @@ class CircuitCanvas extends LitElement {
           </div>
         ` : ''}
 
-        <div class="zoom-controls">
-          <button class="zoom-btn" @click=${() => this._zoomTo(this._scale * 1.2)} title="Zoom in">${faIcon('plus')}</button>
+        <div
+          class="zoom-controls"
+          @pointerdown=${this._stopCanvasControlEvent}
+          @click=${this._stopCanvasControlEvent}
+        >
+          <button type="button" class="zoom-btn" @click=${() => this._zoomTo(this._scale * 1.2)} title="Zoom in">${faIcon('plus')}</button>
           <div class="zoom-label">${zoomPct}%</div>
-          <button class="zoom-btn" @click=${() => this._zoomTo(this._scale / 1.2)} title="Zoom out">${faIcon('minus')}</button>
-          <button class="zoom-btn" @click=${this._resetView} title="Reset view" style="margin-top: 4px; font-size: 12px;">${faIcon('house')}</button>
+          <button type="button" class="zoom-btn" @click=${() => this._zoomTo(this._scale / 1.2)} title="Zoom out">${faIcon('minus')}</button>
+          <button type="button" class="zoom-btn" @click=${this._resetView} title="Fit components" style="margin-top: 4px; font-size: 12px;">${faIcon('house')}</button>
         </div>
 
         <div class="shortcut-hint">
@@ -655,9 +660,47 @@ class CircuitCanvas extends LitElement {
     }
 
     _resetView() {
-        this._scale = 1;
-        this._panX = 0;
-        this._panY = 0;
+        if (store.instances.length === 0) {
+            this._scale = 1;
+            this._panX = 0;
+            this._panY = 0;
+            return;
+        }
+
+        const rect = this._canvasRect;
+        const bounds = store.instances.reduce((acc, inst) => {
+            const def = getComponentDef(inst.componentId);
+            const width = def?.size?.width || 80;
+            const height = def?.size?.height || 60;
+            const rotated = (inst.rotation || 0) === 90 || (inst.rotation || 0) === 270;
+            const visualWidth = rotated ? height : width;
+            const visualHeight = rotated ? width : height;
+            return {
+                left: Math.min(acc.left, inst.x),
+                top: Math.min(acc.top, inst.y),
+                right: Math.max(acc.right, inst.x + visualWidth),
+                bottom: Math.max(acc.bottom, inst.y + visualHeight),
+            };
+        }, { left: Infinity, top: Infinity, right: -Infinity, bottom: -Infinity });
+
+        const padding = 88;
+        const contentWidth = Math.max(1, bounds.right - bounds.left);
+        const contentHeight = Math.max(1, bounds.bottom - bounds.top);
+        const fitScale = Math.min(
+            (rect.width - padding * 2) / contentWidth,
+            (rect.height - padding * 2) / contentHeight
+        );
+        const nextScale = Math.max(0.15, Math.min(2, fitScale));
+        const centerX = (bounds.left + bounds.right) / 2;
+        const centerY = (bounds.top + bounds.bottom) / 2;
+
+        this._scale = nextScale;
+        this._panX = rect.width / 2 - centerX * nextScale;
+        this._panY = rect.height / 2 - centerY * nextScale;
+    }
+
+    _stopCanvasControlEvent(e) {
+        e.stopPropagation();
     }
 
     // ——— Pan ———————————————————————————————————————————
