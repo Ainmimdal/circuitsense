@@ -103,6 +103,11 @@ function _getWiresForPin(ctx, instanceId, pinName) {
     return ctx.pinWireMap.get(key) || [];
 }
 
+function _getPinGroup(def, pinName) {
+    const group = def.pinGroups?.find(pins => pins.includes(pinName));
+    return group || [pinName];
+}
+
 function _isConnectedToBoard(ctx, instanceId) {
     // Check if instance is connected (directly or through chain) to a board
     if (ctx.boards.length === 0) return false;
@@ -432,20 +437,27 @@ function _ruleFloatingPin(ctx, results) {
         );
         if (!hasAnyWire) continue;
 
+        const checkedGroups = new Set();
         for (const [pinName, pinType] of Object.entries(def.pinMeta)) {
             // Skip NC pins
             if (pinName === 'NC') continue;
             // Skip DOUT on neopixel (optional)
             if (pinName === 'DOUT') continue;
 
-            const wires = _getWiresForPin(ctx, inst.id, pinName);
+            const pinGroup = _getPinGroup(def, pinName);
+            const groupKey = pinGroup.join('|');
+            if (checkedGroups.has(groupKey)) continue;
+            checkedGroups.add(groupKey);
+
+            const wires = pinGroup.flatMap(groupPin => _getWiresForPin(ctx, inst.id, groupPin));
             if (wires.length === 0) {
                 // Determine severity based on pin type
                 const isEssential = [PIN.VCC, PIN.GND, PIN.I2C_SDA, PIN.I2C_SCL].includes(pinType);
+                const label = pinGroup.length > 1 ? pinGroup.join('/') : pinName;
                 results.push({
                     id: 'floating-pin',
                     severity: isEssential ? SEV.ERROR : SEV.WARNING,
-                    message: `${def.name} pin "${pinName}" is not connected.`,
+                    message: `${def.name} pin "${label}" is not connected.`,
                     instanceId: inst.id,
                     pinName,
                     icon: 'thumbtack',

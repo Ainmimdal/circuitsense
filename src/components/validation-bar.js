@@ -28,7 +28,7 @@ class ValidationBar extends LitElement {
       bottom: 0;
       left: 0;
       right: 0;
-      z-index: 100;
+      z-index: 300;
       pointer-events: none;
     }
 

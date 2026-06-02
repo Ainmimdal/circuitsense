@@ -133,6 +133,10 @@ export const componentLibrary = {
             '1.r': PIN.SIGNAL,
             '2.r': PIN.SIGNAL,
         },
+        pinGroups: [
+            ['1.l', '1.r'],
+            ['2.l', '2.r'],
+        ],
         autoWire: { '1.l': PIN.DIGITAL, '2.l': PIN.GND },
         needsPullup: true,
         codeTemplate: 'digitalRead(${pin})',
