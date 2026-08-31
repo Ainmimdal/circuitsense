@@ -43,3 +43,35 @@ test('the canvas puts unmodified wire colors above component artwork', async () 
     assert.match(source, /stroke: color/);
     assert.match(source, /Drag blue segments or yellow corners/);
 });
+
+test('the canvas renders a non-clickable selected-wire overlay after every base wire', async () => {
+    const source = await readFile(new URL('../src/components/circuit-canvas.js', import.meta.url), 'utf8');
+    const render = source.match(/_renderWires\(\) \{([\s\S]*?)\n    \}\n\n    _selectWire/)?.[1] || '';
+    const overlay = source.match(/_refreshWireSelectionVisuals\(\) \{([\s\S]*?)\n    \}\n\n    _syncComponentVisualSelection/)?.[1] || '';
+    assert.match(render, /for \(const wire of this\.store\.project\.wires\)/);
+    assert.ok(render.indexOf('for (const wire') < render.indexOf('this._refreshWireSelectionVisuals()'));
+    assert.doesNotMatch(render, /\.sort\(/);
+    assert.match(overlay, /name: 'wire-selection-overlay'/);
+    assert.match(overlay, /listening: false/);
+});
+
+test('wire selection adds a glow without changing wire thickness or dimming peers', async () => {
+    const source = await readFile(new URL('../src/components/circuit-canvas.js', import.meta.url), 'utf8');
+    const render = source.match(/_renderWires\(\) \{([\s\S]*?)\n    \}\n\n    _selectWire/)?.[1] || '';
+    const overlay = source.match(/_refreshWireSelectionVisuals\(\) \{([\s\S]*?)\n    \}\n\n    _syncComponentVisualSelection/)?.[1] || '';
+    assert.match(render, /strokeWidth: \.72/);
+    assert.match(render, /hitStrokeWidth: 'auto'/);
+    assert.doesNotMatch(render, /hitStrokeWidth: 3/);
+    assert.match(overlay, /strokeWidth: \.72/);
+    assert.match(overlay, /shadowColor: this\._themeColor\('--primary-hover'\)/);
+    assert.doesNotMatch(`${render}\n${overlay}`, /opacity: selected|opacity: this\._selectedWireId/);
+});
+
+test('wire switching is immediate and route-only updates avoid full scene rebuilds', async () => {
+    const source = await readFile(new URL('../src/components/circuit-canvas.js', import.meta.url), 'utf8');
+    const select = source.match(/_selectWire\(wireId\) \{([\s\S]*?)\n    \}\n\n    _clearWireSelectionVisuals/)?.[1] || '';
+    assert.match(select, /this\._refreshWireSelectionVisuals\(\)/);
+    assert.doesNotMatch(select, /setTimeout|_renderWires|_renderComponentVisuals/);
+    assert.doesNotMatch(source, /_wireSelectionTimer/);
+    assert.match(source, /if \(event\.detail\?\.routesOnly\) \{\s*this\._renderWires\(\);\s*this\._renderInteractionLayer\(\);/);
+});

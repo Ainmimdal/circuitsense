@@ -13,6 +13,7 @@ import { applyTransform, screenToWorld } from '../physical/geometry.js';
 import { pinExitDirection } from '../physical/routing.js';
 import { editableWirePoints, insertWireWaypoint, moveWireRouteEndpoints, moveWireSegment, moveWireWaypoint, removeWireWaypoint } from '../physical/wire-edit.js';
 import { inspectWireNet } from '../physical/net-inspector.js';
+import { faIcon } from '../utils/fa-icons.js';
 
 const CAMERA = Object.freeze({ pixelsPerMillimetre: 5.2, minZoom: 0.42, maxZoom: 2.5 });
 Konva.dragButtons = [0];
@@ -35,7 +36,7 @@ class CircuitCanvas extends LitElement {
             min-width: 0;
             min-height: 0;
             overflow: hidden;
-            background: #24272e;
+            background: var(--ink);
             user-select: none;
         }
 
@@ -47,6 +48,16 @@ class CircuitCanvas extends LitElement {
         }
 
         .workspace { isolation: isolate; }
+        .workspace::before {
+            content: '';
+            position: absolute;
+            inset: 6px;
+            z-index: 19;
+            pointer-events: none;
+            border: 1px solid var(--panel-border);
+            border-radius: 4px;
+            box-shadow: inset 0 0 24px color-mix(in srgb, var(--panel-border) 32%, transparent);
+        }
         .stage-host { touch-action: none; }
 
         .component-visual-layer {
@@ -76,7 +87,7 @@ class CircuitCanvas extends LitElement {
         }
 
         .component-visual.selected .component-artwork {
-            filter: drop-shadow(0 0 5px #22d3ee) drop-shadow(0 0 1px #ecfeff);
+            filter: drop-shadow(0 0 5px var(--primary-hover)) drop-shadow(0 0 1px var(--text));
         }
 
         .visual-terminal {
@@ -86,10 +97,10 @@ class CircuitCanvas extends LitElement {
             z-index: 2;
             width: 7px;
             height: 7px;
-            border: 1.5px solid #0891b2;
+            border: 1.5px solid var(--primary-hover);
             border-radius: 50%;
-            background: rgba(248, 250, 252, .9);
-            box-shadow: 0 0 0 1px rgba(8, 145, 178, .28);
+            background: var(--text);
+            box-shadow: 0 0 0 1px var(--primary);
             transform-origin: center;
             pointer-events: none;
         }
@@ -97,56 +108,57 @@ class CircuitCanvas extends LitElement {
         .dom-dip {
             display: grid;
             place-items: center;
-            border: 2px solid #71717a;
+            border: 2px solid var(--panel-border);
             border-radius: 6px;
-            background: #18181b;
-            color: #e4e4e7;
-            font: 700 13px system-ui;
-            box-shadow: inset 0 0 0 2px #09090b;
+            background: var(--ink);
+            color: var(--text);
+            font: 700 13px var(--font-ui, 'Public Sans', sans-serif);
+            box-shadow: inset 0 0 0 2px var(--ink);
         }
 
         .mode-pill,
         .help,
         .zoom-controls,
         .legend,
-        .net-inspector,
-        .part-tools {
+        .net-inspector {
             position: absolute;
             z-index: 20;
             pointer-events: none;
-            color: #d4d4d8;
-            background: rgba(24, 24, 27, .9);
-            border: 1px solid #3f3f46;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, .28);
-            backdrop-filter: blur(9px);
+            color: var(--text);
+            background: var(--panel);
+            border: 1px solid var(--panel-border);
+            border-radius: 4px;
+            box-shadow: 0 8px 24px color-mix(in srgb, var(--ink) 70%, transparent);
+            font-family: var(--font-ui, 'Public Sans', sans-serif);
         }
 
         .mode-pill {
             top: 14px;
             left: 50%;
             transform: translateX(-50%);
-            border-radius: 999px;
-            padding: 7px 12px;
-            font-size: 11px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 7px 10px;
+            font-size: 10px;
             max-width: min(620px, 70%);
             text-align: center;
         }
 
-        .mode-pill strong { color: #67e8f9; }
+        .mode-pill span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
         .help {
             left: 14px;
-            bottom: 14px;
-            border-radius: 8px;
-            padding: 9px 11px;
+            bottom: 50px;
+            width: min(430px, calc(100% - 28px));
+            padding: 10px 12px;
             font-size: 10px;
-            line-height: 1.55;
+            line-height: 1.6;
         }
 
         .legend {
             right: 14px;
-            bottom: 14px;
-            border-radius: 8px;
+            bottom: 50px;
             padding: 9px 11px;
             font-size: 10px;
             line-height: 1.55;
@@ -154,29 +166,31 @@ class CircuitCanvas extends LitElement {
 
         .legend span { display: inline-flex; align-items: center; gap: 6px; margin-left: 9px; }
         .legend i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+        .legend .valid-dot { background: var(--accent-sensors); }
+        .legend .strip-dot { background: var(--accent-breadboards); }
 
         .net-inspector {
             right: 14px;
             top: 62px;
             width: min(260px, calc(100% - 28px));
-            border-radius: 9px;
             padding: 10px 11px;
             pointer-events: auto;
-            font: 11px/1.4 system-ui;
+            font: 11px/1.4 var(--font-ui, 'Public Sans', sans-serif);
         }
 
         .net-inspector header { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
-        .net-inspector strong { color: #67e8f9; font-size: 12px; }
-        .net-inspector small { color: #a1a1aa; }
+        .net-inspector strong { color: var(--text); font: 11px/1 var(--font-tech, '0xProto', monospace); }
+        .net-inspector small { color: var(--text-muted); }
         .net-pins { margin-top: 7px; display: grid; gap: 4px; }
-        .net-pin { display: flex; justify-content: space-between; gap: 10px; padding-top: 4px; border-top: 1px solid #3f3f46; }
-        .net-pin span { color: #e4e4e7; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .net-pin code { color: #facc15; font: 700 10px ui-monospace, monospace; }
+        .net-pin { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; padding-top: 5px; border-top: 1px solid var(--panel-border); }
+        .net-part { min-width: 0; display: flex; flex-direction: column; }
+        .net-part span { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .net-part small { color: var(--text-muted); font: 8px/1.2 var(--font-tech, '0xProto', monospace); }
+        .net-pin code { color: var(--text); font: 10px/1.2 var(--font-tech, '0xProto', monospace); }
 
         .zoom-controls {
             right: 14px;
             top: 14px;
-            border-radius: 8px;
             padding: 6px;
             display: flex;
             align-items: center;
@@ -184,55 +198,49 @@ class CircuitCanvas extends LitElement {
             pointer-events: auto;
         }
 
-        .part-tools {
-            left: 14px;
-            top: 14px;
-            border-radius: 8px;
-            padding: 6px;
-            display: flex;
-            gap: 6px;
-            pointer-events: auto;
-        }
-
-        .part-tools button {
-            border: 1px solid #3f3f46;
-            border-radius: 6px;
-            background: #27272a;
-            color: #e4e4e7;
-            padding: 7px 9px;
-            cursor: pointer;
-            font: 600 10px system-ui;
-        }
-
-        .part-tools button:hover { border-color: #22d3ee; color: #cffafe; }
-
         .zoom-controls button {
-            width: 28px;
-            height: 28px;
+            width: 34px;
+            height: 34px;
             border: 0;
-            border-radius: 5px;
-            background: #27272a;
-            color: #f4f4f5;
+            border: 1px solid var(--panel-border);
+            border-radius: 4px;
+            background: var(--panel);
+            color: var(--text);
             cursor: pointer;
-            font: 600 14px system-ui;
+            font: 600 14px var(--font-ui, 'Public Sans', sans-serif);
         }
 
-        .zoom-controls button:hover { background: #3f3f46; }
-        .zoom-controls output { width: 42px; text-align: center; font: 600 10px system-ui; }
+        .zoom-controls button:hover { background: var(--primary); border-color: var(--primary-hover); }
+        .zoom-controls output { width: 42px; height: 34px; display: grid; place-items: center; text-align: center; color: var(--text-muted); font: 10px/1 var(--font-tech, '0xProto', monospace); }
 
         .workspace.drag-over::after {
-            content: 'Drop to place physical component';
+            content: 'Drop to place component';
             position: absolute;
             inset: 10px;
             z-index: 6;
             display: grid;
             place-items: center;
-            border: 2px dashed #22d3ee;
-            border-radius: 12px;
-            color: #cffafe;
-            background: rgba(8, 145, 178, .1);
+            border: 2px dashed var(--primary-hover);
+            color: var(--text);
+            background: color-mix(in srgb, var(--primary) 18%, transparent);
             pointer-events: none;
-            font: 600 13px system-ui;
+            font: 600 13px var(--font-ui, 'Public Sans', sans-serif);
+        }
+
+        @media (max-width: 900px) {
+            .mode-pill { top: 10px; max-width: calc(100% - 150px); }
+            .zoom-controls { top: 10px; right: 10px; }
+            .zoom-controls button { width: 34px; height: 34px; }
+            .zoom-controls output { display: none; }
+            .net-inspector {
+                position: absolute;
+                inset: auto 10px 70px 10px;
+                width: auto;
+                max-height: 34vh;
+                overflow: auto;
+            }
+            .help { display: none; }
+            .legend { right: 10px; bottom: 46px; }
         }
     `;
 
@@ -242,7 +250,7 @@ class CircuitCanvas extends LitElement {
         this.interaction = new InteractionController(this.store);
         this.camera = { pixelsPerMillimetre: CAMERA.pixelsPerMillimetre, zoom: 1, panX: 36, panY: 28 };
         this._zoomLabel = '100%';
-        this._status = 'Drag or click any component in the library to add it.';
+        this._status = 'Drag a component onto the canvas to begin';
         this._hoveredHole = null;
         this._hoveredTerminalRef = null;
         this._selectedComponentId = null;
@@ -252,7 +260,14 @@ class CircuitCanvas extends LitElement {
         this._panning = null;
         this._dragOver = false;
         this._pendingPinCalibration = new Set();
-        this._storeHandler = () => this._renderScene();
+        this._storeHandler = event => {
+            if (event.detail?.routesOnly) {
+                this._renderWires();
+                this._renderInteractionLayer();
+                return;
+            }
+            this._renderScene();
+        };
         this._interactionHandler = () => this._renderInteractionLayer();
         this._keyHandler = event => this._onKeyDown(event);
         this._physicalAddHandler = event => this._quickAddPhysical(event.detail?.componentId);
@@ -268,6 +283,12 @@ class CircuitCanvas extends LitElement {
 
     render() {
         const net = this._selectedNetView();
+        const showStatus = this.store.project.components.length === 0
+            || this.interaction.state?.type !== 'idle'
+            || this._dragOver
+            || this._selectedComponentId
+            || this._selectedWireId
+            || this._selectedSurfaceId;
         return html`
             <div class="workspace ${this._dragOver ? 'drag-over' : ''}"
                 @dragover=${this._onDragOver}
@@ -275,18 +296,12 @@ class CircuitCanvas extends LitElement {
                 @drop=${this._onDrop}>
                 <div class="stage-host"></div>
                 <div class="component-visual-layer" aria-hidden="true"></div>
-                <div class="mode-pill"><strong>Semantic physical editor</strong> · ${this._status}</div>
-                <div class="part-tools">
-                    <button @click=${() => this._quickAddPhysical('arduino-uno')} title="Add an Arduino Uno">+ Arduino</button>
-                    <button @click=${() => this._quickAddPhysical('test-ic')} title="Add the test IC using the reusable 300-mil DIP-8 package">+ Test IC</button>
-                    <button @click=${() => this._quickAddPhysical('led')} title="Place LED at the next valid footprint">+ LED</button>
-                    <button class="delete" @click=${this._deleteSelected} ?disabled=${!this._selectedComponentId && !this._selectedWireId && !this._selectedSurfaceId} title="Delete the selected component, wire, or breadboard">Delete selected</button>
-                </div>
-                <div class="zoom-controls" @pointerdown=${event => event.stopPropagation()}>
-                    <button @click=${() => this._zoomBy(1.2)} title="Zoom in">+</button>
+                ${showStatus ? html`<div class="mode-pill"><span>${this._status}</span></div>` : ''}
+                <div class="zoom-controls" @pointerdown=${event => event.stopPropagation()} aria-label="Canvas zoom controls">
+                    <button @click=${() => this._zoomBy(1.2)} title="Zoom in" aria-label="Zoom in">${faIcon('plus')}</button>
                     <output>${this._zoomLabel}</output>
-                    <button @click=${() => this._zoomBy(1 / 1.2)} title="Zoom out">−</button>
-                    <button @click=${this._resetCamera} title="Reset view">⌂</button>
+                    <button @click=${() => this._zoomBy(1 / 1.2)} title="Zoom out" aria-label="Zoom out">${faIcon('minus')}</button>
+                    <button @click=${this._resetCamera} title="Fit canvas" aria-label="Fit canvas">${faIcon('focus')}</button>
                 </div>
                 ${net ? html`
                     <section class="net-inspector" aria-label="Selected electrical net">
@@ -297,7 +312,10 @@ class CircuitCanvas extends LitElement {
                         <div class="net-pins">
                             ${net.terminals.map(terminal => html`
                                 <div class="net-pin">
-                                    <span title=${terminal.componentName}>${terminal.componentName}</span>
+                                    <div class="net-part" title=${`${terminal.componentName} ${terminal.componentRef}`}>
+                                        <span>${terminal.componentName}</span>
+                                        <small>${terminal.componentRef}</small>
+                                    </div>
                                     <code>${terminal.pinId}</code>
                                 </div>
                             `)}
@@ -306,14 +324,13 @@ class CircuitCanvas extends LitElement {
                     </section>
                 ` : ''}
                 <div class="help">
-                    Drag parts anywhere · breadboard parts snap onto real holes<br>
-                    Start at a pin · click empty space for route points · click a pin to finish<br>
-                    Delete removes selection · wheel zoom · Ctrl+Z / Ctrl+Y undo/redo
+                    Drag parts onto empty space. Breadboard parts snap to valid holes.<br>
+                    To wire, click a pin, add corners in empty space, then click another pin.<br>
+                    Press Delete to remove a selection. Use the wheel to zoom.
                 </div>
                 <div class="legend">
-                    Target holes
-                    <span><i style="background:#22d3ee"></i>valid</span>
-                    <span><i style="background:#facc15"></i>connected strip</span>
+                    <span><i class="valid-dot"></i>Valid connection</span>
+                    <span><i class="strip-dot"></i>Connected strip</span>
                 </div>
             </div>
         `;
@@ -361,7 +378,6 @@ class CircuitCanvas extends LitElement {
         window.removeEventListener('keydown', this._keyHandler);
         window.removeEventListener('elera-add-physical-component', this._physicalAddHandler);
         window.removeEventListener('elera-select-physical-component', this._physicalSelectHandler);
-        clearTimeout(this._wireSelectionTimer);
         this.stage?.destroy();
     }
 
@@ -394,6 +410,10 @@ class CircuitCanvas extends LitElement {
         return pointer ? screenToWorld(pointer, this.camera) : this._lastPointerWorld;
     }
 
+    _themeColor(token) {
+        return getComputedStyle(this).getPropertyValue(token).trim();
+    }
+
     _renderScene() {
         if (!this.stage) return;
         this._applyCamera();
@@ -406,8 +426,11 @@ class CircuitCanvas extends LitElement {
     _renderBackground() {
         if (!this.backgroundLayer || !this.stage) return;
         this.backgroundLayer.destroyChildren();
+        const editorStyles = getComputedStyle(this);
+        const ink = editorStyles.getPropertyValue('--ink').trim();
+        const panelBorder = editorStyles.getPropertyValue('--panel-border').trim();
         this.backgroundLayer.add(new Konva.Rect({
-            x: 0, y: 0, width: this.stage.width(), height: this.stage.height(), fill: '#24272e', listening: false,
+            x: 0, y: 0, width: this.stage.width(), height: this.stage.height(), fill: ink, listening: false,
         }));
         const spacing = 2.54 * this.camera.pixelsPerMillimetre * this.camera.zoom;
         if (spacing >= 6) {
@@ -418,14 +441,15 @@ class CircuitCanvas extends LitElement {
                     const startX = ((this.camera.panX % spacing) + spacing) % spacing;
                     const startY = ((this.camera.panY % spacing) + spacing) % spacing;
                     for (let x = startX; x < this.stage.width(); x += spacing) {
-                        context.moveTo(x, 0); context.lineTo(x, this.stage.height());
-                    }
-                    for (let y = startY; y < this.stage.height(); y += spacing) {
-                        context.moveTo(0, y); context.lineTo(this.stage.width(), y);
+                        for (let y = startY; y < this.stage.height(); y += spacing) {
+                            context.moveTo(x + .7, y);
+                            context.arc(x, y, .7, 0, Math.PI * 2);
+                        }
                     }
                     context.fillStrokeShape(shape);
                 },
-                stroke: '#373d49', strokeWidth: 1,
+                fill: panelBorder,
+                opacity: .72,
             }));
             const majorSpacing = spacing * 5;
             this.backgroundLayer.add(new Konva.Shape({
@@ -435,14 +459,14 @@ class CircuitCanvas extends LitElement {
                     const startX = ((this.camera.panX % majorSpacing) + majorSpacing) % majorSpacing;
                     const startY = ((this.camera.panY % majorSpacing) + majorSpacing) % majorSpacing;
                     for (let x = startX; x < this.stage.width(); x += majorSpacing) {
-                        context.moveTo(x, 0); context.lineTo(x, this.stage.height());
-                    }
-                    for (let y = startY; y < this.stage.height(); y += majorSpacing) {
-                        context.moveTo(0, y); context.lineTo(this.stage.width(), y);
+                        for (let y = startY; y < this.stage.height(); y += majorSpacing) {
+                            context.moveTo(x + 1.15, y);
+                            context.arc(x, y, 1.15, 0, Math.PI * 2);
+                        }
                     }
                     context.fillStrokeShape(shape);
                 },
-                stroke: '#4a5261', strokeWidth: 1.15,
+                fill: panelBorder,
             }));
         }
         this.backgroundLayer.batchDraw();
@@ -471,16 +495,16 @@ class CircuitCanvas extends LitElement {
             group.add(new Konva.Rect({
                 name: 'board-body', x: 0, y: 0, width: definition.width, height: definition.height,
                 cornerRadius: 2.2, fill: '#e4e4e7',
-                stroke: surface.id === this._selectedSurfaceId ? '#22d3ee' : '#a1a1aa',
+                stroke: surface.id === this._selectedSurfaceId ? this._themeColor('--primary-hover') : '#a1a1aa',
                 strokeWidth: surface.id === this._selectedSurfaceId ? .8 : .35,
                 shadowColor: '#000', shadowBlur: 2.2, shadowOffsetY: 1.1, shadowOpacity: .34,
             }));
             group.add(new Konva.Rect({ x: 2.8, y: rowA - 2.3, width: definition.width - 5.6, height: rowJ - rowA + 4.6, fill: '#f4f4f5', cornerRadius: 1.2, listening: false }));
             group.add(new Konva.Rect({ x: 2.8, y: trenchTop, width: definition.width - 5.6, height: trenchBottom - trenchTop, fill: '#d4d4d8', listening: false }));
             group.add(new Konva.Line({ points: [5, definition.getHole('TP1').y, definition.width - 5, definition.getHole('TP1').y], stroke: '#ef4444', strokeWidth: .28, listening: false }));
-            group.add(new Konva.Line({ points: [5, definition.getHole('TN1').y, definition.width - 5, definition.getHole('TN1').y], stroke: '#3b82f6', strokeWidth: .28, listening: false }));
+            group.add(new Konva.Line({ points: [5, definition.getHole('TN1').y, definition.width - 5, definition.getHole('TN1').y], stroke: this._themeColor('--accent-breadboards'), strokeWidth: .28, listening: false }));
             group.add(new Konva.Line({ points: [5, definition.getHole('BP1').y, definition.width - 5, definition.getHole('BP1').y], stroke: '#ef4444', strokeWidth: .28, listening: false }));
-            group.add(new Konva.Line({ points: [5, definition.getHole('BN1').y, definition.width - 5, definition.getHole('BN1').y], stroke: '#3b82f6', strokeWidth: .28, listening: false }));
+            group.add(new Konva.Line({ points: [5, definition.getHole('BN1').y, definition.width - 5, definition.getHole('BN1').y], stroke: this._themeColor('--accent-breadboards'), strokeWidth: .28, listening: false }));
             group.add(new Konva.Shape({
                 listening: false,
                 sceneFunc: (context, shape) => {
@@ -502,7 +526,7 @@ class CircuitCanvas extends LitElement {
             let origin = null;
             group.on('dragstart', () => {
                 origin = { x: group.x(), y: group.y() };
-                this._status = 'Moving placement surface; mounted parts keep their hole bindings.';
+                this._status = 'Move the breadboard; attached parts will move with it.';
                 this.requestUpdate();
             });
             group.on('dragmove', () => {
@@ -519,7 +543,7 @@ class CircuitCanvas extends LitElement {
             });
             group.on('dragend', () => {
                 this.interaction.moveSurface(surface.id, { x: group.x(), y: group.y(), rotation: surface.transform.rotation || 0 });
-                this._status = 'Breadboard moved. Bindings and electrical nets are unchanged; routes were recomputed.';
+                this._status = 'Breadboard moved. Attached parts and connections were kept.';
                 this.requestUpdate();
             });
             group.on('click tap', event => {
@@ -528,7 +552,7 @@ class CircuitCanvas extends LitElement {
                 this._selectedSurfaceId = surface.id;
                 this._selectedComponentId = null;
                 this._deselectWire();
-                this._status = 'Breadboard selected. Press Delete or use Delete selected to remove it; mounted parts will remain free.';
+                this._status = 'Breadboard selected. Press Delete to remove it; mounted parts will remain free.';
                 this._renderBoards();
                 this.requestUpdate();
             });
@@ -542,42 +566,29 @@ class CircuitCanvas extends LitElement {
         for (const wire of this.store.project.wires) {
             const route = this.store.routes.get(wire.id);
             if (!route || route.length < 2) continue;
-            const selected = wire.id === this._selectedWireId;
-            const color = wire.color || '#22d3ee';
+            const color = wire.color || this._themeColor('--accent-sensors');
             const line = new Konva.Line({
                 id: `wire:${wire.id}`,
                 points: route.flatMap(point => [point.x, point.y]),
                 stroke: color,
-                strokeWidth: selected ? 1.12 : .72,
+                strokeWidth: .72,
                 lineCap: 'round',
                 lineJoin: 'round',
                 shadowColor: '#000',
                 shadowBlur: .55,
                 shadowOffsetY: .28,
                 shadowOpacity: .7,
-                hitStrokeWidth: 3,
+        hitStrokeWidth: 'auto',
             });
             line.on('mouseenter', () => { this.stage.container().style.cursor = 'pointer'; });
             line.on('mouseleave', () => { this.stage.container().style.cursor = ''; });
             line.on('click tap', event => {
                 if (!isPrimaryPointer(event)) return;
                 event.cancelBubble = true;
-                this._selectedWireId = wire.id;
-                this._selectedComponentId = null;
-                this._selectedSurfaceId = null;
-                this._status = this.store.manualWireMode === 'orthogonal'
-                    ? 'Wire selected. Drag blue segments or yellow corners. Double-click the wire to add a corner.'
-                    : 'Wire selected. Drag yellow points; double-click the wire to add one; right-click a point to remove it.';
-                clearTimeout(this._wireSelectionTimer);
-                this._wireSelectionTimer = setTimeout(() => {
-                    this._renderWires();
-                    this._renderComponentVisuals();
-                    this.requestUpdate();
-                }, 180);
+                this._selectWire(wire.id);
             });
             line.on('dblclick dbltap', event => {
                 event.cancelBubble = true;
-                clearTimeout(this._wireSelectionTimer);
                 const point = this._pointerWorld();
                 const waypoints = insertWireWaypoint(wire, route, point, {
                     snap: this.store.manualWireSnap,
@@ -589,10 +600,65 @@ class CircuitCanvas extends LitElement {
                 this.requestUpdate();
             });
             this.wireLayer.add(line);
-            if (selected && this.store.manualWireMode === 'orthogonal') this._addWireSegmentHandles(wire, route, line);
-            if (selected) this._addWireWaypointHandles(wire, route, line);
         }
+        this._refreshWireSelectionVisuals();
         this.wireLayer.batchDraw();
+    }
+
+    _selectWire(wireId) {
+        if (!this.store.project.wires.some(wire => wire.id === wireId)) return false;
+        this._selectedWireId = wireId;
+        this._selectedComponentId = null;
+        this._selectedSurfaceId = null;
+        this._status = this.store.manualWireMode === 'orthogonal'
+            ? 'Wire selected. Drag a straight section or corner. Double-click the wire to add a corner.'
+            : 'Wire selected. Drag a point to reshape it. Double-click the wire to add a point.';
+        this._refreshWireSelectionVisuals();
+        this._syncComponentVisualSelection();
+        this.requestUpdate();
+        return true;
+    }
+
+    _clearWireSelectionVisuals() {
+        if (!this.wireLayer) return;
+        for (const name of ['wire-selection-overlay', 'wire-segment-handle', 'wire-waypoint-handle', 'wire-alignment-guide']) {
+            for (const node of this.wireLayer.find(`.${name}`)) node.destroy();
+        }
+    }
+
+    _refreshWireSelectionVisuals() {
+        if (!this.wireLayer) return;
+        this._clearWireSelectionVisuals();
+        const wire = this.store.project.wires.find(item => item.id === this._selectedWireId);
+        const route = wire ? this.store.routes.get(wire.id) : null;
+        const line = wire ? this.wireLayer.findOne(node => node.id?.() === `wire:${wire.id}`) : null;
+        if (!wire || !route || route.length < 2 || !line) {
+            this.wireLayer.batchDraw();
+            return;
+        }
+        const color = wire.color || this._themeColor('--accent-sensors');
+        this.wireLayer.add(new Konva.Line({
+            id: `wire-selection:${wire.id}`,
+            name: 'wire-selection-overlay',
+            points: route.flatMap(point => [point.x, point.y]),
+            stroke: color,
+            strokeWidth: .72,
+            lineCap: 'round',
+            lineJoin: 'round',
+            shadowColor: this._themeColor('--primary-hover'),
+            shadowBlur: 2.2,
+            shadowOpacity: 1,
+            listening: false,
+        }));
+        if (this.store.manualWireMode === 'orthogonal') this._addWireSegmentHandles(wire, route, line);
+        this._addWireWaypointHandles(wire, route, line);
+        this.wireLayer.batchDraw();
+    }
+
+    _syncComponentVisualSelection() {
+        for (const wrapper of this.visualLayer?.children || []) {
+            wrapper.classList.toggle('selected', wrapper.dataset.componentId === this._selectedComponentId);
+        }
     }
 
     _addWireSegmentHandles(wire, route, line) {
@@ -612,8 +678,8 @@ class CircuitCanvas extends LitElement {
                 offsetX: (horizontal ? 2.1 : .85) / this.camera.zoom,
                 offsetY: (horizontal ? .85 : 2.1) / this.camera.zoom,
                 cornerRadius: .45 / this.camera.zoom,
-                fill: '#22d3ee',
-                stroke: '#cffafe',
+                fill: this._themeColor('--primary-hover'),
+                stroke: this._themeColor('--text'),
                 strokeWidth: .3 / this.camera.zoom,
                 draggable: true,
                 hitStrokeWidth: 2.2 / this.camera.zoom,
@@ -640,7 +706,7 @@ class CircuitCanvas extends LitElement {
                     snap: false, gridSize: 2.54,
                 });
                 this.store.setManualRoute(wire.id, waypoints);
-                this._status = 'Manual orthogonal route saved. Drag another blue segment grip to continue.';
+                this._status = 'Wire route saved. Drag another section to keep adjusting it.';
                 this.requestUpdate();
             });
             this.wireLayer.add(handle);
@@ -656,8 +722,8 @@ class CircuitCanvas extends LitElement {
                 x: point.x,
                 y: point.y,
                 radius: 1.15 / this.camera.zoom,
-                fill: '#facc15',
-                stroke: '#fff7cc',
+                fill: this._themeColor('--primary-hover'),
+                stroke: this._themeColor('--text'),
                 strokeWidth: .42 / this.camera.zoom,
                 shadowColor: '#000',
                 shadowBlur: .7,
@@ -689,7 +755,7 @@ class CircuitCanvas extends LitElement {
                     gridSize: 2.54,
                 });
                 this.store.setManualRoute(wire.id, waypoints);
-                this._status = 'Manual wire route saved. Reset Wires returns it to automatic routing.';
+                this._status = 'Wire route saved. Use Reset Wires to route it automatically again.';
                 this.requestUpdate();
             });
             handle.on('dblclick dbltap', event => {
@@ -745,7 +811,7 @@ class CircuitCanvas extends LitElement {
 
     _renderWireAlignmentGuides(target, references) {
         this._clearWireAlignmentGuides();
-        const color = '#facc15';
+        const color = this._themeColor('--primary-hover');
         const addRuler = (a, b, vertical) => {
             if (!a || !b || Math.hypot(a.x - b.x, a.y - b.y) < .2) return;
             this.wireLayer.add(new Konva.Line({
@@ -777,7 +843,10 @@ class CircuitCanvas extends LitElement {
 
     _syncWireEditorPreview(wireId, line, route, waypoints) {
         const preview = [route[0], ...waypoints, route.at(-1)];
-        line.points(preview.flatMap(point => [point.x, point.y]));
+        const points = preview.flatMap(point => [point.x, point.y]);
+        line.points(points);
+        const overlay = this.wireLayer.findOne(node => node.id?.() === `wire-selection:${wireId}`);
+        overlay?.points(points);
 
         for (const handle of this.wireLayer.find('.wire-waypoint-handle')) {
             if (handle.getAttr('wireId') !== wireId) continue;
@@ -1014,7 +1083,7 @@ class CircuitCanvas extends LitElement {
         }
         group.add(new Konva.Rect({
             x: left, y: bodyTop, width: right - left, height: bodyBottom - bodyTop, cornerRadius: .7,
-            fill: '#18181b', stroke: selected ? '#22d3ee' : '#52525b', strokeWidth: selected ? .65 : .3,
+            fill: '#18181b', stroke: selected ? this._themeColor('--primary-hover') : '#52525b', strokeWidth: selected ? .65 : .3,
             name: 'component-body', shadowColor: '#000', shadowBlur: 1.2, shadowOpacity: .5,
         }));
         const pin1 = pins.find(pin => pin.pinId === '1');
@@ -1043,7 +1112,7 @@ class CircuitCanvas extends LitElement {
         group.add(new Konva.Line({ points: [2.54, 0, 2.38, -3.1], stroke: '#d4d4d8', strokeWidth: .45, listening: false }));
         group.add(new Konva.Circle({
             x: 1.27, y: -4.15, radius: 2.45, fill: '#ef4444', opacity: .9,
-            stroke: selected ? '#22d3ee' : '#fecaca', strokeWidth: selected ? .65 : .28,
+            stroke: selected ? this._themeColor('--primary-hover') : '#fecaca', strokeWidth: selected ? .65 : .28,
             name: 'component-body', shadowColor: '#ef4444', shadowBlur: 1.5, shadowOpacity: .45,
         }));
         group.add(new Konva.Line({ points: [-.75, -2.85, 3.3, -2.85], stroke: '#fecaca', strokeWidth: .28, listening: false }));
@@ -1086,7 +1155,7 @@ class CircuitCanvas extends LitElement {
             const projected = projectFootprintPoint(footprint, pin);
             const circle = new Konva.Circle({
                 name: 'semantic-terminal', x: projected.x, y: projected.y, radius: .82,
-                fill: '#f8fafc', stroke: '#0891b2', strokeWidth: .3, opacity: .94,
+                fill: this._themeColor('--text'), stroke: this._themeColor('--primary-hover'), strokeWidth: .3, opacity: .94,
             });
             circle.setAttr('connectionRef', componentPinRef(component.id, pin.pinId));
             circle.on('mouseenter', () => {
@@ -1121,8 +1190,8 @@ class CircuitCanvas extends LitElement {
             this._selectedSurfaceId = null;
             const footprint = getFootprintDefinition(component.footprintId);
             this._status = footprint?.placementMode === 'breadboard-rigid'
-                ? 'Searching complete rigid-footprint placements…'
-                : 'Moving component…';
+                ? 'Move over the breadboard to find a valid set of holes.'
+                : 'Release to place the component.';
             this.requestUpdate();
         });
         group.on('dragmove', () => {
@@ -1135,11 +1204,11 @@ class CircuitCanvas extends LitElement {
                 const transform = componentWorldTransform(this.store.project, preview);
                 group.position({ x: transform.x, y: transform.y });
                 group.rotation(transform.rotation);
-                this._status = `${Object.keys(candidate.bindings).length} target holes available · release to mount.`;
+                this._status = `${Object.keys(candidate.bindings).length} holes aligned. Release to place the component.`;
             } else {
                 group.position(anchor);
                 this._status = component.placement.type === 'surface'
-                    ? 'Outside a valid footprint · release to detach into free space.'
+                    ? 'Move over valid breadboard holes, or release to place it freely.'
                     : 'Release to place the component here.';
             }
             this._positionComponentVisual(component.id, { x: group.x(), y: group.y(), rotation: group.rotation() });
@@ -1167,7 +1236,7 @@ class CircuitCanvas extends LitElement {
             this._selectedComponentId = component.id;
             this._deselectWire();
             this._selectedSurfaceId = null;
-            this._status = `${getPhysicalComponentDefinition(component.definitionId)?.name || component.definitionId} selected.`;
+            this._status = `Drag ${getPhysicalComponentDefinition(component.definitionId)?.name || component.definitionId} to move it, or press Delete to remove it.`;
             this._renderComponents();
             this.requestUpdate();
         });
@@ -1205,10 +1274,10 @@ class CircuitCanvas extends LitElement {
             const surface = this.store.project.surfaces.find(item => item.id === this._hoveredHole.surfaceId);
             for (const holeId of holesInElectricalGroup(surface, this._hoveredHole.holeId)) {
                 const point = holeWorldPosition(surface, holeId);
-                this.interactionLayer.add(new Konva.Circle({ x: point.x, y: point.y, radius: 1.05, fill: '#facc15', opacity: .38, listening: false }));
+                this.interactionLayer.add(new Konva.Circle({ x: point.x, y: point.y, radius: 1.05, fill: this._themeColor('--primary'), opacity: .38, listening: false }));
             }
             const point = holeWorldPosition(surface, this._hoveredHole.holeId);
-            this.interactionLayer.add(new Konva.Circle({ x: point.x, y: point.y, radius: 1.13, stroke: '#fde047', strokeWidth: .34, listening: false }));
+            this.interactionLayer.add(new Konva.Circle({ x: point.x, y: point.y, radius: 1.13, stroke: this._themeColor('--primary-hover'), strokeWidth: .34, listening: false }));
         }
 
         const state = this.interaction.state;
@@ -1218,8 +1287,8 @@ class CircuitCanvas extends LitElement {
                 for (const holeId of Object.values(state.candidate.bindings)) {
                     const point = holeWorldPosition(surface, holeId);
                     this.interactionLayer.add(new Konva.Circle({
-                        x: point.x, y: point.y, radius: 1.16, fill: '#22d3ee', opacity: .48,
-                        stroke: '#a5f3fc', strokeWidth: .34, listening: false,
+                        x: point.x, y: point.y, radius: 1.16, fill: this._themeColor('--primary'), opacity: .48,
+                        stroke: this._themeColor('--text'), strokeWidth: .34, listening: false,
                     }));
                 }
             }
@@ -1238,11 +1307,11 @@ class CircuitCanvas extends LitElement {
             if (points.length > 1) {
                 this.interactionLayer.add(new Konva.Line({
                     points: points.flatMap(point => [point.x, point.y]),
-                    stroke: '#67e8f9', strokeWidth: .52, dash: [1.2, .8], lineJoin: 'round', listening: false,
+                    stroke: this._themeColor('--primary-hover'), strokeWidth: .52, dash: [1.2, .8], lineJoin: 'round', listening: false,
                 }));
                 const target = points.at(-1);
                 this.interactionLayer.add(new Konva.Circle({
-                    x: target.x, y: target.y, radius: .7, fill: '#facc15', stroke: '#fff7cc',
+                    x: target.x, y: target.y, radius: .7, fill: this._themeColor('--primary'), stroke: this._themeColor('--text'),
                     strokeWidth: .22, listening: false,
                 }));
             }
@@ -1296,14 +1365,14 @@ class CircuitCanvas extends LitElement {
                     snap: this.store.manualWireSnap,
                     gridSize: 2.54,
                 });
-                this._status = 'Route point placed with pin-aware alignment. Keep clicking to route; click a pin to finish; Esc cancels.';
+                this._status = 'Wire point added. Keep clicking to shape the wire, then click a pin to finish.';
                 this.requestUpdate();
                 return;
             }
             this._selectedComponentId = null;
             this._deselectWire();
             this._selectedSurfaceId = null;
-            this._status = 'Click a component pin or breadboard hole to start a semantic wire.';
+            this._status = 'Click a component pin or breadboard hole to start a wire.';
             this._renderComponents();
             this.requestUpdate();
         }
@@ -1312,19 +1381,19 @@ class CircuitCanvas extends LitElement {
     _activateTerminal(ref) {
         this._deselectWire();
         const result = this.interaction.activateTerminal(ref);
-        this._status = result === 'started'
-            ? 'Wire started. Click empty space to place aligned route points; click another pin to finish; Esc cancels.'
-            : result === 'completed'
-                ? 'Wire created exactly along the previewed manual route. Clean is the only command that may reroute it.'
-                : 'Wire drawing cancelled.';
+            this._status = result === 'started'
+                ? 'Click empty space to add corners, then click another pin to finish. Press Esc to cancel.'
+                : result === 'completed'
+                    ? 'Wire added. Drag a segment to adjust it, or use Clean to route it automatically.'
+                    : 'Click a pin to start another wire.';
         this.requestUpdate();
     }
 
     _deselectWire() {
         if (!this._selectedWireId) return false;
         this._selectedWireId = null;
-        clearTimeout(this._wireSelectionTimer);
-        if (this.wireLayer) this._renderWires();
+        this._clearWireSelectionVisuals();
+        this.wireLayer?.batchDraw();
         this.requestUpdate();
         return true;
     }
@@ -1339,9 +1408,12 @@ class CircuitCanvas extends LitElement {
             const definition = getPhysicalComponentDefinition(terminal.definitionId) || componentLibrary[terminal.definitionId];
             return {
                 ...terminal,
-                componentName: `${definition?.name || terminal.definitionId} · ${component?.id || terminal.componentId}`,
+                componentName: definition?.name || terminal.definitionId,
+                componentRef: component?.id || terminal.componentId,
             };
-        }).sort((a, b) => a.componentName.localeCompare(b.componentName) || String(a.pinId).localeCompare(String(b.pinId), undefined, { numeric: true }));
+        }).sort((a, b) => a.componentName.localeCompare(b.componentName)
+            || a.componentRef.localeCompare(b.componentRef)
+            || String(a.pinId).localeCompare(String(b.pinId), undefined, { numeric: true }));
         return { label: net.label, wireCount: net.wireIds.length, terminals };
     }
 
@@ -1392,7 +1464,7 @@ class CircuitCanvas extends LitElement {
         const definitionId = event.dataTransfer.getData('text/plain');
         const footprint = defaultFootprintForComponent(definitionId);
         if (!footprint) {
-            this._status = 'That item is a placement surface, not a movable component.';
+            this._status = 'Move this item by dragging the breadboard itself.';
             this.requestUpdate();
             return;
         }
@@ -1411,9 +1483,9 @@ class CircuitCanvas extends LitElement {
         this._selectedComponentId = component.id;
         this._deselectWire();
         this._selectedSurfaceId = null;
-        this._status = mounted
-            ? `${getPhysicalComponentDefinition(definitionId).name} mounted into ${footprint.pins.length} semantic holes.`
-            : `${getPhysicalComponentDefinition(definitionId).name} placed in free space; drag it onto the breadboard to mount.`;
+            this._status = mounted
+                ? `${getPhysicalComponentDefinition(definitionId).name} snapped into ${footprint.pins.length} valid breadboard holes.`
+                : `Drag ${getPhysicalComponentDefinition(definitionId).name} to move it, or place it over a breadboard to snap it in.`;
         this._renderComponentVisuals();
         this.requestUpdate();
     }
@@ -1438,7 +1510,7 @@ class CircuitCanvas extends LitElement {
             this._selectedComponentId = component.id;
             this._deselectWire();
             this._selectedSurfaceId = null;
-            this._status = `${getPhysicalComponentDefinition(definitionId).name} added. Drag its body to move it; click a terminal to wire it.`;
+                this._status = `${getPhysicalComponentDefinition(definitionId).name} added. Drag it to move, or click a pin to start wiring.`;
             this._renderComponentVisuals();
             this.requestUpdate();
             return;
@@ -1458,9 +1530,9 @@ class CircuitCanvas extends LitElement {
         this._selectedComponentId = component.id;
         this._deselectWire();
         this._selectedSurfaceId = null;
-        this._status = mounted
-            ? `${getPhysicalComponentDefinition(definitionId).name} mounted at the next complete valid footprint.`
-            : `No complete footprint was available; ${getPhysicalComponentDefinition(definitionId).name} remains in free space.`;
+            this._status = mounted
+                ? `${getPhysicalComponentDefinition(definitionId).name} snapped into the next available breadboard position.`
+                : `No valid breadboard space was available. Move ${getPhysicalComponentDefinition(definitionId).name} beside the board or make room.`;
         this._renderComponentVisuals();
         this.requestUpdate();
     }

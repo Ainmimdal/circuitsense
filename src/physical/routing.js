@@ -11,6 +11,7 @@ const CROSSING_PENALTY = 12;
 const PARALLEL_LANE_PENALTY = 18;
 const PARALLEL_LENGTH_PENALTY = 0.6;
 const MAX_GRAPH_NODES = 2600;
+const HEADER_ALIGNMENT_TOLERANCE = 1;
 
 const DEFAULT_WEIGHTS = Object.freeze({
     length: 1, bend: TURN_PENALTY, crossing: CROSSING_PENALTY, obstacle: 100000,
@@ -170,6 +171,27 @@ function rotateDirection(direction, rotation) {
     return start < 0 ? direction : directions[(start + Math.round(normalizeDegrees(rotation) / 90)) % 4];
 }
 
+function pinHeaderDirection(footprint, target, bounds) {
+    const points = footprint.pins.map(pin => projectFootprintPoint(footprint, pin));
+    const row = points.filter(point => Math.abs(point.y - target.y) <= HEADER_ALIGNMENT_TOLERANCE);
+    const column = points.filter(point => Math.abs(point.x - target.x) <= HEADER_ALIGNMENT_TOLERANCE);
+    const span = (items, axis) => items.length < 2 ? 0 :
+        Math.max(...items.map(point => point[axis])) - Math.min(...items.map(point => point[axis]));
+    const rowStrength = span(row, 'x') * Math.max(0, row.length - 1);
+    const columnStrength = span(column, 'y') * Math.max(0, column.length - 1);
+    if (Math.abs(rowStrength - columnStrength) <= 1e-6) return null;
+    if (rowStrength > columnStrength) {
+        const rowY = row.reduce((total, point) => total + point.y, 0) / row.length;
+        const centerY = bounds.y + bounds.height / 2;
+        if (Math.abs(rowY - centerY) <= HEADER_ALIGNMENT_TOLERANCE) return null;
+        return rowY < centerY ? 'up' : 'down';
+    }
+    const columnX = column.reduce((total, point) => total + point.x, 0) / column.length;
+    const centerX = bounds.x + bounds.width / 2;
+    if (Math.abs(columnX - centerX) <= HEADER_ALIGNMENT_TOLERANCE) return null;
+    return columnX < centerX ? 'left' : 'right';
+}
+
 export function pinExitDirection(project, ref) {
     if (ref?.type !== 'component-pin') return null;
     const component = project.components.find(item => item.id === ref.componentId);
@@ -179,47 +201,94 @@ export function pinExitDirection(project, ref) {
     const transform = componentWorldTransform(project, component);
     const definition = getComponentDef(component.definitionId);
     const override = definition?.pinExitOverride?.[ref.pinId];
+    const isBoard = Boolean(definition?.isBoard || definition?.isControllerBoard);
     const bounds = footprint.routingBounds;
-    if (!bounds) return rotateDirection(override || 'up', transform.rotation);
+    if (!bounds) return rotateDirection(!isBoard && override ? override : 'up', transform.rotation);
     const projectedPin = projectFootprintPoint(footprint, pin);
+    const headerDirection = pinHeaderDirection(footprint, projectedPin, bounds);
+    if (!isBoard && override) return rotateDirection(override, transform.rotation);
+    if (headerDirection) return rotateDirection(headerDirection, transform.rotation);
     const distances = [
         ['left', Math.abs(projectedPin.x - bounds.x)], ['right', Math.abs(bounds.x + bounds.width - projectedPin.x)],
         ['up', Math.abs(projectedPin.y - bounds.y)], ['down', Math.abs(bounds.y + bounds.height - projectedPin.y)],
     ].sort((a, b) => a[1] - b[1]);
-    if (!definition?.isControllerBoard && override) return rotateDirection(override, transform.rotation);
     return rotateDirection(distances[0][0], transform.rotation);
 }
 
-function endpointLaneOffset(project, wire, ref) {
-    if (ref?.type !== 'component-pin') return 0;
-    const direction = pinExitDirection(project, ref);
-    const peers = [];
-    for (const candidate of project.wires || []) {
-        for (const endpoint of [candidate.from, candidate.to]) {
-            if (endpoint?.type !== 'component-pin' || endpoint.componentId !== ref.componentId) continue;
-            if (pinExitDirection(project, endpoint) !== direction) continue;
-            const point = resolveConnectionWorldPoint(project, endpoint);
-            peers.push({ wireId: candidate.id, pinId: endpoint.pinId, point });
-        }
-    }
-    peers.sort((a, b) => {
-        const alongHeader = ['up', 'down'].includes(direction)
-            ? (a.point?.x || 0) - (b.point?.x || 0)
-            : (a.point?.y || 0) - (b.point?.y || 0);
-        return alongHeader || String(a.pinId).localeCompare(String(b.pinId)) || String(a.wireId).localeCompare(String(b.wireId));
-    });
-    const index = peers.findIndex(item => item.wireId === wire.id && item.pinId === ref.pinId);
-    return Math.max(0, index) * WIRE_SEPARATION;
+function endpointCacheKey(ref) {
+    if (ref?.type === 'component-pin') return JSON.stringify(['component-pin', ref.componentId, ref.pinId]);
+    if (ref?.type === 'surface-hole') return JSON.stringify(['surface-hole', ref.surfaceId, ref.holeId]);
+    return JSON.stringify(ref || null);
 }
 
-function escapeFor(project, wire, ref, point, obstacle) {
+function wireEndpointCacheKey(wire, ref) {
+    return JSON.stringify([wire.id, endpointCacheKey(ref)]);
+}
+
+function routingSnapshot(project) {
+    const obstacles = componentRoutingObstacles(project);
+    const obstacleByComponentId = new Map(obstacles.map(obstacle => [obstacle.id, obstacle]));
+    const points = new Map(), directions = new Map(), laneOffsets = new Map(), laneGroups = new Map();
+    const pointFor = ref => {
+        const key = endpointCacheKey(ref);
+        if (!points.has(key)) points.set(key, resolveConnectionWorldPoint(project, ref));
+        return points.get(key);
+    };
+    const directionFor = ref => {
+        const key = endpointCacheKey(ref);
+        if (!directions.has(key)) directions.set(key, pinExitDirection(project, ref));
+        return directions.get(key);
+    };
+    for (const wire of project.wires || []) {
+        for (const ref of [wire.from, wire.to]) {
+            pointFor(ref);
+            if (ref?.type !== 'component-pin') continue;
+            const direction = directionFor(ref);
+            const groupKey = JSON.stringify([ref.componentId, direction]);
+            if (!laneGroups.has(groupKey)) laneGroups.set(groupKey, []);
+            laneGroups.get(groupKey).push({ wire, ref, point: pointFor(ref), direction });
+        }
+    }
+    for (const peers of laneGroups.values()) {
+        const direction = peers[0]?.direction;
+        peers.sort((a, b) => {
+            const alongHeader = ['up', 'down'].includes(direction)
+                ? (a.point?.x || 0) - (b.point?.x || 0)
+                : (a.point?.y || 0) - (b.point?.y || 0);
+            return alongHeader || String(a.ref.pinId).localeCompare(String(b.ref.pinId)) ||
+                String(a.wire.id).localeCompare(String(b.wire.id));
+        });
+        peers.forEach((peer, index) => laneOffsets.set(wireEndpointCacheKey(peer.wire, peer.ref), index * WIRE_SEPARATION));
+    }
+    return {
+        obstacles,
+        obstacleFor: ref => ref?.type === 'component-pin' ? obstacleByComponentId.get(ref.componentId) : null,
+        pointFor,
+        directionFor,
+        laneFor: (wire, ref) => laneOffsets.get(wireEndpointCacheKey(wire, ref)) || 0,
+    };
+}
+
+function escapeFor(ref, point, obstacle, oppositePoint, direction, lane) {
     if (!obstacle || ref?.type !== 'component-pin') return point;
-    const direction = pinExitDirection(project, ref);
-    const lane = endpointLaneOffset(project, wire, ref);
-    if (direction === 'up') return { x: point.x, y: obstacle.top - 0.01 - lane };
-    if (direction === 'down') return { x: point.x, y: obstacle.bottom + 0.01 + lane };
-    if (direction === 'left') return { x: obstacle.left - 0.01 - lane, y: point.y };
-    return { x: obstacle.right + 0.01 + lane, y: point.y };
+    if (direction === 'up') {
+        const base = obstacle.top - 0.01;
+        const limit = Number.isFinite(oppositePoint?.y) ? Math.min(base, oppositePoint.y) : -Infinity;
+        return { x: point.x, y: Math.max(base - lane, limit) };
+    }
+    if (direction === 'down') {
+        const base = obstacle.bottom + 0.01;
+        const limit = Number.isFinite(oppositePoint?.y) ? Math.max(base, oppositePoint.y) : Infinity;
+        return { x: point.x, y: Math.min(base + lane, limit) };
+    }
+    if (direction === 'left') {
+        const base = obstacle.left - 0.01;
+        const limit = Number.isFinite(oppositePoint?.x) ? Math.min(base, oppositePoint.x) : -Infinity;
+        return { x: Math.max(base - lane, limit), y: point.y };
+    }
+    const base = obstacle.right + 0.01;
+    const limit = Number.isFinite(oppositePoint?.x) ? Math.max(base, oppositePoint.x) : Infinity;
+    return { x: Math.min(base + lane, limit), y: point.y };
 }
 
 function classifyWire(wire) {
@@ -230,26 +299,25 @@ function classifyWire(wire) {
     return NET_ORDER.signal;
 }
 
-function routeContext(project, wire) {
-    const from = resolveConnectionWorldPoint(project, wire.from), to = resolveConnectionWorldPoint(project, wire.to);
+function routeContext(project, wire, snapshot = routingSnapshot(project)) {
+    const from = snapshot.pointFor(wire.from), to = snapshot.pointFor(wire.to);
     if (!from || !to) return null;
-    const obstacles = componentRoutingObstacles(project);
-    const fromObstacle = wire.from?.type === 'component-pin' ? obstacles.find(item => item.id === wire.from.componentId) : null;
-    const toObstacle = wire.to?.type === 'component-pin' ? obstacles.find(item => item.id === wire.to.componentId) : null;
-    return { wire, from, to, obstacles,
-        escape1: escapeFor(project, wire, wire.from, from, fromObstacle),
-        escape2: escapeFor(project, wire, wire.to, to, toObstacle), netType: classifyWire(wire) };
+    const fromDirection = snapshot.directionFor(wire.from), toDirection = snapshot.directionFor(wire.to);
+    return { wire, from, to, obstacles: snapshot.obstacles, fromDirection, toDirection,
+        escape1: escapeFor(wire.from, from, snapshot.obstacleFor(wire.from), to, fromDirection, snapshot.laneFor(wire, wire.from)),
+        escape2: escapeFor(wire.to, to, snapshot.obstacleFor(wire.to), from, toDirection, snapshot.laneFor(wire, wire.to)),
+        netType: classifyWire(wire) };
 }
 
 function pathClear(points, obstacles) {
     return routeSegments(points).every(segment => segmentClear(segment.a, segment.b, obstacles));
 }
 
-function pathCost(points, usedRoutes) {
+function pathCost(points, usedSegments) {
     let cost = Math.max(0, points.length - 2) * TURN_PENALTY;
     for (const segment of routeSegments(points)) {
         cost += segmentLength(segment.a, segment.b);
-        for (const route of usedRoutes) for (const used of routeSegments(route)) {
+        for (const used of usedSegments) {
             const overlap = parallelOverlap(segment, used);
             if (overlap > 0) cost += PARALLEL_LANE_PENALTY + overlap * PARALLEL_LENGTH_PENALTY;
             if (segmentCrosses(segment, used)) cost += CROSSING_PENALTY;
@@ -262,14 +330,14 @@ function addRounded(set, value) {
     if (Number.isFinite(value)) set.add(Math.round(value * 100) / 100);
 }
 
-function gridValues(context, usedRoutes) {
+function gridValues(context, usedSegments) {
     const xs = new Set([context.escape1.x, context.escape2.x]);
     const ys = new Set([context.escape1.y, context.escape2.y]);
     for (const obstacle of context.obstacles) {
         addRounded(xs, obstacle.left - CORRIDOR_GAP); addRounded(xs, obstacle.right + CORRIDOR_GAP);
         addRounded(ys, obstacle.top - CORRIDOR_GAP); addRounded(ys, obstacle.bottom + CORRIDOR_GAP);
     }
-    for (const route of usedRoutes) for (const segment of routeSegments(route)) {
+    for (const segment of usedSegments) {
         if (segmentDirection(segment.a, segment.b) === 'h') {
             addRounded(ys, segment.a.y - WIRE_SEPARATION); addRounded(ys, segment.a.y + WIRE_SEPARATION);
         } else {
@@ -282,6 +350,49 @@ function gridValues(context, usedRoutes) {
 function pointKey(point) { return `${point.x},${point.y}`; }
 function stateKey(point, direction) { return `${pointKey(point)}|${direction}`; }
 
+class MinPriorityQueue {
+    constructor() {
+        this.items = [];
+        this.nextOrder = 0;
+    }
+
+    get size() { return this.items.length; }
+
+    push(state, score) {
+        const item = { state, score, order: this.nextOrder++ };
+        this.items.push(item);
+        let index = this.items.length - 1;
+        while (index > 0) {
+            const parent = Math.floor((index - 1) / 2);
+            if (!this.#before(item, this.items[parent])) break;
+            this.items[index] = this.items[parent];
+            index = parent;
+        }
+        this.items[index] = item;
+    }
+
+    pop() {
+        const first = this.items[0], last = this.items.pop();
+        if (!this.items.length) return first;
+        let index = 0;
+        while (true) {
+            const left = index * 2 + 1, right = left + 1;
+            if (left >= this.items.length) break;
+            let child = left;
+            if (right < this.items.length && this.#before(this.items[right], this.items[left])) child = right;
+            if (!this.#before(this.items[child], last)) break;
+            this.items[index] = this.items[child];
+            index = child;
+        }
+        this.items[index] = last;
+        return first;
+    }
+
+    #before(left, right) {
+        return left.score < right.score || (left.score === right.score && left.order < right.order);
+    }
+}
+
 function reconstruct(cameFrom, endState, nodes) {
     const points = [];
     let state = endState;
@@ -292,7 +403,25 @@ function reconstruct(cameFrom, endState, nodes) {
     return cleanPoints(points.reverse());
 }
 
-function fallbackPath(context, usedRoutes) {
+function crossesCappedExit(direction, escape, current, next) {
+    if (direction === 'up') return Math.abs(current.x - escape.x) < 1e-6 &&
+        Math.abs(next.x - escape.x) < 1e-6 && Math.min(current.y, next.y) < escape.y - 1e-6;
+    if (direction === 'down') return Math.abs(current.x - escape.x) < 1e-6 &&
+        Math.abs(next.x - escape.x) < 1e-6 && Math.max(current.y, next.y) > escape.y + 1e-6;
+    if (direction === 'left') return Math.abs(current.y - escape.y) < 1e-6 &&
+        Math.abs(next.y - escape.y) < 1e-6 && Math.min(current.x, next.x) < escape.x - 1e-6;
+    if (direction === 'right') return Math.abs(current.y - escape.y) < 1e-6 &&
+        Math.abs(next.y - escape.y) < 1e-6 && Math.max(current.x, next.x) > escape.x + 1e-6;
+    return false;
+}
+
+function reachedOppositeAxis(direction, escape, opposite) {
+    if (['up', 'down'].includes(direction)) return Math.abs(escape.y - opposite.y) < 1e-6;
+    if (['left', 'right'].includes(direction)) return Math.abs(escape.x - opposite.x) < 1e-6;
+    return false;
+}
+
+function fallbackPath(context, usedSegments) {
     const { escape1: from, escape2: to, obstacles } = context;
     const candidates = [cleanPoints([from, { x: to.x, y: from.y }, to]), cleanPoints([from, { x: from.x, y: to.y }, to])];
     for (const obstacle of obstacles) {
@@ -301,60 +430,93 @@ function fallbackPath(context, usedRoutes) {
         candidates.push(cleanPoints([from, { x: from.x, y: obstacle.top - CORRIDOR_GAP },
             { x: to.x, y: obstacle.top - CORRIDOR_GAP }, to]));
     }
-    const valid = candidates.filter(points => pathClear(points, obstacles));
-    const score = points => pathCost(points, usedRoutes) + routeSegments(points)
+    const respectsCaps = points => routeSegments(points).every(segment => {
+        const crossesSourceCap = reachedOppositeAxis(context.fromDirection, from, context.to) &&
+            crossesCappedExit(context.fromDirection, from, segment.a, segment.b);
+        const crossesTargetCap = reachedOppositeAxis(context.toDirection, to, context.from) &&
+            crossesCappedExit(context.toDirection, to, segment.a, segment.b);
+        return !crossesSourceCap && !crossesTargetCap;
+    });
+    const capped = candidates.filter(respectsCaps);
+    const eligible = capped.length ? capped : candidates;
+    const valid = eligible.filter(points => pathClear(points, obstacles));
+    const score = points => pathCost(points, usedSegments) + routeSegments(points)
         .reduce((total, segment) => total + obstacles.filter(rect => rectIntersectsSegment(rect, segment)).length * 100000, 0);
-    return (valid.length ? valid : candidates).sort((a, b) => score(a) - score(b))[0];
+    return (valid.length ? valid : eligible).sort((a, b) => score(a) - score(b))[0];
 }
 
 function findOrthogonalPath(context, usedRoutes) {
-    const { xs, ys } = gridValues(context, usedRoutes);
-    if (xs.length * ys.length > MAX_GRAPH_NODES) return fallbackPath(context, usedRoutes);
+    const usedSegments = usedRoutes.flatMap(routeSegments);
+    const { xs, ys } = gridValues(context, usedSegments);
+    if (xs.length * ys.length > MAX_GRAPH_NODES) return fallbackPath(context, usedSegments);
     const nodes = new Map();
     for (const x of xs) for (const y of ys) nodes.set(pointKey({ x, y }), { x, y });
     const start = context.escape1, end = context.escape2;
-    const startState = stateKey(start, 'n'), open = new Set([startState]), cameFrom = new Map();
-    const gScore = new Map([[startState, 0]]), fScore = new Map([[startState, segmentLength(start, end)]]);
+    const startState = stateKey(start, 'n'), open = new MinPriorityQueue(), cameFrom = new Map();
+    const startScore = segmentLength(start, end);
+    const gScore = new Map([[startState, 0]]), fScore = new Map([[startState, startScore]]);
+    open.push(startState, startScore);
     while (open.size) {
-        let currentState = null;
-        for (const state of open) if (currentState === null || fScore.get(state) < fScore.get(currentState)) currentState = state;
+        const currentEntry = open.pop();
+        if (currentEntry.score !== fScore.get(currentEntry.state)) continue;
+        const currentState = currentEntry.state;
         const split = currentState.lastIndexOf('|'), current = nodes.get(currentState.slice(0, split));
         const currentDirection = currentState.slice(split + 1);
         if (pointKey(current) === pointKey(end)) return reconstruct(cameFrom, currentState, nodes);
-        open.delete(currentState);
-        const neighbors = [...xs.filter(x => x !== current.x).map(x => ({ x, y: current.y })),
-            ...ys.filter(y => y !== current.y).map(y => ({ x: current.x, y }))];
+        const xIndex = xs.indexOf(current.x), yIndex = ys.indexOf(current.y);
+        const neighbors = [
+            xIndex > 0 ? { x: xs[xIndex - 1], y: current.y } : null,
+            xIndex < xs.length - 1 ? { x: xs[xIndex + 1], y: current.y } : null,
+            yIndex > 0 ? { x: current.x, y: ys[yIndex - 1] } : null,
+            yIndex < ys.length - 1 ? { x: current.x, y: ys[yIndex + 1] } : null,
+        ].filter(Boolean);
         for (const next of neighbors) {
+            const crossesSourceCap = reachedOppositeAxis(context.fromDirection, start, context.to) &&
+                crossesCappedExit(context.fromDirection, start, current, next);
+            const crossesTargetCap = reachedOppositeAxis(context.toDirection, end, context.from) &&
+                crossesCappedExit(context.toDirection, end, current, next);
+            if (crossesSourceCap || crossesTargetCap) continue;
             if (!segmentClear(current, next, context.obstacles)) continue;
             const direction = segmentDirection(current, next);
             const bend = currentDirection !== 'n' && currentDirection !== direction ? TURN_PENALTY : 0;
             const nextState = stateKey(next, direction);
-            const tentative = (gScore.get(currentState) ?? Infinity) + pathCost([current, next], usedRoutes) + bend;
+            const tentative = (gScore.get(currentState) ?? Infinity) + pathCost([current, next], usedSegments) + bend;
             if (tentative >= (gScore.get(nextState) ?? Infinity)) continue;
             cameFrom.set(nextState, currentState); gScore.set(nextState, tentative);
-            fScore.set(nextState, tentative + segmentLength(next, end)); open.add(nextState);
+            const nextScore = tentative + segmentLength(next, end);
+            fScore.set(nextState, nextScore); open.push(nextState, nextScore);
         }
     }
-    return fallbackPath(context, usedRoutes);
+    return fallbackPath(context, usedSegments);
 }
 
 function routedContext(context, usedRoutes) {
     if (context.wire.route?.mode === 'manual') return cleanPoints([context.from, ...(context.wire.route.waypoints || []), context.to]);
+    if (!usedRoutes.length) {
+        const shortest = findOrthogonalPath(context, []);
+        return cleanAutomaticPoints([context.from, context.escape1, ...shortest.slice(1, -1), context.escape2, context.to]);
+    }
+    const spaced = findOrthogonalPath(context, usedRoutes);
+    const directLength = segmentLength(context.escape1, context.escape2);
+    const lowerBoundDetour = Math.max(WIRE_SEPARATION * 4 + TURN_PENALTY, directLength * 0.18);
+    if (routeLength(spaced) <= directLength + lowerBoundDetour) {
+        return cleanAutomaticPoints([context.from, context.escape1, ...spaced.slice(1, -1), context.escape2, context.to]);
+    }
     const shortest = findOrthogonalPath(context, []);
-    const spaced = usedRoutes.length ? findOrthogonalPath(context, usedRoutes) : shortest;
     const allowedSeparationDetour = Math.max(WIRE_SEPARATION * 4 + TURN_PENALTY, routeLength(shortest) * 0.18);
     const middle = routeLength(spaced) <= routeLength(shortest) + allowedSeparationDetour ? spaced : shortest;
     return cleanAutomaticPoints([context.from, context.escape1, ...middle.slice(1, -1), context.escape2, context.to]);
 }
 
 export function routeWire(project, wire, { existingRoutes = [] } = {}) {
-    const context = routeContext(project, wire);
+    const context = routeContext(project, wire, routingSnapshot(project));
     return context ? routedContext(context, existingRoutes) : null;
 }
 
 export function routeAllWires(project) {
     const routes = new Map(), usedRoutes = [];
-    const contexts = (project.wires || []).map((wire, index) => ({ context: routeContext(project, wire), index }))
+    const snapshot = routingSnapshot(project);
+    const contexts = (project.wires || []).map((wire, index) => ({ context: routeContext(project, wire, snapshot), index }))
         .filter(item => item.context)
         .sort((a, b) => a.context.netType - b.context.netType ||
             Math.min(a.context.from.x, a.context.to.x) - Math.min(b.context.from.x, b.context.to.x) ||

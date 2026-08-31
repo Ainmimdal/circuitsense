@@ -5,9 +5,11 @@ import { PhysicalCircuitStore } from '../src/physical/circuit-store.js';
 import { autoLayoutPhysicalStore, autoWirePhysicalStore } from '../src/physical/automation.js';
 import { addComponentCommand } from '../src/physical/commands.js';
 import { createHalfBreadboardSurface, getSurfaceDefinition } from '../src/physical/breadboard.js';
-import { componentPinRef, createComponentInstance, createPhysicalProject, surfaceHoleRef } from '../src/physical/model.js';
-import { defaultFootprintForComponent } from '../src/physical/footprints.js';
-import { componentRoutingObstacles, routeAllWires, routeSegments } from '../src/physical/routing.js';
+import {
+    componentPinRef, createComponentInstance, createPhysicalProject, resolveConnectionWorldPoint, surfaceHoleRef,
+} from '../src/physical/model.js';
+import { calibrateFreeComponentFootprint, defaultFootprintForComponent } from '../src/physical/footprints.js';
+import { componentRoutingObstacles, pinExitDirection, routeAllWires, routeSegments } from '../src/physical/routing.js';
 
 function addArduino(store) {
     const footprint = defaultFootprintForComponent('arduino-uno');
@@ -64,6 +66,20 @@ function collinearOverlap(a, b) {
             Math.max(Math.min(a.a.y, a.b.y), Math.min(b.a.y, b.b.y)));
     }
     if (Math.abs(a.a.y - b.a.y) > 1e-6) return 0;
+    return Math.max(0, Math.min(Math.max(a.a.x, a.b.x), Math.max(b.a.x, b.b.x)) -
+        Math.max(Math.min(a.a.x, a.b.x), Math.min(b.a.x, b.b.x)));
+}
+
+function crowdedParallelOverlap(a, b, clearance = 1.8) {
+    const aVertical = Math.abs(a.a.x - a.b.x) < 1e-6;
+    const bVertical = Math.abs(b.a.x - b.b.x) < 1e-6;
+    if (aVertical !== bVertical) return 0;
+    if (aVertical) {
+        if (Math.abs(a.a.x - b.a.x) + 1e-6 >= clearance) return 0;
+        return Math.max(0, Math.min(Math.max(a.a.y, a.b.y), Math.max(b.a.y, b.b.y)) -
+            Math.max(Math.min(a.a.y, a.b.y), Math.min(b.a.y, b.b.y)));
+    }
+    if (Math.abs(a.a.y - b.a.y) + 1e-6 >= clearance) return 0;
     return Math.max(0, Math.min(Math.max(a.a.x, a.b.x), Math.max(b.a.x, b.b.x)) -
         Math.max(Math.min(a.a.x, a.b.x), Math.min(b.a.x, b.b.x)));
 }
@@ -205,4 +221,170 @@ test('Auto Layout with Auto Wire commits one history step', () => {
     const result = autoLayoutPhysicalStore(store);
     assert.equal(result.status, 'success');
     assert.equal(store.historyIndex, before + 1);
+});
+
+test('direct Auto Layout assigns each ground wire to the nearest final controller header', () => {
+    calibrateFreeComponentFootprint('arduino-uno', [
+        { pinId: '2', x: 10, y: 0 },
+        { pinId: 'A0', x: 34, y: 39 },
+        { pinId: 'A4', x: 42, y: 39 },
+        { pinId: 'A5', x: 46, y: 39 },
+        { pinId: '5V', x: 30, y: 39 },
+        { pinId: 'GND.1', x: 18, y: 39 },
+        { pinId: 'GND.2', x: 22, y: 39 },
+        { pinId: 'GND.3', x: 18, y: 0 },
+    ]);
+    calibrateFreeComponentFootprint('big-sound-sensor', [
+        { pinId: 'AOUT', x: 2, y: 14 },
+        { pinId: 'GND', x: 6, y: 14 },
+        { pinId: 'VCC', x: 10, y: 14 },
+        { pinId: 'DOUT', x: 14, y: 14 },
+    ]);
+    calibrateFreeComponentFootprint('ds1307', [
+        { pinId: 'GND', x: 2, y: 0 },
+        { pinId: '5V', x: 6, y: 0 },
+        { pinId: 'SDA', x: 10, y: 0 },
+        { pinId: 'SCL', x: 14, y: 0 },
+    ]);
+
+    const make = (id, definitionId, x, y) => createComponentInstance({
+        id, definitionId, footprintId: defaultFootprintForComponent(definitionId).id, x, y,
+    });
+    const uno = make('uno-ground-affinity', 'arduino-uno', 100, 100);
+    // Deliberately start on the opposite sides from their final header-affinity rows.
+    const sound = make('sound-ground-affinity', 'big-sound-sensor', 100, 260);
+    const rtc = make('rtc-ground-affinity', 'ds1307', 100, -80);
+    const store = new PhysicalCircuitStore({ load: false });
+    store.importProject(createPhysicalProject({ components: [uno, sound, rtc] }));
+
+    const result = autoLayoutPhysicalStore(store);
+    assert.equal(result.status, 'success');
+
+    for (const component of [sound, rtc]) {
+        const groundWire = store.project.wires.find(wire => [wire.from, wire.to].some(ref =>
+            ref.componentId === component.id && ref.pinId === 'GND'));
+        const controllerRef = [groundWire.from, groundWire.to].find(ref => ref.componentId === uno.id);
+        const componentRef = [groundWire.from, groundWire.to].find(ref => ref.componentId === component.id);
+        const componentPoint = resolveConnectionWorldPoint(store.project, componentRef);
+        const nearestGround = ['GND.1', 'GND.2', 'GND.3'].map(pinId => ({
+            pinId,
+            point: resolveConnectionWorldPoint(store.project, componentPinRef(uno.id, pinId)),
+        })).sort((a, b) => Math.hypot(componentPoint.x - a.point.x, componentPoint.y - a.point.y) -
+            Math.hypot(componentPoint.x - b.point.x, componentPoint.y - b.point.y) ||
+            a.pinId.localeCompare(b.pinId, undefined, { numeric: true }))[0].pinId;
+        assert.equal(controllerRef.pinId, nearestGround, `${component.id} should use its nearest final GND header`);
+    }
+});
+
+test('Clean preserves fanout lanes for two ultrasonic sensors on opposite sides of one Uno', () => {
+    calibrateFreeComponentFootprint('arduino-uno', [
+        { pinId: '13', x: 21, y: 0 },
+        { pinId: '12', x: 25, y: 0 },
+        { pinId: '3', x: 45, y: 0 },
+        // Render calibration can place the end pin on a footprint corner. The
+        // Uno metadata still owns the header's outward direction in that tie.
+        { pinId: '2', x: 54, y: 0 },
+    ]);
+    calibrateFreeComponentFootprint('hc-sr04', [
+        { pinId: 'VCC', x: 2, y: 20 },
+        { pinId: 'TRIG', x: 6, y: 20 },
+        { pinId: 'ECHO', x: 10, y: 20 },
+        { pinId: 'GND', x: 14, y: 20 },
+    ]);
+    const make = (id, definitionId, x, y) => createComponentInstance({
+        id, definitionId, footprintId: defaultFootprintForComponent(definitionId).id, x, y,
+    });
+    const uno = make('uno-ultrasonic-fanout', 'arduino-uno', 15, 80);
+    const left = make('ultrasonic-left', 'hc-sr04', 30, 15);
+    const right = make('ultrasonic-right', 'hc-sr04', 220, 17);
+    const wire = (id, pinId, component, componentPinId) => ({
+        id, from: componentPinRef(uno.id, pinId), to: componentPinRef(component.id, componentPinId),
+        route: { mode: 'auto', waypoints: [] },
+    });
+    const project = createPhysicalProject({
+        components: [uno, left, right],
+        wires: [
+            wire('left-trigger', '13', left, 'TRIG'),
+            wire('left-echo', '12', left, 'ECHO'),
+            wire('right-trigger', '3', right, 'TRIG'),
+            wire('right-echo', '2', right, 'ECHO'),
+        ],
+    });
+
+    const routes = routeAllWires(project);
+    const routeIds = project.wires.map(wire => wire.id);
+    for (const routeId of routeIds) {
+        const segments = routeSegments(routes.get(routeId));
+        const first = segments[0];
+        const last = segments.at(-1);
+        assert.equal(first.a.x, first.b.x, `${routeId} must leave its Uno digital header vertically`);
+        assert.ok(first.b.y < first.a.y, `${routeId} must honor the Uno's upward digital-header exit`);
+        assert.equal(last.a.x, last.b.x, `${routeId} must approach the ultrasonic header vertically`);
+        assert.ok(last.b.y < last.a.y, `${routeId} must enter the ultrasonic pin from below`);
+    }
+    for (const routeId of ['left-trigger', 'left-echo']) {
+        assert.ok(routeSegments(routes.get(routeId)).every(segment => Math.abs(segment.a.x - segment.b.x) < 1e-6),
+            `${routeId} must stay straight when the Uno and ultrasonic pins are already aligned`);
+    }
+    for (let firstIndex = 0; firstIndex < routeIds.length; firstIndex++) {
+        for (let secondIndex = firstIndex + 1; secondIndex < routeIds.length; secondIndex++) {
+            const first = routeSegments(routes.get(routeIds[firstIndex]));
+            const second = routeSegments(routes.get(routeIds[secondIndex]));
+            const overlap = first.flatMap(a => second.map(b => crowdedParallelOverlap(a, b)));
+            assert.ok(Math.max(0, ...overlap) <= 1.8 + 1e-6,
+                `${routeIds[firstIndex]} and ${routeIds[secondIndex]} must not collapse onto one corridor`);
+        }
+    }
+});
+
+test('Arduino ground exits follow the physical header row instead of unstable GND numbering', () => {
+    calibrateFreeComponentFootprint('arduino-uno', [
+        { pinId: '13', x: 20, y: 0 },
+        { pinId: '5V', x: 30, y: 39 },
+        { pinId: 'GND.3', x: 18, y: 39 },
+    ]);
+    const uno = createComponentInstance({
+        id: 'uno-physical-ground-exit', definitionId: 'arduino-uno',
+        footprintId: defaultFootprintForComponent('arduino-uno').id, x: 20, y: 20,
+    });
+    const project = createPhysicalProject({ components: [uno] });
+
+    assert.equal(pinExitDirection(project, componentPinRef(uno.id, 'GND.3')), 'down');
+});
+
+test('fanout escape lanes stop before passing a nearby destination', () => {
+    calibrateFreeComponentFootprint('arduino-uno', [
+        { pinId: '5V', x: 30, y: 39 },
+    ]);
+    calibrateFreeComponentFootprint('ds1307', [
+        { pinId: 'GND', x: 2, y: 0 },
+        { pinId: '5V', x: 6, y: 0 },
+        { pinId: 'SDA', x: 10, y: 0 },
+        { pinId: 'SCL', x: 14, y: 0 },
+    ]);
+    const uno = createComponentInstance({
+        id: 'uno-bounded-fanout', definitionId: 'arduino-uno',
+        footprintId: defaultFootprintForComponent('arduino-uno').id, x: 0, y: 0,
+    });
+    const targets = Array.from({ length: 4 }, (_, index) => createComponentInstance({
+        id: `nearby-power-${index + 1}`, definitionId: 'ds1307',
+        footprintId: defaultFootprintForComponent('ds1307').id, x: 70 + index * 30, y: 45,
+    }));
+    const project = createPhysicalProject({
+        components: [uno, ...targets],
+        wires: targets.map((target, index) => ({
+            id: `nearby-power-wire-${index + 1}`,
+            from: componentPinRef(uno.id, '5V'),
+            to: componentPinRef(target.id, '5V'),
+            route: { mode: 'auto', waypoints: [] },
+        })),
+    });
+    const routes = routeAllWires(project);
+
+    for (const wire of project.wires) {
+        const destination = resolveConnectionWorldPoint(project, wire.to);
+        const first = routeSegments(routes.get(wire.id))[0];
+        assert.ok(first.b.y <= destination.y + 1e-6,
+            `${wire.id} must not fan out below its destination and reverse direction`);
+    }
 });
