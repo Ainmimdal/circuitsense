@@ -16,6 +16,8 @@ import { getComponentDef } from './component-library.js';
 import { generateWireColor, normalizeOrthogonalPoints } from './utils/wire-path.js';
 import { PIN_ALIASES } from './component-library.js';
 import { routeAll, clearRoutingCache } from './services/routing-engine.js';
+import { inferJumperType } from './breadboard-model.js';
+import { hydrateEditorProject, serializeEditorProject } from './core/editor-project-adapter.js';
 
 const APP_PREFS_STORAGE_KEY = 'elera_app_preferences';
 
@@ -36,6 +38,7 @@ class CircuitStore extends EventTarget {
         this.wires = [];
         /** @type {Map<string, Array<{name: string, x: number, y: number, signals: Array}>>} */
         this.pinInfoMap = new Map();
+        this.physicalPlan = null;
         /** @type {null | {instanceId: string, pinName: string}} */
         this.wiringState = null;
         /** @type {{x: number, y: number}} */
@@ -194,8 +197,11 @@ class CircuitStore extends EventTarget {
 
         for (const other of this.instances) {
             if (other.id === instanceId) continue;
-
             const otherDef = getComponentDef(other.componentId);
+            if (other.mountedOn === instanceId || inst.mountedOn === other.id) continue;
+            if ((otherDef?.isBreadboard && def?.breadboard?.mountable) ||
+                (def?.isBreadboard && otherDef?.breadboard?.mountable)) continue;
+
             const otherSize = getRotatedSize(other, otherDef);
             const otherBox = {
                 left: other.x - gap,
@@ -265,13 +271,52 @@ class CircuitStore extends EventTarget {
         return instance;
     }
 
-    moveInstance(id, x, y) {
+    moveInstance(id, x, y, { snap = true } = {}) {
         const inst = this.instances.find(i => i.id === id);
         if (inst) {
             const def = getComponentDef(inst.componentId);
             const anchor = def?.snapAnchor || { x: 0, y: 0 };
-            inst.x = this.snapToGrid(x + anchor.x) - anchor.x;
-            inst.y = this.snapToGrid(y + anchor.y) - anchor.y;
+            const nextX = snap ? this.snapToGrid(x + anchor.x) - anchor.x : x;
+            const nextY = snap ? this.snapToGrid(y + anchor.y) - anchor.y : y;
+            const dx = nextX - inst.x;
+            const dy = nextY - inst.y;
+            inst.x = nextX;
+            inst.y = nextY;
+            if (def?.isBreadboard && (dx || dy)) {
+                const translated = (value, delta) => Math.round((value + delta) * 1e6) / 1e6;
+                for (const child of this.instances) {
+                    if (child.mountedOn !== id) continue;
+                    child.x = translated(child.x, dx);
+                    child.y = translated(child.y, dy);
+                }
+                const resource = this.physicalPlan?.resources?.find(item => item.id === id);
+                if (resource) {
+                    resource.x += dx;
+                    resource.y += dy;
+                }
+                for (const placement of this.physicalPlan?.placements || []) {
+                    if (placement.boardId !== id) continue;
+                    if (placement.transform?.anchorWorld) {
+                        placement.transform.anchorWorld.x += dx;
+                        placement.transform.anchorWorld.y += dy;
+                    }
+                    if (placement.rect) {
+                        placement.rect.left += dx;
+                        placement.rect.right += dx;
+                        placement.rect.top += dy;
+                        placement.rect.bottom += dy;
+                    }
+                }
+                for (const wire of this.physicalPlan?.renderWires || []) {
+                    const fromBoard = wire.from.instanceId === id;
+                    const toBoard = wire.to.instanceId === id;
+                    if (fromBoard && toBoard) {
+                        wire.waypoints = (wire.waypoints || []).map(point => ({ x: point.x + dx, y: point.y + dy }));
+                    } else if (fromBoard || toBoard) {
+                        wire.waypoints = [];
+                    }
+                }
+            }
             this._notify(); // lightweight — no history during drag
         }
     }
@@ -280,10 +325,11 @@ class CircuitStore extends EventTarget {
     moveInstanceDone(id) {
         if (this.antiOverlap && id) {
             const inst = this.getInstance(id);
-            if (inst) {
+            if (inst && !inst.mountedOn) {
                 const resolved = this.resolveOverlap(id, inst.x, inst.y);
-                inst.x = resolved.x;
-                inst.y = resolved.y;
+                if (resolved.x !== inst.x || resolved.y !== inst.y) {
+                    this.moveInstance(id, resolved.x, resolved.y);
+                }
             }
         }
         this._pushHistory();
@@ -386,35 +432,7 @@ class CircuitStore extends EventTarget {
     // ——— Pin Info ——————————————————————————————————————
     registerPinInfo(instanceId, pinInfo) {
         this.pinInfoMap.set(instanceId, pinInfo);
-        
-        // Dynamically update snapAnchor based on actual SVG pins.
-        // This guarantees that when users drag components, the PINS snap to the grid, not the top-left corners.
-        const inst = this.getInstance(instanceId);
-        if (inst && pinInfo && pinInfo.length > 0) {
-            const def = getComponentDef(inst.componentId);
-            if (def && !def.snapAnchor) {
-                let anchorPin = pinInfo.find(p => p.name === 'GND.1' || p.name === 'GND');
-                if (!anchorPin) anchorPin = pinInfo.find(p => p.name === 'A' || p.name === 'VCC');
-                if (!anchorPin) anchorPin = pinInfo[0];
-                
-                if (anchorPin) {
-                    def.snapAnchor = { x: anchorPin.x, y: anchorPin.y };
-                    
-                    // Immediately re-snap this instance so it snaps perfectly upon first load
-                    if (!inst.rotation || inst.rotation === 0) {
-                        const nx = this.snapToGrid(inst.x + anchorPin.x) - anchorPin.x;
-                        const ny = this.snapToGrid(inst.y + anchorPin.y) - anchorPin.y;
-                        
-                        if (nx !== inst.x || ny !== inst.y) {
-                            inst.x = nx;
-                            inst.y = ny;
-                            this._notifyStructural();
-                        }
-                    }
-                }
-            }
-        }
-        this._notify(); // Force re-render of canvas so wires appear after load
+        this._notify();
     }
 
     getPinAbsolutePosition(instanceId, pinName) {
@@ -427,32 +445,24 @@ class CircuitStore extends EventTarget {
         if (!pin) return null;
         
         const rotation = inst.rotation || 0;
-        let baseX, baseY;
-        
-        if (rotation === 0) {
-            baseX = inst.x + pin.x;
-            baseY = inst.y + pin.y;
-        } else {
-            const def = getComponentDef(inst.componentId);
-            const width = def?.size?.width || 80;
-            const height = def?.size?.height || 60;
-            
-            const cx = width / 2;
-            const cy = height / 2;
-            const dx = pin.x - cx;
-            const dy = pin.y - cy;
-            
-            let rx, ry;
-            switch (rotation) {
-                case 90: rx = -dy; ry = dx; break;
-                case 180: rx = -dx; ry = -dy; break;
-                case 270: rx = dy; ry = -dx; break;
-                default: rx = dx; ry = dy;
-            }
-
-            baseX = inst.x + cx + rx;
-            baseY = inst.y + cy + ry;
+        const def = getComponentDef(inst.componentId);
+        const width = def?.size?.width || 80;
+        const height = def?.size?.height || 60;
+        const cx = width / 2;
+        const cy = height / 2;
+        const scaleX = inst.uniformScale || inst.physicalScale?.x || 1;
+        const scaleY = inst.uniformScale || inst.physicalScale?.y || 1;
+        const dx = (pin.x - cx) * scaleX;
+        const dy = (pin.y - cy) * scaleY;
+        let rx, ry;
+        switch (rotation) {
+            case 90: rx = -dy; ry = dx; break;
+            case 180: rx = -dx; ry = -dy; break;
+            case 270: rx = dy; ry = -dx; break;
+            default: rx = dx; ry = dy;
         }
+        const baseX = inst.x + cx + rx;
+        const baseY = inst.y + cy + ry;
 
         return {
             x: baseX,
@@ -550,7 +560,8 @@ class CircuitStore extends EventTarget {
      */
     getFanoutStagger(wireId) {
         if (!this.fanOut) return { s1: 0, s2: 0 };
-        const wire = this.wires.find(w => w.id === wireId);
+        const wires = this.getRenderableWires();
+        const wire = wires.find(w => w.id === wireId);
         if (!wire) return { s1: 0, s2: 0 };
 
         const dir1 = this.getPinExitDirection(wire.from.instanceId, wire.from.pinName);
@@ -560,7 +571,7 @@ class CircuitStore extends EventTarget {
 
         let idx1 = 0;
         let idx2 = 0;
-        for (const w of this.wires) {
+        for (const w of wires) {
             if (w.id === wireId) break;
             const d1 = this.getPinExitDirection(w.from.instanceId, w.from.pinName);
             if (`${w.from.instanceId}|${d1}` === key1) idx1++;
@@ -573,7 +584,15 @@ class CircuitStore extends EventTarget {
     }
 
     // ——— Wiring ———————————————————————————————————————
+    isBreadboardHoleOccupiedByComponent(instanceId, pinName) {
+        const instance = this.getInstance(instanceId);
+        if (!getComponentDef(instance?.componentId)?.isBreadboard) return false;
+        return this.instances.some(component => component.mountedOn === instanceId &&
+            Object.values(component.breadboardPlacement?.holes || {}).includes(pinName));
+    }
+
     startWiring(instanceId, pinName) {
+        if (this.isBreadboardHoleOccupiedByComponent(instanceId, pinName)) return false;
         this.wiringState = {
             instanceId,
             pinName,
@@ -581,14 +600,16 @@ class CircuitStore extends EventTarget {
             mode: this.manualWireMode,
         };
         this._notify();
+        return true;
     }
 
     completeWiring(instanceId, pinName) {
-        if (!this.wiringState) return;
+        if (!this.wiringState) return false;
+        if (this.isBreadboardHoleOccupiedByComponent(instanceId, pinName)) return false;
         // Clicking same pin cancels
         if (this.wiringState.instanceId === instanceId && this.wiringState.pinName === pinName) {
             this.cancelWiring();
-            return;
+            return true;
         }
         const mode = this.wiringState.mode || this.manualWireMode;
         const signals = this.getPinSignals(this.wiringState.instanceId, this.wiringState.pinName);
@@ -610,18 +631,24 @@ class CircuitStore extends EventTarget {
             waypoints,
             color: generateWireColor(signals),
             mode,
+            logicalNetId: null,
+            physical: this._physicalConnection(
+                this.wiringState.instanceId,
+                instanceId
+            ),
         };
         this.wires = [...this.wires, wire];
         this.wiringState = null;
         this._pushHistory();
         this._notifyStructural();
+        return true;
     }
 
     /**
      * Directly create a wire between two pins (used by auto-wire engine).
      * @param {string} pinType - Optional PIN.* type to force correct wire color
      */
-    completeWiringDirect(fromInstanceId, fromPinName, toInstanceId, toPinName, pinType) {
+    completeWiringDirect(fromInstanceId, fromPinName, toInstanceId, toPinName, pinType, options = {}) {
         // Don't duplicate an existing wire
         const exists = this.wires.some(
             w => (w.from.instanceId === fromInstanceId && w.from.pinName === fromPinName &&
@@ -639,9 +666,26 @@ class CircuitStore extends EventTarget {
             waypoints: [],
             color: generateWireColor(signals, pinType),
             mode: 'orthogonal',
+            logicalNetId: options.logicalNetId || null,
+            physical: options.physical || this._physicalConnection(fromInstanceId, toInstanceId),
         };
         this.wires = [...this.wires, wire];
         this._notify(); // no individual history for batch auto-wires
+    }
+
+    _physicalConnection(fromInstanceId, toInstanceId) {
+        const connector = instanceId => {
+            const def = getComponentDef(this.getInstance(instanceId)?.componentId);
+            return def?.connectorType || 'male';
+        };
+        const manualBreadboard = [fromInstanceId, toInstanceId].some(instanceId =>
+            getComponentDef(this.getInstance(instanceId)?.componentId)?.isBreadboard
+        );
+        return {
+            kind: 'jumper',
+            jumperType: inferJumperType(connector(fromInstanceId), connector(toInstanceId)),
+            ...(manualBreadboard ? { manualBreadboard: true } : {}),
+        };
     }
 
     /** Push history after a batch of auto-wires complete */
@@ -723,6 +767,7 @@ class CircuitStore extends EventTarget {
         }
 
         this.wires = this.wires.filter(w => {
+            if (w.physical?.manualBreadboard) return true;
             if (w.from.instanceId === instanceId && pinsToStrip.has(w.from.pinName)) return false;
             if (w.to.instanceId === instanceId && pinsToStrip.has(w.to.pinName)) return false;
             return true;
@@ -747,7 +792,15 @@ class CircuitStore extends EventTarget {
 
     // ——— Wire Waypoints ——————————————————————————————————
     getWire(id) {
-        return this.wires.find(w => w.id === id);
+        return this.getRenderableWires().find(w => w.id === id);
+    }
+
+    getRenderableWires() {
+        if (!this.physicalPlan?.renderWires) return this.wires;
+        const generated = this.physicalPlan.renderWires;
+        const generatedIds = new Set(generated.map(wire => wire.id));
+        const manual = this.wires.filter(wire => wire.physical?.manualBreadboard && !generatedIds.has(wire.id));
+        return [...generated, ...manual];
     }
 
     _getWireFullPoints(wire) {
@@ -1042,12 +1095,15 @@ class CircuitStore extends EventTarget {
 
     _saveToStorage() {
         try {
-            const data = {
+            const data = serializeEditorProject({
                 instances: this.instances,
                 wires: this.wires,
                 _nextId: this._nextId,
                 _savedAt: Date.now(),
-            };
+            }, {
+                isKnownComponent: type => Boolean(getComponentDef(type)),
+                isBreadboardComponent: type => Boolean(getComponentDef(type)?.isBreadboard),
+            });
             localStorage.setItem('circuitsense_project', JSON.stringify(data));
         } catch (e) {
             console.warn('[CircuitSense] Save failed:', e);
@@ -1058,10 +1114,13 @@ class CircuitStore extends EventTarget {
         try {
             const raw = localStorage.getItem('circuitsense_project');
             if (!raw) return;
-            const data = JSON.parse(raw);
-            if (data.instances) this.instances = data.instances;
-            if (data.wires) this.wires = data.wires.map(w => ({ mode: 'orthogonal', ...w }));
-            if (data._nextId) this._nextId = data._nextId;
+            const data = hydrateEditorProject(JSON.parse(raw), {
+                isKnownComponent: type => Boolean(getComponentDef(type)),
+                isBreadboardComponent: type => Boolean(getComponentDef(type)?.isBreadboard),
+            });
+            this.instances = data.instances;
+            this.wires = data.wires.map(w => ({ mode: 'orthogonal', ...w }));
+            this._nextId = data._nextId;
             this._pushHistory(); // initial state as first history entry
         } catch (e) {
             console.warn('[CircuitSense] Load failed:', e);
@@ -1069,21 +1128,27 @@ class CircuitStore extends EventTarget {
     }
 
     exportProject() {
-        return JSON.stringify({
+        return JSON.stringify(serializeEditorProject({
             instances: this.instances,
             wires: this.wires,
             _nextId: this._nextId,
-            version: '1.0'
-        }, null, 2);
+            _savedAt: Date.now(),
+        }, {
+            isKnownComponent: type => Boolean(getComponentDef(type)),
+            isBreadboardComponent: type => Boolean(getComponentDef(type)?.isBreadboard),
+        }), null, 2);
     }
 
     importProject(data) {
         if (!data) return false;
         try {
-            const parsed = typeof data === 'string' ? JSON.parse(data) : data;
-            this.instances = parsed.instances || [];
-            this.wires = (parsed.wires || []).map(w => ({ mode: 'orthogonal', ...w }));
-            this._nextId = parsed._nextId || 1;
+            const parsed = hydrateEditorProject(typeof data === 'string' ? JSON.parse(data) : data, {
+                isKnownComponent: type => Boolean(getComponentDef(type)),
+                isBreadboardComponent: type => Boolean(getComponentDef(type)?.isBreadboard),
+            });
+            this.instances = parsed.instances;
+            this.wires = parsed.wires.map(w => ({ mode: 'orthogonal', ...w }));
+            this._nextId = parsed._nextId;
             
             this.pinInfoMap.clear();
             this.wiringState = null;
@@ -1110,11 +1175,7 @@ class CircuitStore extends EventTarget {
     saveProjectToAccount(name) {
         const projects = this.getSavedProjects();
         const existing = projects.find(p => p.name === name);
-        const data = {
-            instances: this.instances,
-            wires: this.wires,
-            _nextId: this._nextId
-        };
+        const data = JSON.parse(this.exportProject());
         
         if (existing) {
             existing.data = data;
@@ -1156,6 +1217,7 @@ class CircuitStore extends EventTarget {
         this.selectedInstanceIds = new Set();
         this.selectedWireId = null;
         this._nextId = 1;
+        this.physicalPlan = null;
         this._pushHistory();
         this._notifyStructural();
     }

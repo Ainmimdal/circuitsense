@@ -10,8 +10,8 @@ from docx.oxml.ns import qn
 import re, os, copy
 
 ARTIFACTS = r"C:\Users\Mimdal\.gemini\antigravity\brain\31dec609-5d4d-46c0-ba41-f675980e1da3"
-TEMPLATE = r"BIT FYP Report Template V3.1.docx"
-OUTPUT = r"Elera_FYP1_Report_v4.docx"
+TEMPLATE = r"report/templates/BIT FYP Report Template V3.1.docx"
+OUTPUT = r"report/drafts/Elera_FYP1_Report_v4.docx"
 
 INFO = {
     "title": "ELERA: AN INTELLIGENT WEB-BASED ARDUINO CIRCUIT DESIGN ASSISTANT",

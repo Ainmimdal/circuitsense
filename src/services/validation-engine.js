@@ -8,6 +8,16 @@
 
 import { store } from '../store.js';
 import { componentLibrary, getComponentDef, ARDUINO_PINS, PIN } from '../component-library.js';
+import {
+    buildElectricalNets,
+    decideBreadboard,
+    findBreadboardCapacity,
+    getBreadboardGroup,
+    getBreadboardHole,
+    occupiedBreadboardHoles,
+} from '../breadboard-model.js';
+import { footprintIsBreadboardLegal } from '../core/component-geometry.js';
+import { boardTypeForComponentId, getBoardDefinition } from '../core/board-registry.js';
 
 // Severity constants
 export const SEV = { ERROR: 'error', WARNING: 'warning', INFO: 'info' };
@@ -32,6 +42,7 @@ export function validateCircuit() {
     _ruleI2cWrongPins(ctx, results);
     _ruleUnconnectedComponent(ctx, results);
     _ruleFloatingPin(ctx, results);
+    _ruleBreadboard(ctx, results);
 
     const errors = results.filter(r => r.severity === SEV.ERROR);
     const warnings = results.filter(r => r.severity === SEV.WARNING);
@@ -43,7 +54,15 @@ export function validateCircuit() {
 // ─── Build context ────────────────────────────────────
 function _buildContext() {
     const instances = store.instances;
-    const wires = store.wires;
+    const sourceWires = store.wires;
+    const physicalWires = store.getRenderableWires();
+    // Breadboard realization moves a wire's rendered endpoints onto board holes.
+    // Validation must still reason about the original circuit connection.
+    const wires = sourceWires.map(wire => {
+        const realization = wire.physical?.autoBreadboard;
+        if (!realization?.originalFrom || !realization?.originalTo) return wire;
+        return { ...wire, from: realization.originalFrom, to: realization.originalTo };
+    });
 
     // Find the Arduino board instance(s)
     const boards = instances.filter(inst => {
@@ -94,7 +113,16 @@ function _buildContext() {
         }
     }
 
-    return { instances, wires, boards, pinWireMap, connectionMap, arduinoPinUsage };
+    return {
+        instances,
+        wires,
+        physicalWires,
+        boards,
+        pinWireMap,
+        connectionMap,
+        arduinoPinUsage,
+        electricalNets: buildElectricalNets(instances, wires),
+    };
 }
 
 // ─── Helper: check if an instance is connected to any other instance ──
@@ -109,26 +137,12 @@ function _getPinGroup(def, pinName) {
 }
 
 function _isConnectedToBoard(ctx, instanceId) {
-    // Check if instance is connected (directly or through chain) to a board
     if (ctx.boards.length === 0) return false;
     const boardIds = new Set(ctx.boards.map(b => b.id));
-
-    // BFS
-    const visited = new Set();
-    const queue = [instanceId];
-    while (queue.length > 0) {
-        const current = queue.shift();
-        if (visited.has(current)) continue;
-        visited.add(current);
-        if (boardIds.has(current)) return true;
-        const neighbors = ctx.connectionMap.get(current);
-        if (neighbors) {
-            for (const n of neighbors) {
-                if (!visited.has(n)) queue.push(n);
-            }
-        }
-    }
-    return false;
+    return ctx.electricalNets.some(net =>
+        net.some(key => key.startsWith(`${instanceId}:`)) &&
+        net.some(key => boardIds.has(key.slice(0, key.indexOf(':'))))
+    );
 }
 
 // Helper: get the other end of a wire given one end
@@ -216,28 +230,31 @@ function _ruleLedWithoutResistor(ctx, results) {
 // 3. Total current overload (> 500mA)
 function _ruleCurrentOverload(ctx, results) {
     if (ctx.boards.length === 0) return;
+    const currentLimit = Math.min(...ctx.boards.map(board =>
+        getComponentDef(board.componentId)?.autoWirePins?.maxCurrent_mA ?? ARDUINO_PINS.maxCurrent_mA
+    ));
 
     let totalCurrent = 0;
     for (const inst of ctx.instances) {
         const def = getComponentDef(inst.componentId);
-        if (!def || def.isBoard) continue;
+        if (!def || def.isBoard || def.isBreadboard) continue;
         if (_isConnectedToBoard(ctx, inst.id)) {
             totalCurrent += (def.currentDraw_mA || 0);
         }
     }
 
-    if (totalCurrent > ARDUINO_PINS.maxCurrent_mA) {
+    if (totalCurrent > currentLimit) {
         results.push({
             id: 'current-overload',
             severity: SEV.ERROR,
-            message: `Total current draw is ~${totalCurrent}mA, exceeding the Arduino's ${ARDUINO_PINS.maxCurrent_mA}mA USB limit!`,
+            message: `Total current draw is ~${totalCurrent}mA, exceeding the MCU profile's ${currentLimit}mA supply limit!`,
             icon: 'bolt',
         });
-    } else if (totalCurrent > ARDUINO_PINS.maxCurrent_mA * 0.8) {
+    } else if (totalCurrent > currentLimit * 0.8) {
         results.push({
             id: 'current-high',
             severity: SEV.WARNING,
-            message: `Total current draw is ~${totalCurrent}mA (${Math.round(totalCurrent / ARDUINO_PINS.maxCurrent_mA * 100)}% of USB limit). Consider external power.`,
+            message: `Total current draw is ~${totalCurrent}mA (${Math.round(totalCurrent / currentLimit * 100)}% of the MCU profile limit). Consider external power.`,
             icon: 'bolt',
         });
     }
@@ -247,9 +264,13 @@ function _ruleCurrentOverload(ctx, results) {
 function _ruleDuplicatePinAssignment(ctx, results) {
     for (const [key, usages] of ctx.arduinoPinUsage) {
         // Filter to signal/I-O connections (not power/GND)
-        const pinName = key.split(':')[1];
-        const isPower = pinName === '5V' || pinName === '3.3V';
-        const isGround = pinName.startsWith('GND');
+        const separator = key.lastIndexOf(':');
+        const boardId = key.slice(0, separator);
+        const pinName = key.slice(separator + 1);
+        const board = ctx.instances.find(instance => instance.id === boardId);
+        const pins = getComponentDef(board?.componentId)?.autoWirePins;
+        const isPower = pins?.power?.includes(pinName) || pinName === '5V' || pinName === '3.3V';
+        const isGround = pins?.ground?.includes(pinName) || pinName.startsWith('GND');
 
         if (isPower || isGround) continue; // multiple things can share power/GND
 
@@ -274,8 +295,12 @@ function _ruleDuplicatePinAssignment(ctx, results) {
 // 5. Servo on serial pins (0, 1)
 function _ruleServoOnSerial(ctx, results) {
     for (const [key, usages] of ctx.arduinoPinUsage) {
-        const pinName = key.split(':')[1];
-        if (pinName !== '0' && pinName !== '1') continue;
+        const separator = key.lastIndexOf(':');
+        const boardId = key.slice(0, separator);
+        const pinName = key.slice(separator + 1);
+        const board = ctx.instances.find(instance => instance.id === boardId);
+        const serialPins = getComponentDef(board?.componentId)?.autoWirePins?.serial || ['0', '1'];
+        if (!serialPins.includes(pinName)) continue;
 
         for (const u of usages) {
             const inst = ctx.instances.find(i => i.id === u.instanceId);
@@ -346,7 +371,7 @@ function _ruleMissingPowerOrGround(ctx, results) {
     }
 }
 
-// 7. I2C devices not on A4/A5
+// 7. I2C devices not on the active MCU profile's SDA/SCL pins
 function _ruleI2cWrongPins(ctx, results) {
     for (const inst of ctx.instances) {
         const def = getComponentDef(inst.componentId);
@@ -366,11 +391,12 @@ function _ruleI2cWrongPins(ctx, results) {
                 const otherInst = ctx.instances.find(i => i.id === other.instanceId);
                 if (otherInst) {
                     const otherDef = getComponentDef(otherInst.componentId);
-                    if (otherDef && otherDef.isBoard && other.pinName !== 'A4') {
+                    const expected = otherDef?.autoWirePins?.i2c?.sda;
+                    if (otherDef?.isBoard && expected && other.pinName !== expected) {
                         results.push({
                             id: 'i2c-wrong-sda',
                             severity: SEV.ERROR,
-                            message: `${def.name} SDA must be connected to Arduino pin A4 (currently on ${other.pinName}).`,
+                            message: `${def.name} SDA must be connected to ${otherDef.name} pin ${expected} (currently on ${other.pinName}).`,
                             instanceId: inst.id,
                             icon: 'locationDot',
                         });
@@ -387,11 +413,12 @@ function _ruleI2cWrongPins(ctx, results) {
                 const otherInst = ctx.instances.find(i => i.id === other.instanceId);
                 if (otherInst) {
                     const otherDef = getComponentDef(otherInst.componentId);
-                    if (otherDef && otherDef.isBoard && other.pinName !== 'A5') {
+                    const expected = otherDef?.autoWirePins?.i2c?.scl;
+                    if (otherDef?.isBoard && expected && other.pinName !== expected) {
                         results.push({
                             id: 'i2c-wrong-scl',
                             severity: SEV.ERROR,
-                            message: `${def.name} SCL must be connected to Arduino pin A5 (currently on ${other.pinName}).`,
+                            message: `${def.name} SCL must be connected to ${otherDef.name} pin ${expected} (currently on ${other.pinName}).`,
                             instanceId: inst.id,
                             icon: 'locationDot',
                         });
@@ -406,7 +433,7 @@ function _ruleI2cWrongPins(ctx, results) {
 function _ruleUnconnectedComponent(ctx, results) {
     for (const inst of ctx.instances) {
         const def = getComponentDef(inst.componentId);
-        if (!def || def.isBoard) continue;
+        if (!def || def.isBoard || def.isBreadboard) continue;
 
         const hasAnyWire = ctx.wires.some(
             w => w.from.instanceId === inst.id || w.to.instanceId === inst.id
@@ -428,7 +455,7 @@ function _ruleUnconnectedComponent(ctx, results) {
 function _ruleFloatingPin(ctx, results) {
     for (const inst of ctx.instances) {
         const def = getComponentDef(inst.componentId);
-        if (!def || def.isBoard || def.isPassive) continue;
+        if (!def || def.isBoard || def.isBreadboard || def.isPassive) continue;
         if (!def.pinMeta) continue;
 
         // Only check if component has at least one wire (otherwise rule 8 covers it)
@@ -463,6 +490,83 @@ function _ruleFloatingPin(ctx, results) {
                     icon: 'thumbtack',
                 });
             }
+        }
+    }
+}
+
+function _ruleBreadboard(ctx, results) {
+    const breadboards = ctx.instances.filter(inst => getComponentDef(inst.componentId)?.isBreadboard);
+    const defs = ctx.instances.map(inst => getComponentDef(inst.componentId)).filter(def => def && !def.isBoard && !def.isBreadboard);
+    const decision = decideBreadboard(defs, breadboards.length > 0);
+
+    if (decision.status === 'required' && breadboards.length === 0) {
+        results.push({ id: 'breadboard-required', severity: SEV.ERROR, message: 'This circuit contains through-hole parts that require a breadboard. Add a 400-point breadboard.', icon: 'table-cells' });
+    } else if (decision.status === 'useful' && breadboards.length === 0) {
+        results.push({ id: 'breadboard-useful', severity: SEV.INFO, message: 'A breadboard would simplify shared power and component mounting for this circuit.', icon: 'table-cells' });
+    }
+
+    for (const breadboard of breadboards) {
+        const placements = ctx.instances.filter(inst => inst.mountedOn === breadboard.id).map(inst => ({ instanceId: inst.id, holes: inst.breadboardPlacement?.holes || {} }));
+        const wireOccupied = occupiedBreadboardHoles(ctx.physicalWires, breadboard.id);
+        const occupied = occupiedBreadboardHoles(ctx.physicalWires, breadboard.id, placements);
+        const boardDefinition = getBoardDefinition(boardTypeForComponentId(breadboard.componentId));
+        const capacity = findBreadboardCapacity(wireOccupied, decision.terminalHoles, decision.railHoles);
+        if (!capacity.fits) {
+            results.push({ id: 'breadboard-capacity', severity: SEV.ERROR, instanceId: breadboard.id, message: `Breadboard has insufficient valid space (${capacity.freeTerminals} terminal and ${capacity.freeRails} rail holes free). Add another or use a larger board.`, icon: 'triangleExclamation' });
+        }
+
+        for (const [hole, users] of occupied) {
+            if (!getBreadboardHole(hole)) {
+                results.push({ id: 'breadboard-invalid-hole', severity: SEV.ERROR, instanceId: breadboard.id, pinName: hole, message: `Breadboard placement references invalid hole ${hole}.`, icon: 'locationDot' });
+            } else if (users.length > 1) {
+                results.push({ id: 'breadboard-occupied-hole', severity: SEV.ERROR, instanceId: breadboard.id, pinName: hole, message: `Breadboard hole ${hole} is occupied by multiple leads or jumpers.`, icon: 'triangleExclamation' });
+            }
+        }
+
+        const placementUsers = new Map();
+        for (const placement of placements) {
+            for (const hole of Object.values(placement.holes)) {
+                if (!placementUsers.has(hole)) placementUsers.set(hole, []);
+                placementUsers.get(hole).push(placement.instanceId);
+            }
+        }
+        for (const [hole, users] of placementUsers) {
+            if (!getBreadboardHole(hole)) {
+                results.push({ id: 'breadboard-invalid-placement', severity: SEV.ERROR, instanceId: breadboard.id, pinName: hole, message: `Component placement references invalid breadboard hole ${hole}.`, icon: 'locationDot' });
+            } else if (users.length > 1) {
+                results.push({ id: 'breadboard-placement-overlap', severity: SEV.ERROR, instanceId: breadboard.id, pinName: hole, relatedIds: users, message: `Multiple component leads occupy breadboard hole ${hole}.`, icon: 'triangleExclamation' });
+            }
+        }
+
+        for (const placement of placements) {
+            const inst = ctx.instances.find(item => item.id === placement.instanceId);
+            const def = getComponentDef(inst?.componentId);
+            if (!def?.breadboard?.mountable) {
+                results.push({ id: 'breadboard-footprint', severity: SEV.ERROR, instanceId: placement.instanceId, message: `${def?.name || placement.instanceId} has no compatible breadboard footprint.`, icon: 'triangleExclamation' });
+            }
+            if (!footprintIsBreadboardLegal(inst?.componentId, placement.holes,
+                holeId => boardDefinition?.getHole(holeId), inst?.breadboardPlacement?.footprintId)) {
+                results.push({ id: 'breadboard-footprint-short', severity: SEV.ERROR, instanceId: placement.instanceId, message: `${def?.name || placement.instanceId} has an illegal breadboard orientation. Rotate or move it across the centre trench.`, icon: 'fire' });
+            }
+            for (const [pinName, hole] of Object.entries(placement.holes)) {
+                const group = getBreadboardGroup(hole);
+                const conductorAttachments = ctx.physicalWires.flatMap(wire => [wire.from, wire.to]).filter(end => end.instanceId === breadboard.id && getBreadboardGroup(end.pinName) === group);
+                const mountedContacts = (store.physicalPlan?.contacts || []).filter(contact => contact.boardId === breadboard.id && getBreadboardGroup(contact.holeId) === group);
+                const attachments = [...conductorAttachments, ...mountedContacts];
+                if (group && attachments.length < 2) {
+                    results.push({ id: 'breadboard-disconnected-net', severity: SEV.WARNING, instanceId: placement.instanceId, pinName, message: `${def?.name || placement.instanceId} pin ${pinName} is inserted at ${hole}, but that terminal strip is not connected to the circuit.`, icon: 'link' });
+                }
+            }
+        }
+    }
+
+    for (const net of ctx.electricalNets) {
+        const upper = net.map(key => key.toUpperCase());
+        const hasPower = upper.some(key => /:(5V|3\.3V|TP\d+|BP\d+)$/.test(key));
+        const hasGround = upper.some(key => /:(GND(?:\.\d+)?|TN\d+|BN\d+)$/.test(key));
+        if (hasPower && hasGround) {
+            results.push({ id: 'breadboard-short', severity: SEV.ERROR, message: 'Accidental short detected: a breadboard net connects power directly to ground.', icon: 'fire' });
+            break;
         }
     }
 }

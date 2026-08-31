@@ -1,0 +1,2206 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     xmlns:xlink="http://www.w3.org/1999/xlink"
+     width="1200" height="760" viewBox="0 0 1200 760"
+     role="img" aria-labelledby="title desc">
+  <title id="title">Elera half-size 400-point solderless breadboard</title>
+  <desc id="desc">A full-color editable SVG breadboard with 300 terminal holes and 100 power-rail holes.</desc>
+
+  <metadata>
+    {
+      "asset": "Elera Half-Size Breadboard",
+      "type": "solderless-breadboard",
+      "points": 400,
+      "terminalPoints": 300,
+      "powerRailPoints": 100,
+      "terminalRows": ["A","B","C","D","E","F","G","H","I","J"],
+      "terminalColumns": 30,
+      "powerRails": 4,
+      "pointsPerPowerRail": 25,
+      "holePitch": 32
+    }
+  </metadata>
+
+  <defs>
+    <linearGradient id="boardFace" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fffefb"/>
+      <stop offset="0.55" stop-color="#f5f4ef"/>
+      <stop offset="1" stop-color="#e8e7e2"/>
+    </linearGradient>
+
+    <linearGradient id="boardEdge" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#d3d4d2"/>
+      <stop offset="1" stop-color="#aaaead"/>
+    </linearGradient>
+
+    <linearGradient id="channelShade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#d4d5d2"/>
+      <stop offset="0.45" stop-color="#ecece8"/>
+      <stop offset="1" stop-color="#c9cac7"/>
+    </linearGradient>
+
+    <radialGradient id="socketBevel" cx="35%" cy="30%" r="70%">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="0.58" stop-color="#dedfdc"/>
+      <stop offset="1" stop-color="#aaaead"/>
+    </radialGradient>
+
+    <radialGradient id="socketInner" cx="38%" cy="34%" r="68%">
+      <stop offset="0" stop-color="#4e5252"/>
+      <stop offset="0.48" stop-color="#252829"/>
+      <stop offset="1" stop-color="#090a0a"/>
+    </radialGradient>
+
+    <filter id="boardShadow" x="-15%" y="-20%" width="130%" height="150%">
+      <feDropShadow dx="0" dy="13" stdDeviation="14" flood-color="#000000" flood-opacity="0.20"/>
+    </filter>
+
+    <filter id="innerShadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="1.3" stdDeviation="1.1" flood-color="#000000" flood-opacity="0.46"/>
+    </filter>
+
+    <style>
+      .label {
+        font-family: Arial, Helvetica, sans-serif;
+        fill: #4a4d4e;
+        font-size: 16px;
+        font-weight: 600;
+        text-anchor: middle;
+        dominant-baseline: middle;
+      }
+      .number {
+        font-family: Arial, Helvetica, sans-serif;
+        fill: #56595a;
+        font-size: 14px;
+        font-weight: 500;
+        text-anchor: middle;
+        dominant-baseline: middle;
+      }
+      .polarity {
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 26px;
+        font-weight: 700;
+        text-anchor: middle;
+        dominant-baseline: middle;
+      }
+      .rail-blue { stroke: #1976d2; fill: none; }
+      .rail-red { stroke: #e53935; fill: none; }
+      .socket-bevel { fill: url(#socketBevel); }
+      .socket-inner { fill: url(#socketInner); filter: url(#innerShadow); }
+      .hole-hitarea { fill: transparent; pointer-events: all; cursor: crosshair; }
+    </style>
+  </defs>
+
+  <g id="breadboard" data-component-type="breadboard" data-point-count="400">
+    <rect x="35" y="38" width="1130" height="690" rx="30"
+          fill="url(#boardEdge)" opacity="0.68" filter="url(#boardShadow)"/>
+    <rect x="28" y="28" width="1144" height="690" rx="30"
+          fill="url(#boardFace)" stroke="#cfd1cf" stroke-width="2.5"/>
+    <path d="M58 30 H1142 Q1168 30 1170 56"
+          fill="none" stroke="#ffffff" stroke-width="3" opacity="0.82"/>
+    <path d="M30 688 Q30 716 58 716 H1142"
+          fill="none" stroke="#b9bcba" stroke-width="3" opacity="0.75"/>
+
+    <g id="power-rail-markings">
+      <line x1="108" y1="56" x2="1092" y2="56" class="rail-blue" stroke-width="4"/>
+      <line x1="108" y1="150" x2="1092" y2="150" class="rail-red" stroke-width="4"/>
+      <line x1="108" y1="594" x2="1092" y2="594" class="rail-red" stroke-width="4"/>
+      <line x1="108" y1="690" x2="1092" y2="690" class="rail-blue" stroke-width="4"/>
+
+      <text x="70" y="56" class="polarity" fill="#1976d2">−</text>
+      <text x="1130" y="56" class="polarity" fill="#1976d2">−</text>
+      <text x="70" y="150" class="polarity" fill="#e53935">+</text>
+      <text x="1130" y="150" class="polarity" fill="#e53935">+</text>
+      <text x="70" y="594" class="polarity" fill="#e53935">+</text>
+      <text x="1130" y="594" class="polarity" fill="#e53935">+</text>
+      <text x="70" y="690" class="polarity" fill="#1976d2">−</text>
+      <text x="1130" y="690" class="polarity" fill="#1976d2">−</text>
+    </g>
+
+    <g id="centre-channel">
+      <rect x="52" y="359" width="1096" height="38" rx="10"
+            fill="url(#channelShade)" stroke="#d0d1ce" stroke-width="1.5"/>
+      <path d="M66 361 H1134" stroke="#ffffff" stroke-width="2.2" opacity="0.65"/>
+      <path d="M66 394 H1134" stroke="#aeb1af" stroke-width="2.2" opacity="0.52"/>
+    </g>
+
+    <g id="power-rail-holes">
+      <g id="top-negative" data-role="power-rail" data-polarity="negative" data-side="top">
+      <g id="pin-top-negative-1" data-pin="pin-top-negative-1" transform="translate(176 88)" data-index="1">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-top-negative-2" data-pin="pin-top-negative-2" transform="translate(208 88)" data-index="2">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-top-negative-3" data-pin="pin-top-negative-3" transform="translate(240 88)" data-index="3">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-top-negative-4" data-pin="pin-top-negative-4" transform="translate(272 88)" data-index="4">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-top-negative-5" data-pin="pin-top-negative-5" transform="translate(304 88)" data-index="5">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-top-negative-6" data-pin="pin-top-negative-6" transform="translate(354 88)" data-index="6">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-top-negative-7" data-pin="pin-top-negative-7" transform="translate(386 88)" data-index="7">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-top-negative-8" data-pin="pin-top-negative-8" transform="translate(418 88)" data-index="8">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-top-negative-9" data-pin="pin-top-negative-9" transform="translate(450 88)" data-index="9">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-top-negative-10" data-pin="pin-top-negative-10" transform="translate(482 88)" data-index="10">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-top-negative-11" data-pin="pin-top-negative-11" transform="translate(532 88)" data-index="11">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-top-negative-12" data-pin="pin-top-negative-12" transform="translate(564 88)" data-index="12">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-top-negative-13" data-pin="pin-top-negative-13" transform="translate(596 88)" data-index="13">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-top-negative-14" data-pin="pin-top-negative-14" transform="translate(628 88)" data-index="14">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-top-negative-15" data-pin="pin-top-negative-15" transform="translate(660 88)" data-index="15">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-top-negative-16" data-pin="pin-top-negative-16" transform="translate(710 88)" data-index="16">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-top-negative-17" data-pin="pin-top-negative-17" transform="translate(742 88)" data-index="17">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-top-negative-18" data-pin="pin-top-negative-18" transform="translate(774 88)" data-index="18">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-top-negative-19" data-pin="pin-top-negative-19" transform="translate(806 88)" data-index="19">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-top-negative-20" data-pin="pin-top-negative-20" transform="translate(838 88)" data-index="20">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-top-negative-21" data-pin="pin-top-negative-21" transform="translate(888 88)" data-index="21">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-top-negative-22" data-pin="pin-top-negative-22" transform="translate(920 88)" data-index="22">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-top-negative-23" data-pin="pin-top-negative-23" transform="translate(952 88)" data-index="23">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-top-negative-24" data-pin="pin-top-negative-24" transform="translate(984 88)" data-index="24">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-top-negative-25" data-pin="pin-top-negative-25" transform="translate(1016 88)" data-index="25">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      </g>
+      <g id="top-positive" data-role="power-rail" data-polarity="positive" data-side="top">
+      <g id="pin-top-positive-1" data-pin="pin-top-positive-1" transform="translate(176 120)" data-index="1">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-top-positive-2" data-pin="pin-top-positive-2" transform="translate(208 120)" data-index="2">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-top-positive-3" data-pin="pin-top-positive-3" transform="translate(240 120)" data-index="3">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-top-positive-4" data-pin="pin-top-positive-4" transform="translate(272 120)" data-index="4">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-top-positive-5" data-pin="pin-top-positive-5" transform="translate(304 120)" data-index="5">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-top-positive-6" data-pin="pin-top-positive-6" transform="translate(354 120)" data-index="6">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-top-positive-7" data-pin="pin-top-positive-7" transform="translate(386 120)" data-index="7">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-top-positive-8" data-pin="pin-top-positive-8" transform="translate(418 120)" data-index="8">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-top-positive-9" data-pin="pin-top-positive-9" transform="translate(450 120)" data-index="9">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-top-positive-10" data-pin="pin-top-positive-10" transform="translate(482 120)" data-index="10">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-top-positive-11" data-pin="pin-top-positive-11" transform="translate(532 120)" data-index="11">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-top-positive-12" data-pin="pin-top-positive-12" transform="translate(564 120)" data-index="12">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-top-positive-13" data-pin="pin-top-positive-13" transform="translate(596 120)" data-index="13">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-top-positive-14" data-pin="pin-top-positive-14" transform="translate(628 120)" data-index="14">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-top-positive-15" data-pin="pin-top-positive-15" transform="translate(660 120)" data-index="15">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-top-positive-16" data-pin="pin-top-positive-16" transform="translate(710 120)" data-index="16">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-top-positive-17" data-pin="pin-top-positive-17" transform="translate(742 120)" data-index="17">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-top-positive-18" data-pin="pin-top-positive-18" transform="translate(774 120)" data-index="18">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-top-positive-19" data-pin="pin-top-positive-19" transform="translate(806 120)" data-index="19">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-top-positive-20" data-pin="pin-top-positive-20" transform="translate(838 120)" data-index="20">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-top-positive-21" data-pin="pin-top-positive-21" transform="translate(888 120)" data-index="21">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-top-positive-22" data-pin="pin-top-positive-22" transform="translate(920 120)" data-index="22">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-top-positive-23" data-pin="pin-top-positive-23" transform="translate(952 120)" data-index="23">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-top-positive-24" data-pin="pin-top-positive-24" transform="translate(984 120)" data-index="24">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-top-positive-25" data-pin="pin-top-positive-25" transform="translate(1016 120)" data-index="25">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      </g>
+      <g id="bottom-positive" data-role="power-rail" data-polarity="positive" data-side="bottom">
+      <g id="pin-bottom-positive-1" data-pin="pin-bottom-positive-1" transform="translate(176 626)" data-index="1">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-bottom-positive-2" data-pin="pin-bottom-positive-2" transform="translate(208 626)" data-index="2">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-bottom-positive-3" data-pin="pin-bottom-positive-3" transform="translate(240 626)" data-index="3">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-bottom-positive-4" data-pin="pin-bottom-positive-4" transform="translate(272 626)" data-index="4">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-bottom-positive-5" data-pin="pin-bottom-positive-5" transform="translate(304 626)" data-index="5">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-bottom-positive-6" data-pin="pin-bottom-positive-6" transform="translate(354 626)" data-index="6">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-bottom-positive-7" data-pin="pin-bottom-positive-7" transform="translate(386 626)" data-index="7">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-bottom-positive-8" data-pin="pin-bottom-positive-8" transform="translate(418 626)" data-index="8">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-bottom-positive-9" data-pin="pin-bottom-positive-9" transform="translate(450 626)" data-index="9">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-bottom-positive-10" data-pin="pin-bottom-positive-10" transform="translate(482 626)" data-index="10">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-bottom-positive-11" data-pin="pin-bottom-positive-11" transform="translate(532 626)" data-index="11">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-bottom-positive-12" data-pin="pin-bottom-positive-12" transform="translate(564 626)" data-index="12">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-bottom-positive-13" data-pin="pin-bottom-positive-13" transform="translate(596 626)" data-index="13">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-bottom-positive-14" data-pin="pin-bottom-positive-14" transform="translate(628 626)" data-index="14">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-bottom-positive-15" data-pin="pin-bottom-positive-15" transform="translate(660 626)" data-index="15">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-bottom-positive-16" data-pin="pin-bottom-positive-16" transform="translate(710 626)" data-index="16">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-bottom-positive-17" data-pin="pin-bottom-positive-17" transform="translate(742 626)" data-index="17">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-bottom-positive-18" data-pin="pin-bottom-positive-18" transform="translate(774 626)" data-index="18">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-bottom-positive-19" data-pin="pin-bottom-positive-19" transform="translate(806 626)" data-index="19">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-bottom-positive-20" data-pin="pin-bottom-positive-20" transform="translate(838 626)" data-index="20">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-bottom-positive-21" data-pin="pin-bottom-positive-21" transform="translate(888 626)" data-index="21">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-bottom-positive-22" data-pin="pin-bottom-positive-22" transform="translate(920 626)" data-index="22">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-bottom-positive-23" data-pin="pin-bottom-positive-23" transform="translate(952 626)" data-index="23">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-bottom-positive-24" data-pin="pin-bottom-positive-24" transform="translate(984 626)" data-index="24">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-bottom-positive-25" data-pin="pin-bottom-positive-25" transform="translate(1016 626)" data-index="25">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      </g>
+      <g id="bottom-negative" data-role="power-rail" data-polarity="negative" data-side="bottom">
+      <g id="pin-bottom-negative-1" data-pin="pin-bottom-negative-1" transform="translate(176 658)" data-index="1">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-bottom-negative-2" data-pin="pin-bottom-negative-2" transform="translate(208 658)" data-index="2">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-bottom-negative-3" data-pin="pin-bottom-negative-3" transform="translate(240 658)" data-index="3">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-bottom-negative-4" data-pin="pin-bottom-negative-4" transform="translate(272 658)" data-index="4">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-bottom-negative-5" data-pin="pin-bottom-negative-5" transform="translate(304 658)" data-index="5">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-bottom-negative-6" data-pin="pin-bottom-negative-6" transform="translate(354 658)" data-index="6">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-bottom-negative-7" data-pin="pin-bottom-negative-7" transform="translate(386 658)" data-index="7">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-bottom-negative-8" data-pin="pin-bottom-negative-8" transform="translate(418 658)" data-index="8">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-bottom-negative-9" data-pin="pin-bottom-negative-9" transform="translate(450 658)" data-index="9">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-bottom-negative-10" data-pin="pin-bottom-negative-10" transform="translate(482 658)" data-index="10">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-bottom-negative-11" data-pin="pin-bottom-negative-11" transform="translate(532 658)" data-index="11">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-bottom-negative-12" data-pin="pin-bottom-negative-12" transform="translate(564 658)" data-index="12">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-bottom-negative-13" data-pin="pin-bottom-negative-13" transform="translate(596 658)" data-index="13">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-bottom-negative-14" data-pin="pin-bottom-negative-14" transform="translate(628 658)" data-index="14">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-bottom-negative-15" data-pin="pin-bottom-negative-15" transform="translate(660 658)" data-index="15">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-bottom-negative-16" data-pin="pin-bottom-negative-16" transform="translate(710 658)" data-index="16">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-bottom-negative-17" data-pin="pin-bottom-negative-17" transform="translate(742 658)" data-index="17">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-bottom-negative-18" data-pin="pin-bottom-negative-18" transform="translate(774 658)" data-index="18">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-bottom-negative-19" data-pin="pin-bottom-negative-19" transform="translate(806 658)" data-index="19">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-bottom-negative-20" data-pin="pin-bottom-negative-20" transform="translate(838 658)" data-index="20">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-bottom-negative-21" data-pin="pin-bottom-negative-21" transform="translate(888 658)" data-index="21">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-bottom-negative-22" data-pin="pin-bottom-negative-22" transform="translate(920 658)" data-index="22">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-bottom-negative-23" data-pin="pin-bottom-negative-23" transform="translate(952 658)" data-index="23">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-bottom-negative-24" data-pin="pin-bottom-negative-24" transform="translate(984 658)" data-index="24">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-bottom-negative-25" data-pin="pin-bottom-negative-25" transform="translate(1016 658)" data-index="25">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      </g>
+    </g>
+    <g id="column-labels">
+      <text x="136" y="182" class="number">1</text>
+      <text x="136" y="576" class="number">1</text>
+      <text x="264" y="182" class="number">5</text>
+      <text x="264" y="576" class="number">5</text>
+      <text x="424" y="182" class="number">10</text>
+      <text x="424" y="576" class="number">10</text>
+      <text x="584" y="182" class="number">15</text>
+      <text x="584" y="576" class="number">15</text>
+      <text x="744" y="182" class="number">20</text>
+      <text x="744" y="576" class="number">20</text>
+      <text x="904" y="182" class="number">25</text>
+      <text x="904" y="576" class="number">25</text>
+      <text x="1064" y="182" class="number">30</text>
+      <text x="1064" y="576" class="number">30</text>
+    </g>
+    <g id="row-labels">
+      <text x="82" y="216" class="label">A</text>
+      <text x="1118" y="216" class="label">A</text>
+      <text x="82" y="246" class="label">B</text>
+      <text x="1118" y="246" class="label">B</text>
+      <text x="82" y="276" class="label">C</text>
+      <text x="1118" y="276" class="label">C</text>
+      <text x="82" y="306" class="label">D</text>
+      <text x="1118" y="306" class="label">D</text>
+      <text x="82" y="336" class="label">E</text>
+      <text x="1118" y="336" class="label">E</text>
+      <text x="82" y="420" class="label">F</text>
+      <text x="1118" y="420" class="label">F</text>
+      <text x="82" y="450" class="label">G</text>
+      <text x="1118" y="450" class="label">G</text>
+      <text x="82" y="480" class="label">H</text>
+      <text x="1118" y="480" class="label">H</text>
+      <text x="82" y="510" class="label">I</text>
+      <text x="1118" y="510" class="label">I</text>
+      <text x="82" y="540" class="label">J</text>
+      <text x="1118" y="540" class="label">J</text>
+    </g>
+    <g id="terminal-holes">
+      <g id="row-A" data-row="A" data-side="upper">
+      <g id="pin-A1" data-pin="pin-A1" transform="translate(136 216)" data-row="A" data-column="1" data-connectivity-group="upper-strip-1">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-A2" data-pin="pin-A2" transform="translate(168 216)" data-row="A" data-column="2" data-connectivity-group="upper-strip-2">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-A3" data-pin="pin-A3" transform="translate(200 216)" data-row="A" data-column="3" data-connectivity-group="upper-strip-3">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-A4" data-pin="pin-A4" transform="translate(232 216)" data-row="A" data-column="4" data-connectivity-group="upper-strip-4">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-A5" data-pin="pin-A5" transform="translate(264 216)" data-row="A" data-column="5" data-connectivity-group="upper-strip-5">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-A6" data-pin="pin-A6" transform="translate(296 216)" data-row="A" data-column="6" data-connectivity-group="upper-strip-6">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-A7" data-pin="pin-A7" transform="translate(328 216)" data-row="A" data-column="7" data-connectivity-group="upper-strip-7">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-A8" data-pin="pin-A8" transform="translate(360 216)" data-row="A" data-column="8" data-connectivity-group="upper-strip-8">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-A9" data-pin="pin-A9" transform="translate(392 216)" data-row="A" data-column="9" data-connectivity-group="upper-strip-9">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-A10" data-pin="pin-A10" transform="translate(424 216)" data-row="A" data-column="10" data-connectivity-group="upper-strip-10">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-A11" data-pin="pin-A11" transform="translate(456 216)" data-row="A" data-column="11" data-connectivity-group="upper-strip-11">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-A12" data-pin="pin-A12" transform="translate(488 216)" data-row="A" data-column="12" data-connectivity-group="upper-strip-12">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-A13" data-pin="pin-A13" transform="translate(520 216)" data-row="A" data-column="13" data-connectivity-group="upper-strip-13">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-A14" data-pin="pin-A14" transform="translate(552 216)" data-row="A" data-column="14" data-connectivity-group="upper-strip-14">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-A15" data-pin="pin-A15" transform="translate(584 216)" data-row="A" data-column="15" data-connectivity-group="upper-strip-15">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-A16" data-pin="pin-A16" transform="translate(616 216)" data-row="A" data-column="16" data-connectivity-group="upper-strip-16">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-A17" data-pin="pin-A17" transform="translate(648 216)" data-row="A" data-column="17" data-connectivity-group="upper-strip-17">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-A18" data-pin="pin-A18" transform="translate(680 216)" data-row="A" data-column="18" data-connectivity-group="upper-strip-18">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-A19" data-pin="pin-A19" transform="translate(712 216)" data-row="A" data-column="19" data-connectivity-group="upper-strip-19">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-A20" data-pin="pin-A20" transform="translate(744 216)" data-row="A" data-column="20" data-connectivity-group="upper-strip-20">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-A21" data-pin="pin-A21" transform="translate(776 216)" data-row="A" data-column="21" data-connectivity-group="upper-strip-21">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-A22" data-pin="pin-A22" transform="translate(808 216)" data-row="A" data-column="22" data-connectivity-group="upper-strip-22">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-A23" data-pin="pin-A23" transform="translate(840 216)" data-row="A" data-column="23" data-connectivity-group="upper-strip-23">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-A24" data-pin="pin-A24" transform="translate(872 216)" data-row="A" data-column="24" data-connectivity-group="upper-strip-24">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-A25" data-pin="pin-A25" transform="translate(904 216)" data-row="A" data-column="25" data-connectivity-group="upper-strip-25">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-A26" data-pin="pin-A26" transform="translate(936 216)" data-row="A" data-column="26" data-connectivity-group="upper-strip-26">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-A27" data-pin="pin-A27" transform="translate(968 216)" data-row="A" data-column="27" data-connectivity-group="upper-strip-27">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-A28" data-pin="pin-A28" transform="translate(1000 216)" data-row="A" data-column="28" data-connectivity-group="upper-strip-28">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-A29" data-pin="pin-A29" transform="translate(1032 216)" data-row="A" data-column="29" data-connectivity-group="upper-strip-29">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-A30" data-pin="pin-A30" transform="translate(1064 216)" data-row="A" data-column="30" data-connectivity-group="upper-strip-30">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      </g>
+      <g id="row-B" data-row="B" data-side="upper">
+      <g id="pin-B1" data-pin="pin-B1" transform="translate(136 246)" data-row="B" data-column="1" data-connectivity-group="upper-strip-1">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-B2" data-pin="pin-B2" transform="translate(168 246)" data-row="B" data-column="2" data-connectivity-group="upper-strip-2">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-B3" data-pin="pin-B3" transform="translate(200 246)" data-row="B" data-column="3" data-connectivity-group="upper-strip-3">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-B4" data-pin="pin-B4" transform="translate(232 246)" data-row="B" data-column="4" data-connectivity-group="upper-strip-4">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-B5" data-pin="pin-B5" transform="translate(264 246)" data-row="B" data-column="5" data-connectivity-group="upper-strip-5">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-B6" data-pin="pin-B6" transform="translate(296 246)" data-row="B" data-column="6" data-connectivity-group="upper-strip-6">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-B7" data-pin="pin-B7" transform="translate(328 246)" data-row="B" data-column="7" data-connectivity-group="upper-strip-7">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-B8" data-pin="pin-B8" transform="translate(360 246)" data-row="B" data-column="8" data-connectivity-group="upper-strip-8">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-B9" data-pin="pin-B9" transform="translate(392 246)" data-row="B" data-column="9" data-connectivity-group="upper-strip-9">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-B10" data-pin="pin-B10" transform="translate(424 246)" data-row="B" data-column="10" data-connectivity-group="upper-strip-10">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-B11" data-pin="pin-B11" transform="translate(456 246)" data-row="B" data-column="11" data-connectivity-group="upper-strip-11">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-B12" data-pin="pin-B12" transform="translate(488 246)" data-row="B" data-column="12" data-connectivity-group="upper-strip-12">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-B13" data-pin="pin-B13" transform="translate(520 246)" data-row="B" data-column="13" data-connectivity-group="upper-strip-13">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-B14" data-pin="pin-B14" transform="translate(552 246)" data-row="B" data-column="14" data-connectivity-group="upper-strip-14">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-B15" data-pin="pin-B15" transform="translate(584 246)" data-row="B" data-column="15" data-connectivity-group="upper-strip-15">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-B16" data-pin="pin-B16" transform="translate(616 246)" data-row="B" data-column="16" data-connectivity-group="upper-strip-16">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-B17" data-pin="pin-B17" transform="translate(648 246)" data-row="B" data-column="17" data-connectivity-group="upper-strip-17">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-B18" data-pin="pin-B18" transform="translate(680 246)" data-row="B" data-column="18" data-connectivity-group="upper-strip-18">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-B19" data-pin="pin-B19" transform="translate(712 246)" data-row="B" data-column="19" data-connectivity-group="upper-strip-19">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-B20" data-pin="pin-B20" transform="translate(744 246)" data-row="B" data-column="20" data-connectivity-group="upper-strip-20">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-B21" data-pin="pin-B21" transform="translate(776 246)" data-row="B" data-column="21" data-connectivity-group="upper-strip-21">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-B22" data-pin="pin-B22" transform="translate(808 246)" data-row="B" data-column="22" data-connectivity-group="upper-strip-22">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-B23" data-pin="pin-B23" transform="translate(840 246)" data-row="B" data-column="23" data-connectivity-group="upper-strip-23">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-B24" data-pin="pin-B24" transform="translate(872 246)" data-row="B" data-column="24" data-connectivity-group="upper-strip-24">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-B25" data-pin="pin-B25" transform="translate(904 246)" data-row="B" data-column="25" data-connectivity-group="upper-strip-25">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-B26" data-pin="pin-B26" transform="translate(936 246)" data-row="B" data-column="26" data-connectivity-group="upper-strip-26">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-B27" data-pin="pin-B27" transform="translate(968 246)" data-row="B" data-column="27" data-connectivity-group="upper-strip-27">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-B28" data-pin="pin-B28" transform="translate(1000 246)" data-row="B" data-column="28" data-connectivity-group="upper-strip-28">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-B29" data-pin="pin-B29" transform="translate(1032 246)" data-row="B" data-column="29" data-connectivity-group="upper-strip-29">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-B30" data-pin="pin-B30" transform="translate(1064 246)" data-row="B" data-column="30" data-connectivity-group="upper-strip-30">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      </g>
+      <g id="row-C" data-row="C" data-side="upper">
+      <g id="pin-C1" data-pin="pin-C1" transform="translate(136 276)" data-row="C" data-column="1" data-connectivity-group="upper-strip-1">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-C2" data-pin="pin-C2" transform="translate(168 276)" data-row="C" data-column="2" data-connectivity-group="upper-strip-2">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-C3" data-pin="pin-C3" transform="translate(200 276)" data-row="C" data-column="3" data-connectivity-group="upper-strip-3">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-C4" data-pin="pin-C4" transform="translate(232 276)" data-row="C" data-column="4" data-connectivity-group="upper-strip-4">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-C5" data-pin="pin-C5" transform="translate(264 276)" data-row="C" data-column="5" data-connectivity-group="upper-strip-5">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-C6" data-pin="pin-C6" transform="translate(296 276)" data-row="C" data-column="6" data-connectivity-group="upper-strip-6">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-C7" data-pin="pin-C7" transform="translate(328 276)" data-row="C" data-column="7" data-connectivity-group="upper-strip-7">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-C8" data-pin="pin-C8" transform="translate(360 276)" data-row="C" data-column="8" data-connectivity-group="upper-strip-8">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-C9" data-pin="pin-C9" transform="translate(392 276)" data-row="C" data-column="9" data-connectivity-group="upper-strip-9">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-C10" data-pin="pin-C10" transform="translate(424 276)" data-row="C" data-column="10" data-connectivity-group="upper-strip-10">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-C11" data-pin="pin-C11" transform="translate(456 276)" data-row="C" data-column="11" data-connectivity-group="upper-strip-11">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-C12" data-pin="pin-C12" transform="translate(488 276)" data-row="C" data-column="12" data-connectivity-group="upper-strip-12">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-C13" data-pin="pin-C13" transform="translate(520 276)" data-row="C" data-column="13" data-connectivity-group="upper-strip-13">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-C14" data-pin="pin-C14" transform="translate(552 276)" data-row="C" data-column="14" data-connectivity-group="upper-strip-14">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-C15" data-pin="pin-C15" transform="translate(584 276)" data-row="C" data-column="15" data-connectivity-group="upper-strip-15">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-C16" data-pin="pin-C16" transform="translate(616 276)" data-row="C" data-column="16" data-connectivity-group="upper-strip-16">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-C17" data-pin="pin-C17" transform="translate(648 276)" data-row="C" data-column="17" data-connectivity-group="upper-strip-17">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-C18" data-pin="pin-C18" transform="translate(680 276)" data-row="C" data-column="18" data-connectivity-group="upper-strip-18">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-C19" data-pin="pin-C19" transform="translate(712 276)" data-row="C" data-column="19" data-connectivity-group="upper-strip-19">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-C20" data-pin="pin-C20" transform="translate(744 276)" data-row="C" data-column="20" data-connectivity-group="upper-strip-20">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-C21" data-pin="pin-C21" transform="translate(776 276)" data-row="C" data-column="21" data-connectivity-group="upper-strip-21">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-C22" data-pin="pin-C22" transform="translate(808 276)" data-row="C" data-column="22" data-connectivity-group="upper-strip-22">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-C23" data-pin="pin-C23" transform="translate(840 276)" data-row="C" data-column="23" data-connectivity-group="upper-strip-23">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-C24" data-pin="pin-C24" transform="translate(872 276)" data-row="C" data-column="24" data-connectivity-group="upper-strip-24">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-C25" data-pin="pin-C25" transform="translate(904 276)" data-row="C" data-column="25" data-connectivity-group="upper-strip-25">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-C26" data-pin="pin-C26" transform="translate(936 276)" data-row="C" data-column="26" data-connectivity-group="upper-strip-26">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-C27" data-pin="pin-C27" transform="translate(968 276)" data-row="C" data-column="27" data-connectivity-group="upper-strip-27">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-C28" data-pin="pin-C28" transform="translate(1000 276)" data-row="C" data-column="28" data-connectivity-group="upper-strip-28">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-C29" data-pin="pin-C29" transform="translate(1032 276)" data-row="C" data-column="29" data-connectivity-group="upper-strip-29">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-C30" data-pin="pin-C30" transform="translate(1064 276)" data-row="C" data-column="30" data-connectivity-group="upper-strip-30">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      </g>
+      <g id="row-D" data-row="D" data-side="upper">
+      <g id="pin-D1" data-pin="pin-D1" transform="translate(136 306)" data-row="D" data-column="1" data-connectivity-group="upper-strip-1">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-D2" data-pin="pin-D2" transform="translate(168 306)" data-row="D" data-column="2" data-connectivity-group="upper-strip-2">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-D3" data-pin="pin-D3" transform="translate(200 306)" data-row="D" data-column="3" data-connectivity-group="upper-strip-3">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-D4" data-pin="pin-D4" transform="translate(232 306)" data-row="D" data-column="4" data-connectivity-group="upper-strip-4">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-D5" data-pin="pin-D5" transform="translate(264 306)" data-row="D" data-column="5" data-connectivity-group="upper-strip-5">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-D6" data-pin="pin-D6" transform="translate(296 306)" data-row="D" data-column="6" data-connectivity-group="upper-strip-6">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-D7" data-pin="pin-D7" transform="translate(328 306)" data-row="D" data-column="7" data-connectivity-group="upper-strip-7">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-D8" data-pin="pin-D8" transform="translate(360 306)" data-row="D" data-column="8" data-connectivity-group="upper-strip-8">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-D9" data-pin="pin-D9" transform="translate(392 306)" data-row="D" data-column="9" data-connectivity-group="upper-strip-9">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-D10" data-pin="pin-D10" transform="translate(424 306)" data-row="D" data-column="10" data-connectivity-group="upper-strip-10">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-D11" data-pin="pin-D11" transform="translate(456 306)" data-row="D" data-column="11" data-connectivity-group="upper-strip-11">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-D12" data-pin="pin-D12" transform="translate(488 306)" data-row="D" data-column="12" data-connectivity-group="upper-strip-12">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-D13" data-pin="pin-D13" transform="translate(520 306)" data-row="D" data-column="13" data-connectivity-group="upper-strip-13">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-D14" data-pin="pin-D14" transform="translate(552 306)" data-row="D" data-column="14" data-connectivity-group="upper-strip-14">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-D15" data-pin="pin-D15" transform="translate(584 306)" data-row="D" data-column="15" data-connectivity-group="upper-strip-15">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-D16" data-pin="pin-D16" transform="translate(616 306)" data-row="D" data-column="16" data-connectivity-group="upper-strip-16">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-D17" data-pin="pin-D17" transform="translate(648 306)" data-row="D" data-column="17" data-connectivity-group="upper-strip-17">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-D18" data-pin="pin-D18" transform="translate(680 306)" data-row="D" data-column="18" data-connectivity-group="upper-strip-18">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-D19" data-pin="pin-D19" transform="translate(712 306)" data-row="D" data-column="19" data-connectivity-group="upper-strip-19">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-D20" data-pin="pin-D20" transform="translate(744 306)" data-row="D" data-column="20" data-connectivity-group="upper-strip-20">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-D21" data-pin="pin-D21" transform="translate(776 306)" data-row="D" data-column="21" data-connectivity-group="upper-strip-21">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-D22" data-pin="pin-D22" transform="translate(808 306)" data-row="D" data-column="22" data-connectivity-group="upper-strip-22">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-D23" data-pin="pin-D23" transform="translate(840 306)" data-row="D" data-column="23" data-connectivity-group="upper-strip-23">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-D24" data-pin="pin-D24" transform="translate(872 306)" data-row="D" data-column="24" data-connectivity-group="upper-strip-24">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-D25" data-pin="pin-D25" transform="translate(904 306)" data-row="D" data-column="25" data-connectivity-group="upper-strip-25">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-D26" data-pin="pin-D26" transform="translate(936 306)" data-row="D" data-column="26" data-connectivity-group="upper-strip-26">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-D27" data-pin="pin-D27" transform="translate(968 306)" data-row="D" data-column="27" data-connectivity-group="upper-strip-27">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-D28" data-pin="pin-D28" transform="translate(1000 306)" data-row="D" data-column="28" data-connectivity-group="upper-strip-28">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-D29" data-pin="pin-D29" transform="translate(1032 306)" data-row="D" data-column="29" data-connectivity-group="upper-strip-29">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-D30" data-pin="pin-D30" transform="translate(1064 306)" data-row="D" data-column="30" data-connectivity-group="upper-strip-30">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      </g>
+      <g id="row-E" data-row="E" data-side="upper">
+      <g id="pin-E1" data-pin="pin-E1" transform="translate(136 336)" data-row="E" data-column="1" data-connectivity-group="upper-strip-1">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-E2" data-pin="pin-E2" transform="translate(168 336)" data-row="E" data-column="2" data-connectivity-group="upper-strip-2">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-E3" data-pin="pin-E3" transform="translate(200 336)" data-row="E" data-column="3" data-connectivity-group="upper-strip-3">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-E4" data-pin="pin-E4" transform="translate(232 336)" data-row="E" data-column="4" data-connectivity-group="upper-strip-4">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-E5" data-pin="pin-E5" transform="translate(264 336)" data-row="E" data-column="5" data-connectivity-group="upper-strip-5">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-E6" data-pin="pin-E6" transform="translate(296 336)" data-row="E" data-column="6" data-connectivity-group="upper-strip-6">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-E7" data-pin="pin-E7" transform="translate(328 336)" data-row="E" data-column="7" data-connectivity-group="upper-strip-7">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-E8" data-pin="pin-E8" transform="translate(360 336)" data-row="E" data-column="8" data-connectivity-group="upper-strip-8">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-E9" data-pin="pin-E9" transform="translate(392 336)" data-row="E" data-column="9" data-connectivity-group="upper-strip-9">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-E10" data-pin="pin-E10" transform="translate(424 336)" data-row="E" data-column="10" data-connectivity-group="upper-strip-10">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-E11" data-pin="pin-E11" transform="translate(456 336)" data-row="E" data-column="11" data-connectivity-group="upper-strip-11">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-E12" data-pin="pin-E12" transform="translate(488 336)" data-row="E" data-column="12" data-connectivity-group="upper-strip-12">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-E13" data-pin="pin-E13" transform="translate(520 336)" data-row="E" data-column="13" data-connectivity-group="upper-strip-13">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-E14" data-pin="pin-E14" transform="translate(552 336)" data-row="E" data-column="14" data-connectivity-group="upper-strip-14">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-E15" data-pin="pin-E15" transform="translate(584 336)" data-row="E" data-column="15" data-connectivity-group="upper-strip-15">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-E16" data-pin="pin-E16" transform="translate(616 336)" data-row="E" data-column="16" data-connectivity-group="upper-strip-16">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-E17" data-pin="pin-E17" transform="translate(648 336)" data-row="E" data-column="17" data-connectivity-group="upper-strip-17">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-E18" data-pin="pin-E18" transform="translate(680 336)" data-row="E" data-column="18" data-connectivity-group="upper-strip-18">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-E19" data-pin="pin-E19" transform="translate(712 336)" data-row="E" data-column="19" data-connectivity-group="upper-strip-19">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-E20" data-pin="pin-E20" transform="translate(744 336)" data-row="E" data-column="20" data-connectivity-group="upper-strip-20">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-E21" data-pin="pin-E21" transform="translate(776 336)" data-row="E" data-column="21" data-connectivity-group="upper-strip-21">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-E22" data-pin="pin-E22" transform="translate(808 336)" data-row="E" data-column="22" data-connectivity-group="upper-strip-22">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-E23" data-pin="pin-E23" transform="translate(840 336)" data-row="E" data-column="23" data-connectivity-group="upper-strip-23">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-E24" data-pin="pin-E24" transform="translate(872 336)" data-row="E" data-column="24" data-connectivity-group="upper-strip-24">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-E25" data-pin="pin-E25" transform="translate(904 336)" data-row="E" data-column="25" data-connectivity-group="upper-strip-25">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-E26" data-pin="pin-E26" transform="translate(936 336)" data-row="E" data-column="26" data-connectivity-group="upper-strip-26">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-E27" data-pin="pin-E27" transform="translate(968 336)" data-row="E" data-column="27" data-connectivity-group="upper-strip-27">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-E28" data-pin="pin-E28" transform="translate(1000 336)" data-row="E" data-column="28" data-connectivity-group="upper-strip-28">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-E29" data-pin="pin-E29" transform="translate(1032 336)" data-row="E" data-column="29" data-connectivity-group="upper-strip-29">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-E30" data-pin="pin-E30" transform="translate(1064 336)" data-row="E" data-column="30" data-connectivity-group="upper-strip-30">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      </g>
+      <g id="row-F" data-row="F" data-side="lower">
+      <g id="pin-F1" data-pin="pin-F1" transform="translate(136 420)" data-row="F" data-column="1" data-connectivity-group="lower-strip-1">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-F2" data-pin="pin-F2" transform="translate(168 420)" data-row="F" data-column="2" data-connectivity-group="lower-strip-2">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-F3" data-pin="pin-F3" transform="translate(200 420)" data-row="F" data-column="3" data-connectivity-group="lower-strip-3">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-F4" data-pin="pin-F4" transform="translate(232 420)" data-row="F" data-column="4" data-connectivity-group="lower-strip-4">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-F5" data-pin="pin-F5" transform="translate(264 420)" data-row="F" data-column="5" data-connectivity-group="lower-strip-5">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-F6" data-pin="pin-F6" transform="translate(296 420)" data-row="F" data-column="6" data-connectivity-group="lower-strip-6">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-F7" data-pin="pin-F7" transform="translate(328 420)" data-row="F" data-column="7" data-connectivity-group="lower-strip-7">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-F8" data-pin="pin-F8" transform="translate(360 420)" data-row="F" data-column="8" data-connectivity-group="lower-strip-8">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-F9" data-pin="pin-F9" transform="translate(392 420)" data-row="F" data-column="9" data-connectivity-group="lower-strip-9">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-F10" data-pin="pin-F10" transform="translate(424 420)" data-row="F" data-column="10" data-connectivity-group="lower-strip-10">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-F11" data-pin="pin-F11" transform="translate(456 420)" data-row="F" data-column="11" data-connectivity-group="lower-strip-11">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-F12" data-pin="pin-F12" transform="translate(488 420)" data-row="F" data-column="12" data-connectivity-group="lower-strip-12">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-F13" data-pin="pin-F13" transform="translate(520 420)" data-row="F" data-column="13" data-connectivity-group="lower-strip-13">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-F14" data-pin="pin-F14" transform="translate(552 420)" data-row="F" data-column="14" data-connectivity-group="lower-strip-14">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-F15" data-pin="pin-F15" transform="translate(584 420)" data-row="F" data-column="15" data-connectivity-group="lower-strip-15">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-F16" data-pin="pin-F16" transform="translate(616 420)" data-row="F" data-column="16" data-connectivity-group="lower-strip-16">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-F17" data-pin="pin-F17" transform="translate(648 420)" data-row="F" data-column="17" data-connectivity-group="lower-strip-17">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-F18" data-pin="pin-F18" transform="translate(680 420)" data-row="F" data-column="18" data-connectivity-group="lower-strip-18">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-F19" data-pin="pin-F19" transform="translate(712 420)" data-row="F" data-column="19" data-connectivity-group="lower-strip-19">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-F20" data-pin="pin-F20" transform="translate(744 420)" data-row="F" data-column="20" data-connectivity-group="lower-strip-20">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-F21" data-pin="pin-F21" transform="translate(776 420)" data-row="F" data-column="21" data-connectivity-group="lower-strip-21">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-F22" data-pin="pin-F22" transform="translate(808 420)" data-row="F" data-column="22" data-connectivity-group="lower-strip-22">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-F23" data-pin="pin-F23" transform="translate(840 420)" data-row="F" data-column="23" data-connectivity-group="lower-strip-23">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-F24" data-pin="pin-F24" transform="translate(872 420)" data-row="F" data-column="24" data-connectivity-group="lower-strip-24">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-F25" data-pin="pin-F25" transform="translate(904 420)" data-row="F" data-column="25" data-connectivity-group="lower-strip-25">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-F26" data-pin="pin-F26" transform="translate(936 420)" data-row="F" data-column="26" data-connectivity-group="lower-strip-26">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-F27" data-pin="pin-F27" transform="translate(968 420)" data-row="F" data-column="27" data-connectivity-group="lower-strip-27">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-F28" data-pin="pin-F28" transform="translate(1000 420)" data-row="F" data-column="28" data-connectivity-group="lower-strip-28">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-F29" data-pin="pin-F29" transform="translate(1032 420)" data-row="F" data-column="29" data-connectivity-group="lower-strip-29">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-F30" data-pin="pin-F30" transform="translate(1064 420)" data-row="F" data-column="30" data-connectivity-group="lower-strip-30">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      </g>
+      <g id="row-G" data-row="G" data-side="lower">
+      <g id="pin-G1" data-pin="pin-G1" transform="translate(136 450)" data-row="G" data-column="1" data-connectivity-group="lower-strip-1">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-G2" data-pin="pin-G2" transform="translate(168 450)" data-row="G" data-column="2" data-connectivity-group="lower-strip-2">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-G3" data-pin="pin-G3" transform="translate(200 450)" data-row="G" data-column="3" data-connectivity-group="lower-strip-3">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-G4" data-pin="pin-G4" transform="translate(232 450)" data-row="G" data-column="4" data-connectivity-group="lower-strip-4">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-G5" data-pin="pin-G5" transform="translate(264 450)" data-row="G" data-column="5" data-connectivity-group="lower-strip-5">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-G6" data-pin="pin-G6" transform="translate(296 450)" data-row="G" data-column="6" data-connectivity-group="lower-strip-6">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-G7" data-pin="pin-G7" transform="translate(328 450)" data-row="G" data-column="7" data-connectivity-group="lower-strip-7">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-G8" data-pin="pin-G8" transform="translate(360 450)" data-row="G" data-column="8" data-connectivity-group="lower-strip-8">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-G9" data-pin="pin-G9" transform="translate(392 450)" data-row="G" data-column="9" data-connectivity-group="lower-strip-9">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-G10" data-pin="pin-G10" transform="translate(424 450)" data-row="G" data-column="10" data-connectivity-group="lower-strip-10">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-G11" data-pin="pin-G11" transform="translate(456 450)" data-row="G" data-column="11" data-connectivity-group="lower-strip-11">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-G12" data-pin="pin-G12" transform="translate(488 450)" data-row="G" data-column="12" data-connectivity-group="lower-strip-12">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-G13" data-pin="pin-G13" transform="translate(520 450)" data-row="G" data-column="13" data-connectivity-group="lower-strip-13">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-G14" data-pin="pin-G14" transform="translate(552 450)" data-row="G" data-column="14" data-connectivity-group="lower-strip-14">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-G15" data-pin="pin-G15" transform="translate(584 450)" data-row="G" data-column="15" data-connectivity-group="lower-strip-15">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-G16" data-pin="pin-G16" transform="translate(616 450)" data-row="G" data-column="16" data-connectivity-group="lower-strip-16">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-G17" data-pin="pin-G17" transform="translate(648 450)" data-row="G" data-column="17" data-connectivity-group="lower-strip-17">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-G18" data-pin="pin-G18" transform="translate(680 450)" data-row="G" data-column="18" data-connectivity-group="lower-strip-18">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-G19" data-pin="pin-G19" transform="translate(712 450)" data-row="G" data-column="19" data-connectivity-group="lower-strip-19">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-G20" data-pin="pin-G20" transform="translate(744 450)" data-row="G" data-column="20" data-connectivity-group="lower-strip-20">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-G21" data-pin="pin-G21" transform="translate(776 450)" data-row="G" data-column="21" data-connectivity-group="lower-strip-21">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-G22" data-pin="pin-G22" transform="translate(808 450)" data-row="G" data-column="22" data-connectivity-group="lower-strip-22">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-G23" data-pin="pin-G23" transform="translate(840 450)" data-row="G" data-column="23" data-connectivity-group="lower-strip-23">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-G24" data-pin="pin-G24" transform="translate(872 450)" data-row="G" data-column="24" data-connectivity-group="lower-strip-24">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-G25" data-pin="pin-G25" transform="translate(904 450)" data-row="G" data-column="25" data-connectivity-group="lower-strip-25">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-G26" data-pin="pin-G26" transform="translate(936 450)" data-row="G" data-column="26" data-connectivity-group="lower-strip-26">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-G27" data-pin="pin-G27" transform="translate(968 450)" data-row="G" data-column="27" data-connectivity-group="lower-strip-27">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-G28" data-pin="pin-G28" transform="translate(1000 450)" data-row="G" data-column="28" data-connectivity-group="lower-strip-28">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-G29" data-pin="pin-G29" transform="translate(1032 450)" data-row="G" data-column="29" data-connectivity-group="lower-strip-29">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-G30" data-pin="pin-G30" transform="translate(1064 450)" data-row="G" data-column="30" data-connectivity-group="lower-strip-30">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      </g>
+      <g id="row-H" data-row="H" data-side="lower">
+      <g id="pin-H1" data-pin="pin-H1" transform="translate(136 480)" data-row="H" data-column="1" data-connectivity-group="lower-strip-1">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-H2" data-pin="pin-H2" transform="translate(168 480)" data-row="H" data-column="2" data-connectivity-group="lower-strip-2">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-H3" data-pin="pin-H3" transform="translate(200 480)" data-row="H" data-column="3" data-connectivity-group="lower-strip-3">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-H4" data-pin="pin-H4" transform="translate(232 480)" data-row="H" data-column="4" data-connectivity-group="lower-strip-4">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-H5" data-pin="pin-H5" transform="translate(264 480)" data-row="H" data-column="5" data-connectivity-group="lower-strip-5">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-H6" data-pin="pin-H6" transform="translate(296 480)" data-row="H" data-column="6" data-connectivity-group="lower-strip-6">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-H7" data-pin="pin-H7" transform="translate(328 480)" data-row="H" data-column="7" data-connectivity-group="lower-strip-7">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-H8" data-pin="pin-H8" transform="translate(360 480)" data-row="H" data-column="8" data-connectivity-group="lower-strip-8">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-H9" data-pin="pin-H9" transform="translate(392 480)" data-row="H" data-column="9" data-connectivity-group="lower-strip-9">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-H10" data-pin="pin-H10" transform="translate(424 480)" data-row="H" data-column="10" data-connectivity-group="lower-strip-10">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-H11" data-pin="pin-H11" transform="translate(456 480)" data-row="H" data-column="11" data-connectivity-group="lower-strip-11">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-H12" data-pin="pin-H12" transform="translate(488 480)" data-row="H" data-column="12" data-connectivity-group="lower-strip-12">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-H13" data-pin="pin-H13" transform="translate(520 480)" data-row="H" data-column="13" data-connectivity-group="lower-strip-13">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-H14" data-pin="pin-H14" transform="translate(552 480)" data-row="H" data-column="14" data-connectivity-group="lower-strip-14">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-H15" data-pin="pin-H15" transform="translate(584 480)" data-row="H" data-column="15" data-connectivity-group="lower-strip-15">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-H16" data-pin="pin-H16" transform="translate(616 480)" data-row="H" data-column="16" data-connectivity-group="lower-strip-16">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-H17" data-pin="pin-H17" transform="translate(648 480)" data-row="H" data-column="17" data-connectivity-group="lower-strip-17">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-H18" data-pin="pin-H18" transform="translate(680 480)" data-row="H" data-column="18" data-connectivity-group="lower-strip-18">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-H19" data-pin="pin-H19" transform="translate(712 480)" data-row="H" data-column="19" data-connectivity-group="lower-strip-19">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-H20" data-pin="pin-H20" transform="translate(744 480)" data-row="H" data-column="20" data-connectivity-group="lower-strip-20">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-H21" data-pin="pin-H21" transform="translate(776 480)" data-row="H" data-column="21" data-connectivity-group="lower-strip-21">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-H22" data-pin="pin-H22" transform="translate(808 480)" data-row="H" data-column="22" data-connectivity-group="lower-strip-22">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-H23" data-pin="pin-H23" transform="translate(840 480)" data-row="H" data-column="23" data-connectivity-group="lower-strip-23">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-H24" data-pin="pin-H24" transform="translate(872 480)" data-row="H" data-column="24" data-connectivity-group="lower-strip-24">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-H25" data-pin="pin-H25" transform="translate(904 480)" data-row="H" data-column="25" data-connectivity-group="lower-strip-25">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-H26" data-pin="pin-H26" transform="translate(936 480)" data-row="H" data-column="26" data-connectivity-group="lower-strip-26">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-H27" data-pin="pin-H27" transform="translate(968 480)" data-row="H" data-column="27" data-connectivity-group="lower-strip-27">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-H28" data-pin="pin-H28" transform="translate(1000 480)" data-row="H" data-column="28" data-connectivity-group="lower-strip-28">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-H29" data-pin="pin-H29" transform="translate(1032 480)" data-row="H" data-column="29" data-connectivity-group="lower-strip-29">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-H30" data-pin="pin-H30" transform="translate(1064 480)" data-row="H" data-column="30" data-connectivity-group="lower-strip-30">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      </g>
+      <g id="row-I" data-row="I" data-side="lower">
+      <g id="pin-I1" data-pin="pin-I1" transform="translate(136 510)" data-row="I" data-column="1" data-connectivity-group="lower-strip-1">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-I2" data-pin="pin-I2" transform="translate(168 510)" data-row="I" data-column="2" data-connectivity-group="lower-strip-2">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-I3" data-pin="pin-I3" transform="translate(200 510)" data-row="I" data-column="3" data-connectivity-group="lower-strip-3">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-I4" data-pin="pin-I4" transform="translate(232 510)" data-row="I" data-column="4" data-connectivity-group="lower-strip-4">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-I5" data-pin="pin-I5" transform="translate(264 510)" data-row="I" data-column="5" data-connectivity-group="lower-strip-5">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-I6" data-pin="pin-I6" transform="translate(296 510)" data-row="I" data-column="6" data-connectivity-group="lower-strip-6">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-I7" data-pin="pin-I7" transform="translate(328 510)" data-row="I" data-column="7" data-connectivity-group="lower-strip-7">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-I8" data-pin="pin-I8" transform="translate(360 510)" data-row="I" data-column="8" data-connectivity-group="lower-strip-8">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-I9" data-pin="pin-I9" transform="translate(392 510)" data-row="I" data-column="9" data-connectivity-group="lower-strip-9">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-I10" data-pin="pin-I10" transform="translate(424 510)" data-row="I" data-column="10" data-connectivity-group="lower-strip-10">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-I11" data-pin="pin-I11" transform="translate(456 510)" data-row="I" data-column="11" data-connectivity-group="lower-strip-11">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-I12" data-pin="pin-I12" transform="translate(488 510)" data-row="I" data-column="12" data-connectivity-group="lower-strip-12">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-I13" data-pin="pin-I13" transform="translate(520 510)" data-row="I" data-column="13" data-connectivity-group="lower-strip-13">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-I14" data-pin="pin-I14" transform="translate(552 510)" data-row="I" data-column="14" data-connectivity-group="lower-strip-14">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-I15" data-pin="pin-I15" transform="translate(584 510)" data-row="I" data-column="15" data-connectivity-group="lower-strip-15">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-I16" data-pin="pin-I16" transform="translate(616 510)" data-row="I" data-column="16" data-connectivity-group="lower-strip-16">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-I17" data-pin="pin-I17" transform="translate(648 510)" data-row="I" data-column="17" data-connectivity-group="lower-strip-17">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-I18" data-pin="pin-I18" transform="translate(680 510)" data-row="I" data-column="18" data-connectivity-group="lower-strip-18">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-I19" data-pin="pin-I19" transform="translate(712 510)" data-row="I" data-column="19" data-connectivity-group="lower-strip-19">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-I20" data-pin="pin-I20" transform="translate(744 510)" data-row="I" data-column="20" data-connectivity-group="lower-strip-20">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-I21" data-pin="pin-I21" transform="translate(776 510)" data-row="I" data-column="21" data-connectivity-group="lower-strip-21">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-I22" data-pin="pin-I22" transform="translate(808 510)" data-row="I" data-column="22" data-connectivity-group="lower-strip-22">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-I23" data-pin="pin-I23" transform="translate(840 510)" data-row="I" data-column="23" data-connectivity-group="lower-strip-23">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-I24" data-pin="pin-I24" transform="translate(872 510)" data-row="I" data-column="24" data-connectivity-group="lower-strip-24">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-I25" data-pin="pin-I25" transform="translate(904 510)" data-row="I" data-column="25" data-connectivity-group="lower-strip-25">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-I26" data-pin="pin-I26" transform="translate(936 510)" data-row="I" data-column="26" data-connectivity-group="lower-strip-26">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-I27" data-pin="pin-I27" transform="translate(968 510)" data-row="I" data-column="27" data-connectivity-group="lower-strip-27">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-I28" data-pin="pin-I28" transform="translate(1000 510)" data-row="I" data-column="28" data-connectivity-group="lower-strip-28">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-I29" data-pin="pin-I29" transform="translate(1032 510)" data-row="I" data-column="29" data-connectivity-group="lower-strip-29">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-I30" data-pin="pin-I30" transform="translate(1064 510)" data-row="I" data-column="30" data-connectivity-group="lower-strip-30">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      </g>
+      <g id="row-J" data-row="J" data-side="lower">
+      <g id="pin-J1" data-pin="pin-J1" transform="translate(136 540)" data-row="J" data-column="1" data-connectivity-group="lower-strip-1">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-J2" data-pin="pin-J2" transform="translate(168 540)" data-row="J" data-column="2" data-connectivity-group="lower-strip-2">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-J3" data-pin="pin-J3" transform="translate(200 540)" data-row="J" data-column="3" data-connectivity-group="lower-strip-3">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-J4" data-pin="pin-J4" transform="translate(232 540)" data-row="J" data-column="4" data-connectivity-group="lower-strip-4">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-J5" data-pin="pin-J5" transform="translate(264 540)" data-row="J" data-column="5" data-connectivity-group="lower-strip-5">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-J6" data-pin="pin-J6" transform="translate(296 540)" data-row="J" data-column="6" data-connectivity-group="lower-strip-6">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-J7" data-pin="pin-J7" transform="translate(328 540)" data-row="J" data-column="7" data-connectivity-group="lower-strip-7">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-J8" data-pin="pin-J8" transform="translate(360 540)" data-row="J" data-column="8" data-connectivity-group="lower-strip-8">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-J9" data-pin="pin-J9" transform="translate(392 540)" data-row="J" data-column="9" data-connectivity-group="lower-strip-9">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-J10" data-pin="pin-J10" transform="translate(424 540)" data-row="J" data-column="10" data-connectivity-group="lower-strip-10">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-J11" data-pin="pin-J11" transform="translate(456 540)" data-row="J" data-column="11" data-connectivity-group="lower-strip-11">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-J12" data-pin="pin-J12" transform="translate(488 540)" data-row="J" data-column="12" data-connectivity-group="lower-strip-12">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-J13" data-pin="pin-J13" transform="translate(520 540)" data-row="J" data-column="13" data-connectivity-group="lower-strip-13">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-J14" data-pin="pin-J14" transform="translate(552 540)" data-row="J" data-column="14" data-connectivity-group="lower-strip-14">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-J15" data-pin="pin-J15" transform="translate(584 540)" data-row="J" data-column="15" data-connectivity-group="lower-strip-15">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-J16" data-pin="pin-J16" transform="translate(616 540)" data-row="J" data-column="16" data-connectivity-group="lower-strip-16">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-J17" data-pin="pin-J17" transform="translate(648 540)" data-row="J" data-column="17" data-connectivity-group="lower-strip-17">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-J18" data-pin="pin-J18" transform="translate(680 540)" data-row="J" data-column="18" data-connectivity-group="lower-strip-18">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-J19" data-pin="pin-J19" transform="translate(712 540)" data-row="J" data-column="19" data-connectivity-group="lower-strip-19">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-J20" data-pin="pin-J20" transform="translate(744 540)" data-row="J" data-column="20" data-connectivity-group="lower-strip-20">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-J21" data-pin="pin-J21" transform="translate(776 540)" data-row="J" data-column="21" data-connectivity-group="lower-strip-21">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-J22" data-pin="pin-J22" transform="translate(808 540)" data-row="J" data-column="22" data-connectivity-group="lower-strip-22">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-J23" data-pin="pin-J23" transform="translate(840 540)" data-row="J" data-column="23" data-connectivity-group="lower-strip-23">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-J24" data-pin="pin-J24" transform="translate(872 540)" data-row="J" data-column="24" data-connectivity-group="lower-strip-24">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-J25" data-pin="pin-J25" transform="translate(904 540)" data-row="J" data-column="25" data-connectivity-group="lower-strip-25">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-J26" data-pin="pin-J26" transform="translate(936 540)" data-row="J" data-column="26" data-connectivity-group="lower-strip-26">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-J27" data-pin="pin-J27" transform="translate(968 540)" data-row="J" data-column="27" data-connectivity-group="lower-strip-27">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-J28" data-pin="pin-J28" transform="translate(1000 540)" data-row="J" data-column="28" data-connectivity-group="lower-strip-28">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-J29" data-pin="pin-J29" transform="translate(1032 540)" data-row="J" data-column="29" data-connectivity-group="lower-strip-29">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      <g id="pin-J30" data-pin="pin-J30" transform="translate(1064 540)" data-row="J" data-column="30" data-connectivity-group="lower-strip-30">
+        <circle r="8.2" class="socket-bevel"/>
+        <circle r="4.5" class="socket-inner"/>
+        <circle r="11.5" class="hole-hitarea"/>
+      </g>
+      </g>
+    </g>
+
+    <g id="moulded-details" opacity="0.45">
+      <circle cx="54" cy="54" r="4" fill="#c9cbc8"/>
+      <circle cx="1146" cy="54" r="4" fill="#c9cbc8"/>
+      <circle cx="54" cy="692" r="4" fill="#c9cbc8"/>
+      <circle cx="1146" cy="692" r="4" fill="#c9cbc8"/>
+      <path d="M52 171 H1148" stroke="#dcddda" stroke-width="1"/>
+      <path d="M52 571 H1148" stroke="#dcddda" stroke-width="1"/>
+    </g>
+  </g>
+</svg>

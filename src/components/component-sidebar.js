@@ -112,6 +112,36 @@ class ComponentSidebar extends LitElement {
       display: block;
     }
 
+    .dip-preview {
+      position: absolute;
+      left: 6px;
+      right: 6px;
+      top: 11px;
+      height: 28px;
+      border-radius: 5px;
+      background: #18181b;
+      border: 1px solid #71717a;
+      color: #d4d4d8;
+      display: grid;
+      place-items: center;
+      font: 700 9px/1 system-ui;
+      letter-spacing: .5px;
+      box-shadow: inset 0 0 0 2px #09090b;
+    }
+
+    .dip-preview::before,
+    .dip-preview::after {
+      content: '';
+      position: absolute;
+      left: 4px;
+      right: 4px;
+      height: 4px;
+      background: repeating-linear-gradient(90deg, #d4d4d8 0 4px, transparent 4px 11px);
+    }
+
+    .dip-preview::before { top: -5px; }
+    .dip-preview::after { bottom: -5px; }
+
     .component-name {
       font-size: 11px;
       font-weight: 500;
@@ -198,11 +228,14 @@ class ComponentSidebar extends LitElement {
                 <div
                   class="component-card"
                   draggable="true"
-                  title="${comp.description}"
+                  title="${comp.description} — drag onto the canvas, or click to add"
                   @dragstart=${(e) => this._onDragStart(e, comp.id)}
+                  @click=${() => this._onPhysicalQuickAdd(comp.id)}
                 >
                   <div class="component-preview">
-                    ${comp.type === 'custom' ? html`
+                    ${comp.visualKind === 'dip8' ? html`
+                      <div class="dip-preview">DIP-8</div>
+                    ` : comp.type === 'custom' ? html`
                       <img class="custom-preview-img" src=${comp.imageUrl} alt=${comp.name} />
                     ` : unsafeHTML(tagHtml)}
                   </div>
@@ -226,6 +259,12 @@ class ComponentSidebar extends LitElement {
   _onDragStart(e, componentId) {
     e.dataTransfer.setData('text/plain', componentId);
     e.dataTransfer.effectAllowed = 'copy';
+  }
+
+  _onPhysicalQuickAdd(componentId) {
+    window.dispatchEvent(new CustomEvent('elera-add-physical-component', {
+      detail: { componentId },
+    }));
   }
 }
 

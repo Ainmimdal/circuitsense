@@ -9,8 +9,8 @@
  */
 
 import { LitElement, html, css } from 'lit';
-import { store } from '../store.js';
-import { validateCircuit, SEV } from '../services/validation-engine.js';
+import { physicalCircuitStore } from '../physical/circuit-store.js';
+import { validatePhysicalProject, PHYSICAL_SEVERITY as SEV } from '../physical/validation.js';
 import { getComponentDef } from '../component-library.js';
 import { faIcon } from '../utils/fa-icons.js';
 
@@ -181,15 +181,13 @@ class ValidationBar extends LitElement {
 
     connectedCallback() {
         super.connectedCallback();
-        store.addEventListener('structural-change', this._structuralHandler);
-        store.addEventListener('change', this._changeHandler);
+        physicalCircuitStore.addEventListener('change', this._structuralHandler);
         this._runValidation();
     }
 
     disconnectedCallback() {
         super.disconnectedCallback();
-        store.removeEventListener('structural-change', this._structuralHandler);
-        store.removeEventListener('change', this._changeHandler);
+        physicalCircuitStore.removeEventListener('change', this._structuralHandler);
         clearTimeout(this._debounceTimer);
     }
 
@@ -200,7 +198,7 @@ class ValidationBar extends LitElement {
 
     _runValidation() {
         const prev = this._results;
-        this._results = validateCircuit();
+        this._results = validatePhysicalProject(physicalCircuitStore.project);
 
         // Auto-expand when errors appear for the first time
         const newErrorCount = this._results.errors.length;
@@ -220,15 +218,15 @@ class ValidationBar extends LitElement {
 
     _onIssueClick(issue) {
         if (issue.instanceId) {
-            store.selectInstance(issue.instanceId);
+            window.dispatchEvent(new CustomEvent('elera-select-physical-component', { detail: { componentId: issue.instanceId } }));
         }
     }
 
     _getComponentName(instanceId) {
         if (!instanceId) return '';
-        const inst = store.getInstance(instanceId);
+        const inst = physicalCircuitStore.project.components.find(component => component.id === instanceId);
         if (!inst) return instanceId;
-        const def = getComponentDef(inst.componentId);
+        const def = getComponentDef(inst.definitionId);
         return def ? def.name : instanceId;
     }
 

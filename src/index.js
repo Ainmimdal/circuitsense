@@ -1,5 +1,7 @@
 // Import wokwi elements (registers all custom elements globally)
 import '@wokwi/elements';
+import './components/elera-breadboard.js';
+import './components/elera-full-breadboard.js';
 
 // Import our app components
 import './circuit-app.js';

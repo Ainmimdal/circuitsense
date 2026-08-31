@@ -29,11 +29,27 @@ Frontend stack:
 - Vite
 - @wokwi/elements for component visuals
 
-Core capabilities in progress:
+Implemented core capabilities:
 - Component library with metadata (pin roles, current draw, auto-wire mapping).
-- Canvas placement and manual wiring.
+- Canvas placement, manual wiring, pan/zoom, undo/redo and project persistence.
 - Validation engine and validation bar UI.
-- Auto-wiring engine.
+- Metadata-driven Auto Wire with nearest-compatible Arduino pin assignment and generated helper components.
+- Separate Auto Layout ownership for direct and breadboard-aware scenes.
+- Obstacle-aware Clean routing with Arduino header fanout and short local breadboard jumpers.
+- Schema v2 logical/physical circuit separation.
+- Half-size 400-point and full-size 830-point breadboards with modeled terminal strips and power rails.
+- Rigid 2.54 mm component footprints, manual hole snapping, legal rotation and capacity alternatives.
+
+Active stabilization:
+- Transactional behavior when Auto Wire runs out of compatible pins.
+- Bus-aware and full-size-board validation correctness.
+- Removal of remaining DOM readiness dependency from the Layout toolbar flow.
+- Automated browser acceptance and dense-scene performance profiling.
+
+Status source of truth:
+- `docs/PROJECT_STATUS.md`
+- `docs/ENGINE_CONTRACT.md`
+- `REBUILD_SPEC.md`
 
 ## Planned Scope (Next Phases)
 - FastAPI backend?

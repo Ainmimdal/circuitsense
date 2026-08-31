@@ -1,6 +1,7 @@
 import { LitElement, html, css } from 'lit';
 import { store } from './store.js';
-import { autoWireAll, autoLayoutAll } from './services/auto-wire-engine.js';
+import { physicalCircuitStore } from './physical/circuit-store.js';
+import { autoLayoutPhysicalStore, autoWirePhysicalStore } from './physical/automation.js';
 import { faIcon } from './utils/fa-icons.js';
 import './components/component-builder-modal.js';
 import './components/login-modal.js';
@@ -251,15 +252,15 @@ class CircuitApp extends LitElement {
         this._loginOpen = false;
         this._mockUser = this._loadMockUser();
         this._settingsInitialTab = 'account';
-        this._manualWireMode = store.manualWireMode;
-        this._manualWireSnap = store.manualWireSnap;
+        this._manualWireMode = physicalCircuitStore.manualWireMode;
+        this._manualWireSnap = physicalCircuitStore.manualWireSnap;
         this._storeHandler = () => {
             this._antiOverlap = store.antiOverlap;
             this._fanOut = store.fanOut;
             this._gridSize = store.gridSize;
             this._sharpCorners = store.sharpCorners;
-            this._manualWireMode = store.manualWireMode;
-            this._manualWireSnap = store.manualWireSnap;
+            this._manualWireMode = physicalCircuitStore.manualWireMode;
+            this._manualWireSnap = physicalCircuitStore.manualWireSnap;
         };
     }
 
@@ -303,11 +304,11 @@ class CircuitApp extends LitElement {
     }
 
     _toggleManualWireMode() {
-        store.toggleManualWireMode();
+        this._manualWireMode = physicalCircuitStore.toggleManualWireMode();
     }
 
     _toggleManualWireSnap() {
-        store.toggleManualWireSnap();
+        this._manualWireSnap = physicalCircuitStore.toggleManualWireSnap();
     }
 
     _setGridSize(size) {
@@ -316,62 +317,51 @@ class CircuitApp extends LitElement {
 
     _clearProject() {
         if (confirm('Clear all components and wires? This cannot be undone.')) {
-            store.clearProject();
+            physicalCircuitStore.clear();
         }
     }
 
-    _undoAction() { store.undo(); }
-    _redoAction() { store.redo(); }
-    _saveProject() { store._saveToStorage(); }
+    _undoAction() { physicalCircuitStore.undo(); }
+    _redoAction() { physicalCircuitStore.redo(); }
+    _saveProject() { physicalCircuitStore.save(); }
     async _cleanupWires() {
-        const result = await store.cleanupWires();
-        // routeAll() now returns { routed, failed, errors }
-        if (result && result.routed !== undefined) {
-            if (result.failed > 0) {
-                alert(`Routed ${result.routed} wires, ${result.failed} failed.\n${result.errors.slice(0, 3).join('\n')}`);
-            }
-        }
+        physicalCircuitStore.transaction('clean-wire-routes', project => {
+            for (const wire of project.wires) wire.route = { mode: 'auto', waypoints: [] };
+        });
     }
-    _resetWires() { store.resetWireRouting(); }
+    _resetWires() {
+        physicalCircuitStore.transaction('reset-wire-routes', project => {
+            for (const wire of project.wires) wire.route = { mode: 'auto', waypoints: [] };
+        });
+    }
 
-    _autoLayoutAll() {
-        const historyBatch = store.beginHistoryBatch();
-        const result = autoWireAll();
-        if (result.total === 0) {
-            alert('No components to layout. Add components with pins first.');
-            return;
+    async _autoLayoutAll() {
+        if (this._layoutInProgress) return;
+        this._layoutInProgress = true;
+        try {
+            const result = autoLayoutPhysicalStore(physicalCircuitStore);
+            if (result.status !== 'success') alert(`Auto Layout could not finish: ${result.errors?.[0] || 'check the circuit components'}`);
+        } catch (error) {
+            console.error('[CircuitSense] Auto layout failed:', error);
+        } finally {
+            this._layoutInProgress = false;
         }
-        
-        // autoWireAll may have just inserted helper components (like resistors).
-        // We must wait until their <placed-component> DOM elements have mounted 
-        // and registered their exact SVG pin coordinates before computing layout.
-        const waitAndLayout = async () => {
-            const allReady = store.instances.every(inst => store.pinInfoMap.has(inst.id));
-            if (allReady) {
-                try {
-                    await autoLayoutAll();
-                } catch (error) {
-                    console.error('[CircuitSense] Auto layout failed:', error);
-                } finally {
-                    store.squashHistorySince(historyBatch);
-                }
-            } else {
-                requestAnimationFrame(waitAndLayout);
-            }
-        };
-        waitAndLayout();
     }
 
     _autoWireAll() {
-        const historyBatch = store.beginHistoryBatch();
-        const result = autoWireAll();
+        const result = autoWirePhysicalStore(physicalCircuitStore);
         if (result.total === 0) {
             alert('No components to auto-wire. Add components with pins first.');
             return;
         }
-        store.squashHistorySince(historyBatch);
+        if (result.status === 'failure') {
+            alert(result.errors?.[0] === 'NO_ARDUINO'
+                ? 'Add an Arduino or another supported controller before using Auto Wire.'
+                : `Auto Wire could not finish: ${result.errors?.[0] || 'check the circuit'}`);
+            return;
+        }
         const msg = [
-            `Auto-wired ${result.success} pins across ${result.total} components.`,
+            `Auto-wired ${result.success} connections across ${result.total} components without moving them.`,
             result.errors.length > 0 ? `${result.errors.length} errors.` : '',
         ].filter(Boolean).join(' ');
         alert(msg);
@@ -386,7 +376,7 @@ class CircuitApp extends LitElement {
     }
 
     _exportProject() {
-        const dataStr = store.exportProject();
+        const dataStr = physicalCircuitStore.exportProject();
         const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
         const exportFileDefaultName = 'circuit-project.json';
 
@@ -405,8 +395,9 @@ class CircuitApp extends LitElement {
             if (!file) return;
             const reader = new FileReader();
             reader.onload = event => {
-                const success = store.importProject(event.target.result);
-                if (!success) {
+                try {
+                    physicalCircuitStore.importProject(event.target.result);
+                } catch {
                     alert('Failed to load project file. It may be corrupted or invalid.');
                 }
             };
@@ -502,11 +493,11 @@ class CircuitApp extends LitElement {
           </button>
           <button class="toolbar-btn" @click=${this._autoWireAll} title="Auto-wire all components to Arduino">
             <span class="icon">${faIcon('bolt')}</span>
-            Wire
+            Auto Wire
           </button>
           <button class="toolbar-btn" @click=${this._autoLayoutAll} title="Auto-layout and wire all components">
             <span class="icon">${faIcon('wand')}</span>
-            Layout
+            Auto Layout
           </button>
           <div class="toolbar-divider"></div>
           <button

@@ -4,13 +4,19 @@
     "version": "0.1.0",
     "type": "module",
     "scripts": {
+        "docs:sync": "node scripts/sync-engine-docs.mjs",
+        "predev": "npm run docs:sync",
         "dev": "vite",
+        "prebuild": "npm run docs:sync",
         "build": "vite build",
-        "preview": "vite preview"
+        "preview": "vite preview",
+        "pretest": "npm run docs:sync",
+        "test": "node --test"
     },
     "dependencies": {
-        "lit": "^3.2.0",
-        "@wokwi/elements": "^1.9.2"
+        "@wokwi/elements": "^1.9.2",
+        "konva": "^9.3.22",
+        "lit": "^3.2.0"
     },
     "devDependencies": {
         "vite": "^6.0.0"

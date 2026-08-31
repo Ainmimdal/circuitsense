@@ -52,9 +52,13 @@ function getVisualFrame(inst) {
     const width = def?.size?.width || 80;
     const height = def?.size?.height || 60;
     const rot = inst.rotation || 0;
+    const scaleX = inst.uniformScale || inst.physicalScale?.x || 1;
+    const scaleY = inst.uniformScale || inst.physicalScale?.y || 1;
+    const scaledWidth = width * scaleX;
+    const scaledHeight = height * scaleY;
     const size = (rot === 90 || rot === 270)
-        ? { width: height, height: width }
-        : { width, height };
+        ? { width: scaledHeight, height: scaledWidth }
+        : { width: scaledWidth, height: scaledHeight };
 
     return {
         width: size.width,
@@ -228,13 +232,18 @@ function routeContext(wire) {
 
     const exitDir1 = store.getPinExitDirection(wire.from.instanceId, wire.from.pinName);
     const exitDir2 = store.getPinExitDirection(wire.to.instanceId, wire.to.pinName);
+    const fromIsBreadboard = Boolean(getComponentDef(store.getInstance(wire.from.instanceId)?.componentId)?.isBreadboard);
+    const toIsBreadboard = Boolean(getComponentDef(store.getInstance(wire.to.instanceId)?.componentId)?.isBreadboard);
 
     return {
         wire,
         from,
         to,
-        escape1: chooseEscapePoint(wire.from.instanceId, from, exitDir1, wire.to.instanceId),
-        escape2: chooseEscapePoint(wire.to.instanceId, to, exitDir2, wire.from.instanceId),
+        escape1: fromIsBreadboard ? from : chooseEscapePoint(wire.from.instanceId, from, exitDir1, wire.to.instanceId),
+        escape2: toIsBreadboard ? to : chooseEscapePoint(wire.to.instanceId, to, exitDir2, wire.from.instanceId),
+        exitDir1,
+        exitDir2,
+        obstacles: getObstacles(new Set([wire.from.instanceId, wire.to.instanceId])),
         netType: classifyWire(wire),
     };
 }
@@ -525,6 +534,56 @@ function fallbackPath(route, obstacles, usedSegments) {
     return best;
 }
 
+function localBreadboardPath(boardId, from, to) {
+    const board = store.getInstance(boardId);
+    const boardDef = board && getComponentDef(board.componentId);
+    const obstacles = store.instances
+        .filter(instance => instance.mountedOn === boardId)
+        .map(instance => {
+            const frame = getVisualFrame(instance);
+            return {
+                left: frame.left - 3,
+                right: frame.left + frame.width + 3,
+                top: frame.top - 3,
+                bottom: frame.top + frame.height + 3,
+            };
+        });
+    const candidates = [];
+    const add = points => candidates.push(cleanPoints(points));
+
+    if (Math.abs(from.x - to.x) < 0.5 || Math.abs(from.y - to.y) < 0.5) add([from, to]);
+    add([from, { x: from.x, y: to.y }, to]);
+    add([from, { x: to.x, y: from.y }, to]);
+
+    if (board && boardDef) {
+        const minX = board.x + 6;
+        const maxX = board.x + boardDef.size.width - 6;
+        const minY = board.y + 6;
+        const maxY = board.y + boardDef.size.height - 6;
+        const channelYs = [board.y + 55, board.y + 106, board.y + 118, board.y + 165];
+        const channelXs = [minX, maxX];
+        for (const obstacle of obstacles) {
+            channelYs.push(obstacle.top - 5, obstacle.bottom + 5);
+            channelXs.push(obstacle.left - 5, obstacle.right + 5);
+        }
+        for (const y of [...new Set(channelYs.map(snap))].filter(value => value >= minY && value <= maxY)) {
+            add([from, { x: from.x, y }, { x: to.x, y }, to]);
+        }
+        for (const x of [...new Set(channelXs.map(snap))].filter(value => value >= minX && value <= maxX)) {
+            add([from, { x, y: from.y }, { x, y: to.y }, to]);
+        }
+    }
+
+    const valid = candidates.filter(points =>
+        points.slice(1).every((point, index) => segmentClear(points[index], point, obstacles)));
+    const pool = valid.length ? valid : candidates;
+    return pool.sort((a, b) => {
+        const lengthA = a.slice(1).reduce((sum, point, index) => sum + segmentLength(a[index], point), 0);
+        const lengthB = b.slice(1).reduce((sum, point, index) => sum + segmentLength(b[index], point), 0);
+        return lengthA - lengthB || a.length - b.length;
+    })[0] || [from, to];
+}
+
 function chooseBestPath(paths, obstacles, usedSegments) {
     let best = null;
     let bestScore = Infinity;
@@ -545,18 +604,43 @@ export function clearRoutingCache() {
 }
 
 export async function routeAll() {
-    if (store.wires.length === 0) return { routed: 0, failed: 0, errors: [] };
+    const wires = store.getRenderableWires();
+    if (wires.length === 0) return { routed: 0, failed: 0, errors: [] };
 
-    const obstacles = getObstacles();
     const usedSegments = [];
     const errors = [];
     let routed = 0;
 
-    const routes = store.wires
+    const routeNormally = [];
+    for (const wire of wires) {
+        if (wire.physical?.kind === 'component-lead' || wire.physical?.kind === 'internal-strip') {
+            wire.waypoints = [];
+            continue;
+        }
+        const fromInst = store.getInstance(wire.from.instanceId);
+        const toInst = store.getInstance(wire.to.instanceId);
+        const sameBreadboard = fromInst && fromInst.id === toInst?.id && getComponentDef(fromInst.componentId)?.isBreadboard;
+        if (!sameBreadboard) {
+            routeNormally.push(wire);
+            continue;
+        }
+        const from = store.getPinAbsolutePosition(wire.from.instanceId, wire.from.pinName);
+        const to = store.getPinAbsolutePosition(wire.to.instanceId, wire.to.pinName);
+        if (!from || !to) {
+            errors.push(`Wire ${wire.id}: cannot resolve breadboard hole positions`);
+            continue;
+        }
+        const path = localBreadboardPath(fromInst.id, from, to);
+        wire.waypoints = path.slice(1, -1);
+        wire.mode = 'orthogonal';
+        routed++;
+    }
+
+    const routes = routeNormally
         .map(routeContext)
         .filter((route, index) => {
             if (route) return true;
-            errors.push(`Wire ${store.wires[index]?.id || index}: cannot resolve pin positions`);
+            errors.push(`Wire ${routeNormally[index]?.id || index}: cannot resolve pin positions`);
             return false;
         })
         .sort((a, b) => {
@@ -568,7 +652,7 @@ export async function routeAll() {
         });
 
     for (const route of routes) {
-        const middle = cleanPoints(findOrthogonalPath(route, obstacles, usedSegments));
+        const middle = cleanPoints(findOrthogonalPath(route, route.obstacles, usedSegments));
         const fullPath = cleanPoints([
             route.from,
             route.escape1,

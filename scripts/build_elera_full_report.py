@@ -10,9 +10,9 @@ from docx.shared import Inches, Pt
 
 
 ROOT = Path(__file__).resolve().parents[1]
-OUT_DOCX = ROOT / "Elera_FYP1_Report_v6_formatted.docx"
+OUT_DOCX = ROOT / "report" / "drafts" / "Elera_FYP1_Report_v6_formatted.docx"
 OUT_MD = ROOT / "report" / "elera_full_report_ch1_to_ch3_formatted.md"
-TEMPLATE = ROOT / "BIT FYP Report Template V3.1.docx"
+TEMPLATE = ROOT / "report" / "templates" / "BIT FYP Report Template V3.1.docx"
 BODY_STYLE_NAME = "Normal"
 NUMBER_COUNTER = 1
 

@@ -23,37 +23,302 @@
 import { store } from '../store.js';
 import { getComponentDef, ARDUINO_PINS, PIN } from '../component-library.js';
 import { clearRoutingCache } from './routing-engine.js';
+import { planAutoWire } from '../core/auto-wire-planner.js';
+import { planBreadboardCircuit } from '../core/breadboard-planner.js';
+import { hydrateEditorProject, serializeEditorProject } from '../core/editor-project-adapter.js';
+import { getComponentGeometry } from '../core/component-geometry.js';
+import { boardTypeForComponentId } from '../core/board-registry.js';
+import { buildLogicalNets, endpointKey } from '../core/circuit-model.js';
+import { WIRE_COLORS } from '../utils/wire-path.js';
 
 /**
  * Auto-wire every eligible component on the canvas.
  * @returns {{ total: number, success: number, errors: string[] }}
  */
-export function autoWireAll() {
-    const eligible = store.instances.filter(inst => {
-        const def = getComponentDef(inst.componentId);
-        return def && !def.isBoard && def.autoWire;
-    });
-
-    if (eligible.length === 0) {
-        return { total: 0, success: 0, errors: ['No components to auto-wire.'] };
-    }
-
-    let success = 0;
-    const allErrors = [];
-
-    for (const inst of eligible) {
-        const result = autoWire(inst.id);
-        success += result.wired.length;
-        allErrors.push(...result.errors.map(e => inst.id + ': ' + e));
-    }
-
-    store.commitAutoWire();
-
-    return {
-        total: eligible.length,
-        success,
-        errors: allErrors,
+export function autoWireAll({ placeComponents = false, resourceChoice = null, componentIds = null, preserveMountedPlacements = false } = {}) {
+    const schemaOptions = {
+        isKnownComponent: type => Boolean(getComponentDef(type)),
+        isBreadboardComponent: type => Boolean(getComponentDef(type)?.isBreadboard),
     };
+    const clean = hydrateEditorProject(serializeEditorProject({
+        instances: store.instances,
+        wires: store.wires,
+        _nextId: store._nextId,
+    }, schemaOptions), schemaOptions);
+    const sourceComponents = clean.instances.filter(instance => !getComponentDef(instance.componentId)?.isBreadboard);
+    const sourceConnections = clean.wires.map(wire => ({
+        id: wire.id,
+        from: { componentId: wire.from.instanceId, pinId: wire.from.pinName },
+        to: { componentId: wire.to.instanceId, pinId: wire.to.pinName },
+    }));
+    const logical = planAutoWire({
+        components: sourceComponents,
+        connections: sourceConnections,
+        componentIds,
+        pinPositionFor: (componentId, pinId) => store.getPinAbsolutePosition(componentId, pinId),
+    });
+    const scope = componentIds ? new Set(componentIds) : null;
+    const eligibleCount = sourceComponents.filter(instance => (!scope || scope.has(instance.id)) && getComponentDef(instance.componentId)?.autoWire).length;
+    if (logical.status === 'failure') {
+        return { status: 'failure', total: eligibleCount, success: 0, errors: logical.diagnostics.map(item => item.code) };
+    }
+    if (eligibleCount === 0 && !placeComponents) return { status: 'failure', total: 0, success: 0, errors: ['No components to auto-wire.'] };
+
+    let resources = clean.instances.filter(instance => getComponentDef(instance.componentId)?.isBreadboard).map(instance => ({
+        id: instance.id,
+        typeId: boardTypeForComponentId(instance.componentId),
+        x: instance.x,
+        y: instance.y,
+        locked: instance.locked,
+    }));
+    if (resourceChoice) {
+        if (resourceChoice.action === 'replace-board') resources = [];
+        const arduino = logical.components.find(component => getComponentDef(component.componentId)?.autoWirePins);
+        const existing = resources[0];
+        resources.push({
+            id: resourceChoice.action === 'replace-board' ? (existing?.id || 'breadboard-full') : `breadboard-${resources.length + 1}`,
+            typeId: resourceChoice.boardType,
+            x: existing?.x ?? (arduino?.x || 100) - 28,
+            y: existing?.y ?? (arduino?.y || 100) + 280,
+        });
+    }
+
+    const placementConstraints = preserveAllMounted => (preserveAllMounted ? store.instances : clean.instances).filter(instance =>
+        instance.breadboardPlacement && (preserveAllMounted || instance.breadboardPlacement.locked)
+    ).map(instance => {
+        const geometry = getComponentGeometry(instance.componentId);
+        const anchorPin = geometry?.footprints?.[0]?.anchorPin;
+        return {
+            componentId: instance.id,
+            boardId: instance.mountedOn,
+            anchorHole: anchorPin && instance.breadboardPlacement.holes?.[anchorPin],
+            rotation: instance.rotation || 0,
+            locked: true,
+        };
+    }).filter(constraint => constraint.anchorHole);
+
+    if (!placeComponents) {
+        const mountedComponentsExist = store.instances.some(instance => instance.mountedOn && instance.breadboardPlacement);
+        if (mountedComponentsExist && resources.length) {
+            const physical = planBreadboardCircuit({
+                components: logical.components,
+                connections: logical.connections,
+                resources,
+                constraints: placementConstraints(true),
+                pinTypeFor: endpoint => getComponentDef(logical.components.find(component => component.id === endpoint.componentId)?.componentId)?.pinMeta?.[endpoint.pinId],
+            });
+            if (physical.status === 'success') {
+                applyLogicalResult(logical, [], physical.physicalPlan);
+                return { status: logical.status, total: eligibleCount, success: logical.connections.length, errors: logical.diagnostics.map(item => item.code), physicalPlan: physical.physicalPlan };
+            }
+            return {
+                status: physical.status,
+                total: eligibleCount,
+                success: 0,
+                errors: physical.diagnostics || [{ code: 'BREADBOARD_REBUILD_FAILED' }],
+                problem: physical.problem,
+                alternatives: physical.alternatives || [],
+            };
+        }
+        applyLogicalResult(logical, clean.instances.filter(instance => getComponentDef(instance.componentId)?.isBreadboard), null);
+        return { status: logical.status, total: eligibleCount, success: logical.connections.length, errors: logical.diagnostics.map(item => item.code) };
+    }
+
+    const constraints = placementConstraints(preserveMountedPlacements);
+    const physical = planBreadboardCircuit({
+        components: logical.components,
+        connections: logical.connections,
+        resources,
+        constraints,
+        pinTypeFor: endpoint => getComponentDef(logical.components.find(component => component.id === endpoint.componentId)?.componentId)?.pinMeta?.[endpoint.pinId],
+    });
+    if (physical.status !== 'success') {
+        return { status: physical.status, total: eligibleCount, success: 0, errors: physical.diagnostics || [], problem: physical.problem, alternatives: physical.alternatives || [] };
+    }
+    applyLogicalResult(logical, [], physical.physicalPlan);
+    return { status: 'success', total: eligibleCount, success: logical.connections.length, errors: physical.physicalPlan.diagnostics || [], physicalPlan: physical.physicalPlan };
+}
+
+function applyLogicalResult(logical, existingBoards, physicalPlan) {
+    const stableCoordinate = value => Math.round(value * 1e6) / 1e6;
+    physicalPlan = physicalPlan ? structuredClone(physicalPlan) : null;
+    const boardInstances = physicalPlan
+        ? physicalPlan.resources.map(resource => ({
+            id: resource.id,
+            componentId: resource.typeId === 'breadboard-full-830' ? 'breadboard-full' : 'breadboard-half',
+            x: resource.x,
+            y: resource.y,
+            rotation: 0,
+        }))
+        : existingBoards;
+    const instances = [...logical.components.map(component => ({ ...component })), ...boardInstances];
+    const byId = new Map(instances.map(instance => [instance.id, instance]));
+    for (const placement of physicalPlan?.placements || []) {
+        const instance = byId.get(placement.componentId);
+        if (!instance) continue;
+        const definition = getComponentDef(instance.componentId);
+        const transform = placement.transform;
+        const cx = (definition?.size?.width || 80) / 2;
+        const cy = (definition?.size?.height || 60) / 2;
+        const dx = (transform.anchorNative.x - cx) * transform.scale;
+        const dy = (transform.anchorNative.y - cy) * transform.scale;
+        const radians = transform.rotation * Math.PI / 180;
+        const rx = dx * Math.cos(radians) - dy * Math.sin(radians);
+        const ry = dx * Math.sin(radians) + dy * Math.cos(radians);
+        instance.x = stableCoordinate(transform.anchorWorld.x - cx - rx);
+        instance.y = stableCoordinate(transform.anchorWorld.y - cy - ry);
+        instance.rotation = transform.rotation;
+        instance.uniformScale = transform.scale;
+        instance.mountedOn = placement.boardId;
+        instance.breadboardPlacement = { breadboardId: placement.boardId, footprintId: placement.footprintId, anchorHole: placement.anchorHole, holes: placement.holes, locked: false };
+    }
+    const arduinoComponents = logical.components.filter(component => getComponentDef(component.componentId)?.isBoard).map(component => component.id);
+    const nets = physicalPlan?.nets || buildLogicalNets(logical.connections, {
+        arduinoComponents,
+        pinTypeFor: endpoint => getComponentDef(logical.components.find(component => component.id === endpoint.componentId)?.componentId)?.pinMeta?.[endpoint.pinId],
+    });
+    const netByEndpoint = new Map();
+    for (const net of nets) {
+        for (const endpoint of net.endpoints) netByEndpoint.set(endpointKey(endpoint), net.id);
+    }
+    const signalPalette = WIRE_COLORS.filter(color => !['#F44336', '#111111'].includes(color));
+    const netColors = new Map();
+    let signalIndex = 0;
+    for (const net of [...nets].sort((a, b) => a.id.localeCompare(b.id))) {
+        const color = net.kind === 'ground' ? '#111111'
+            : net.kind === 'power' ? '#F44336'
+                : net.kind === 'conflict' ? '#ff0000'
+                    : signalPalette[signalIndex++ % signalPalette.length];
+        netColors.set(net.id, color);
+    }
+    const wires = logical.connections.map(connection => {
+        const logicalNetId = netByEndpoint.get(endpointKey(connection.from)) || null;
+        return {
+            id: connection.id,
+            from: { instanceId: connection.from.componentId, pinName: connection.from.pinId },
+            to: { instanceId: connection.to.componentId, pinName: connection.to.pinId },
+            waypoints: [], mode: 'orthogonal', logicalNetId,
+            color: netColors.get(logicalNetId) || signalPalette[0],
+        };
+    });
+    if (physicalPlan) {
+        physicalPlan.renderWires = physicalPlan.conductors.map(conductor => ({
+            id: conductor.id,
+            from: conductor.from.kind === 'component-pin'
+                ? { instanceId: conductor.from.componentId, pinName: conductor.from.pinId }
+                : { instanceId: conductor.from.boardId, pinName: conductor.from.holeId },
+            to: conductor.to.kind === 'component-pin'
+                ? { instanceId: conductor.to.componentId, pinName: conductor.to.pinId }
+                : { instanceId: conductor.to.boardId, pinName: conductor.to.holeId },
+            waypoints: [], mode: 'orthogonal', color: netColors.get(conductor.netId) || signalPalette[0],
+            logicalNetId: conductor.netId,
+            physical: { kind: conductor.kind, jumperType: conductor.jumperType },
+        }));
+    }
+    store.instances = instances;
+    store.wires = wires;
+    store.physicalPlan = physicalPlan;
+    store._pushHistory();
+    store._notifyStructural();
+}
+
+function isSupplyPin(pinName) {
+    return /(?:VCC|VDD|VIN|5V|3\.3V|3V3|GND|VSS)/i.test(String(pinName));
+}
+
+function moveTopLevelInstances(dx, dy) {
+    if (!dx && !dy) return;
+    for (const instance of [...store.instances]) {
+        if (instance.mountedOn || instance.locked) continue;
+        store.moveInstance(instance.id, instance.x + dx, instance.y + dy);
+    }
+}
+
+async function layoutBreadboardScene(arduino) {
+    const arduinoDef = getComponentDef(arduino.componentId);
+    const breadboards = store.instances
+        .filter(instance => getComponentDef(instance.componentId)?.isBreadboard)
+        .sort((a, b) => a.x - b.x || a.id.localeCompare(b.id));
+    if (!breadboards.length) return;
+
+    // A breadboard-mounted MCU is a child of the board, not an external anchor.
+    // Give its board an absolute stable scene position so repeated Layout calls
+    // cannot feed the child position back into the parent position.
+    if (arduino.mountedOn) {
+        const primary = breadboards.find(board => board.id === arduino.mountedOn);
+        const ordered = [primary, ...breadboards.filter(board => board !== primary)]
+            .filter(Boolean);
+        let nextX = primary?.locked ? primary.x : 40;
+        const rowY = primary?.locked ? primary.y : 40;
+        for (const breadboard of ordered) {
+            const definition = getComponentDef(breadboard.componentId);
+            if (!breadboard.locked) store.moveInstance(breadboard.id, store.snapToGrid(nextX), store.snapToGrid(rowY));
+            nextX = (breadboard.locked ? breadboard.x : store.snapToGrid(nextX)) + (definition?.size?.width || 330) + 50;
+        }
+        store._pushHistory();
+        store._notifyStructural();
+        await store.cleanupWires();
+        return;
+    }
+
+    const physicalWires = store.getRenderableWires();
+    const linkedArduinoPin = (wire, breadboardId) => {
+        const fromArduino = wire.from.instanceId === arduino.id && wire.to.instanceId === breadboardId;
+        const toArduino = wire.to.instanceId === arduino.id && wire.from.instanceId === breadboardId;
+        if (!fromArduino && !toArduino) return null;
+        return fromArduino ? wire.from.pinName : wire.to.pinName;
+    };
+    const allSignalPins = breadboards.flatMap(breadboard => physicalWires
+        .map(wire => linkedArduinoPin(wire, breadboard.id))
+        .filter(pin => pin && !isSupplyPin(pin)));
+    const signalExits = allSignalPins.map(pin => store.getPinExitDirection(arduino.id, pin));
+    let placeAbove = signalExits.length === 0 ||
+        signalExits.filter(direction => direction === 'up').length >= signalExits.filter(direction => direction === 'down').length;
+
+    const maxBreadboardHeight = Math.max(...breadboards.map(instance => getComponentDef(instance.componentId)?.size?.height || 215));
+    let desiredFirstY = placeAbove
+        ? arduino.y - maxBreadboardHeight - 50
+        : arduino.y + (arduinoDef?.size?.height || 200) + 50;
+    if (placeAbove && desiredFirstY < 40 && arduino.locked) {
+        placeAbove = false;
+        desiredFirstY = arduino.y + (arduinoDef?.size?.height || 200) + 50;
+    }
+    if (desiredFirstY < 40) {
+        moveTopLevelInstances(0, store.snapToGrid(40 - desiredFirstY));
+    }
+
+    let previousRight = Number.NEGATIVE_INFINITY;
+    for (const breadboard of breadboards) {
+        const definition = getComponentDef(breadboard.componentId);
+        const pinInfo = store.pinInfoMap.get(breadboard.id) || [];
+        const links = physicalWires.filter(wire => linkedArduinoPin(wire, breadboard.id));
+        const signalLinks = links.filter(wire => !isSupplyPin(linkedArduinoPin(wire, breadboard.id)));
+        const alignmentLinks = signalLinks.length ? signalLinks : links;
+        const alignmentOffsets = alignmentLinks.map(wire => {
+            const arduinoEnd = wire.from.instanceId === arduino.id ? wire.from : wire.to;
+            const breadboardEnd = wire.from.instanceId === breadboard.id ? wire.from : wire.to;
+            const arduinoPoint = store.getPinAbsolutePosition(arduino.id, arduinoEnd.pinName);
+            const hole = pinInfo.find(pin => pin.name === breadboardEnd.pinName);
+            return arduinoPoint && hole ? arduinoPoint.x - hole.x : null;
+        }).filter(Number.isFinite).sort((a, b) => a - b);
+        const medianOffset = alignmentOffsets.length
+            ? alignmentOffsets[Math.floor(alignmentOffsets.length / 2)]
+            : arduino.x + ((arduinoDef?.size?.width || 275) - (definition?.size?.width || 330)) / 2;
+        const unclampedX = store.snapToGrid(medianOffset);
+        const desiredX = Math.max(unclampedX, Number.isFinite(previousRight) ? previousRight + 50 : unclampedX);
+        const desiredY = store.snapToGrid(placeAbove
+            ? arduino.y - (definition?.size?.height || 215) - 50
+            : arduino.y + (arduinoDef?.size?.height || 200) + 50);
+        if (!breadboard.locked) store.moveInstance(breadboard.id, desiredX, desiredY);
+        previousRight = (breadboard.locked ? breadboard.x : desiredX) + (definition?.size?.width || 330);
+    }
+
+    const minX = Math.min(...store.instances.map(instance => instance.x));
+    if (minX < 40) moveTopLevelInstances(store.snapToGrid(40 - minX), 0);
+
+    store._pushHistory();
+    store._notifyStructural();
+    await store.cleanupWires();
 }
 
 /**
@@ -65,6 +330,10 @@ export async function autoLayoutAll() {
     clearRoutingCache();
     const board = store.instances.find(i => getComponentDef(i.componentId)?.isBoard);
     if (!board) return;
+    if (store.physicalPlan?.resources?.length) {
+        await layoutBreadboardScene(board);
+        return;
+    }
 
     const boardDef = getComponentDef(board.componentId);
     const boardSize = boardDef?.size || { width: 275, height: 200 };
@@ -87,7 +356,7 @@ export async function autoLayoutAll() {
     const isPowerOrGround = (pinName) => {
         const name = String(pinName).toUpperCase();
         return name.includes('VCC') || name.includes('VDD') || name.includes('VIN') ||
-            name.includes('5V') || name.includes('3.3V') || name.includes('GND') ||
+            name.includes('5V') || name.includes('3.3V') || name.includes('3V3') || name.includes('GND') ||
             name.includes('VSS');
     };
 
@@ -163,7 +432,7 @@ export async function autoLayoutAll() {
     for (const inst of store.instances) {
         if (inst.id === board.id) continue;
         const def = getComponentDef(inst.componentId);
-        if (!def || def.id === 'resistor') continue;
+        if (!def || def.id === 'resistor' || def.isBreadboard || inst.mountedOn) continue;
 
         let topCount = 0;
         let botCount = 0;
@@ -272,11 +541,9 @@ export function autoWire(instanceId) {
     if (!def.autoWire) return { success: false, wired: [], errors: ['No auto-wire rules for this component.'], added: [] };
 
     // Find Arduino board
-    const board = store.instances.find(i => {
-        const d = getComponentDef(i.componentId);
-        return d && d.isBoard;
-    });
+    const board = store.instances.find(i => getComponentDef(i.componentId)?.autoWirePins);
     if (!board) return { success: false, wired: [], errors: ['No Arduino board on the canvas. Add one first.'], added: [] };
+    const boardPins = getComponentDef(board.componentId).autoWirePins;
 
     // ── Clean up old wiring before re-wiring ──
     // 1. Remove any auto-inserted helper resistors in series with this component.
@@ -292,7 +559,7 @@ export function autoWire(instanceId) {
     const usedPins = _getUsedArduinoPins(board.id);
 
     // Check which I2C pins are reserved
-    const i2cInUse = _isI2cInUse(board.id);
+    const i2cInUse = _isI2cInUse(board.id, boardPins);
 
     const wired = [];
     const errors = [];
@@ -306,7 +573,7 @@ export function autoWire(instanceId) {
         const resolvedPinName = store.resolvePinName(pinInfo, pinName);
 
         const sourcePos = store.getPinAbsolutePosition(instanceId, resolvedPinName);
-        const arduinoPin = _pickArduinoPin(needType, usedPins, i2cInUse, def.avoidPins || [], sourcePos, board.id);
+        const arduinoPin = _pickArduinoPin(needType, usedPins, i2cInUse, def.avoidPins || [], sourcePos, board.id, boardPins);
         if (!arduinoPin) {
             errors.push('No free Arduino pin for ' + pinName + ' (' + needType + ')');
             continue;
@@ -454,15 +721,15 @@ function _getUsedArduinoPins(boardInstanceId) {
 /**
  * Check if any I2C device is wired (so we reserve A4/A5).
  */
-function _isI2cInUse(boardInstanceId) {
+function _isI2cInUse(boardInstanceId, pins = ARDUINO_PINS) {
     const used = _getUsedArduinoPins(boardInstanceId);
-    return used.has('A4') || used.has('A5');
+    return used.has(pins.i2c.sda) || used.has(pins.i2c.scl);
 }
 
 /**
  * Pick the best free Arduino pin for a given requirement type.
  */
-function _pickArduinoPin(needType, usedPins, i2cInUse, avoidPins, sourcePos, boardId) {
+function _pickArduinoPin(needType, usedPins, i2cInUse, avoidPins, sourcePos, boardId, pins = ARDUINO_PINS) {
     const avoid = new Set(avoidPins);
     const isFree = (pin) => !usedPins.has(pin) && !avoid.has(pin);
 
@@ -485,44 +752,42 @@ function _pickArduinoPin(needType, usedPins, i2cInUse, avoidPins, sourcePos, boa
         }
         return bestPin;
     };
+    const generalPins = candidates => candidates.filter(pin => !Object.values(pins.i2c).includes(pin));
 
     switch (needType) {
         case PIN.VCC:
-            // Prefer 5V, fall back to 3.3V
-            if (isFree('5V')) return '5V';
-            if (isFree('3.3V')) return '3.3V';
-            // Power pins can be shared — just return 5V
-            return '5V';
+            // Shared 5V net; breadboard realization condenses this to one feeder.
+            return pins.power[0];
 
         case PIN.GND:
-            const freeGND = getClosest(ARDUINO_PINS.ground);
-            return freeGND || ARDUINO_PINS.ground[0]; // Share if full
+            const freeGND = getClosest(pins.ground);
+            return freeGND || pins.ground[0]; // Share if full
 
         case PIN.PWM:
-            return getClosest(ARDUINO_PINS.pwm);
+            return getClosest(generalPins(pins.pwm));
 
         case PIN.DIGITAL:
         case PIN.SIGNAL:
         case PIN.TRIGGER:
         case PIN.ECHO:
         case PIN.DATA:
-            return getClosest(ARDUINO_PINS.digital);
+            return getClosest(generalPins(pins.digital));
 
         case PIN.ANALOG:
-            const analogPins = ARDUINO_PINS.analog.filter(p => {
-                if ((p === 'A4' || p === 'A5') && i2cInUse) return false;
+            const analogPins = pins.analog.filter(p => {
+                if (Object.values(pins.i2c).includes(p) && i2cInUse) return false;
                 return true;
             });
             return getClosest(analogPins);
 
         case PIN.I2C_SDA:
-            return 'A4';
+            return pins.i2c.sda;
 
         case PIN.I2C_SCL:
-            return 'A5';
+            return pins.i2c.scl;
 
         default:
             // Fallback: try any digital
-            return getClosest(ARDUINO_PINS.digital);
+            return getClosest(generalPins(pins.digital));
     }
 }

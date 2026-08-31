@@ -1,923 +1,1517 @@
-import { LitElement, html, css, svg } from 'lit';
-import { repeat } from 'lit/directives/repeat.js';
-import { store } from '../store.js';
-import { buildManualWirePath, getManualWirePoints, wirePath, WIRE_COLORS } from '../utils/wire-path.js';
-import { getComponentDef } from '../component-library.js';
-import { faIcon } from '../utils/fa-icons.js';
+import { LitElement, html, css } from 'lit';
+import Konva from 'konva';
+
+import { componentLibrary } from '../component-library.js';
+import { calibratePhysicalPinInfo, getComponentGeometry } from '../core/component-geometry.js';
+import { physicalCircuitStore } from '../physical/circuit-store.js';
+import { InteractionController } from '../editor/interaction-controller.js';
+import { addComponentCommand, deleteComponentCommand, deleteSurfaceCommand, deleteWireCommand } from '../physical/commands.js';
+import { createComponentInstance, componentPinRef, componentWorldTransform, resolveConnectionWorldPoint, surfaceHoleRef } from '../physical/model.js';
+import { calibrateFreeComponentFootprint, defaultFootprintForComponent, getFootprintDefinition, getPhysicalComponentDefinition, projectFootprintPoint } from '../physical/footprints.js';
+import { getSurfaceDefinition, holeWorldPosition, holesInElectricalGroup, nearestHole } from '../physical/breadboard.js';
+import { applyTransform, screenToWorld } from '../physical/geometry.js';
+import { pinExitDirection } from '../physical/routing.js';
+import { editableWirePoints, insertWireWaypoint, moveWireRouteEndpoints, moveWireSegment, moveWireWaypoint, removeWireWaypoint } from '../physical/wire-edit.js';
+import { inspectWireNet } from '../physical/net-inspector.js';
+
+const CAMERA = Object.freeze({ pixelsPerMillimetre: 5.2, minZoom: 0.42, maxZoom: 2.5 });
+Konva.dragButtons = [0];
+
+function isPrimaryPointer(event) {
+    const button = event?.evt?.button;
+    return button === undefined || button === 0;
+}
 
 class CircuitCanvas extends LitElement {
     static properties = {
-        _scale: { state: true },
-        _panX: { state: true },
-        _panY: { state: true },
-        _selectRect: { state: true },
+        _status: { state: true },
+        _zoomLabel: { state: true },
     };
 
     static styles = css`
-    :host {
-      display: block;
-      position: relative;
-      overflow: hidden;
-      background: #121214; /* Match neutral dark */
-    }
+        :host {
+            display: block;
+            position: relative;
+            min-width: 0;
+            min-height: 0;
+            overflow: hidden;
+            background: #24272e;
+            user-select: none;
+        }
 
-    .canvas-area {
-      position: relative;
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
-      background-color: #121214;
-      background-image: radial-gradient(circle, rgba(113, 113, 122, 0.42) 1px, transparent 1px);
-    }
+        .workspace,
+        .stage-host,
+        .component-visual-layer {
+            position: absolute;
+            inset: 0;
+        }
 
-    .canvas-world {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      transform-origin: 0 0;
-    }
+        .workspace { isolation: isolate; }
+        .stage-host { touch-action: none; }
 
-    .wire-layer {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      pointer-events: none;
-      z-index: 50;
-      overflow: visible;
-    }
+        .component-visual-layer {
+            z-index: 4;
+            overflow: hidden;
+            pointer-events: none;
+        }
 
-    .wire {
-      pointer-events: stroke;
-      cursor: pointer;
-      transition: stroke-width 0.15s, opacity 0.15s;
-    }
+        .component-visual {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 0;
+            height: 0;
+            transform-origin: 0 0;
+            pointer-events: none;
+        }
 
-    .wire:hover {
-      stroke-width: 4 !important;
-      filter: brightness(1.3) drop-shadow(0 0 3px currentColor);
-    }
+        .component-artwork {
+            position: absolute;
+            left: 0;
+            top: 0;
+            display: block;
+            transform-origin: 0 0;
+            pointer-events: none !important;
+            user-select: none;
+        }
 
-    .wire.selected {
-      stroke-width: 4 !important;
-      filter: brightness(1.5) drop-shadow(0 0 6px currentColor);
-    }
+        .component-visual.selected .component-artwork {
+            filter: drop-shadow(0 0 5px #22d3ee) drop-shadow(0 0 1px #ecfeff);
+        }
 
-    /* Invisible wider hit area for easier wire clicking */
-    .wire-hitarea {
-      pointer-events: stroke;
-      cursor: pointer;
-      fill: none;
-      stroke: transparent;
-    }
+        .visual-terminal {
+            position: absolute;
+            left: 0;
+            top: 0;
+            z-index: 2;
+            width: 7px;
+            height: 7px;
+            border: 1.5px solid #0891b2;
+            border-radius: 50%;
+            background: rgba(248, 250, 252, .9);
+            box-shadow: 0 0 0 1px rgba(8, 145, 178, .28);
+            transform-origin: center;
+            pointer-events: none;
+        }
 
-    /* Waypoint handles */
-    .waypoint-handle {
-      cursor: grab;
-      pointer-events: all;
-      transition: r 0.15s;
-    }
+        .dom-dip {
+            display: grid;
+            place-items: center;
+            border: 2px solid #71717a;
+            border-radius: 6px;
+            background: #18181b;
+            color: #e4e4e7;
+            font: 700 13px system-ui;
+            box-shadow: inset 0 0 0 2px #09090b;
+        }
 
-    .waypoint-handle:hover {
-      r: 6;
-    }
+        .mode-pill,
+        .help,
+        .zoom-controls,
+        .legend,
+        .net-inspector,
+        .part-tools {
+            position: absolute;
+            z-index: 20;
+            pointer-events: none;
+            color: #d4d4d8;
+            background: rgba(24, 24, 27, .9);
+            border: 1px solid #3f3f46;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, .28);
+            backdrop-filter: blur(9px);
+        }
 
-    .segment-handle {
-      cursor: move;
-      pointer-events: stroke;
-      stroke: transparent;
-      fill: none;
-    }
+        .mode-pill {
+            top: 14px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-radius: 999px;
+            padding: 7px 12px;
+            font-size: 11px;
+            max-width: min(620px, 70%);
+            text-align: center;
+        }
 
-    .segment-handle:hover {
-      stroke: rgba(255, 255, 255, 0.12);
-    }
+        .mode-pill strong { color: #67e8f9; }
 
-    .temp-wire {
-      stroke-dasharray: 8 4;
-      animation: dash 0.5s linear infinite;
-    }
+        .help {
+            left: 14px;
+            bottom: 14px;
+            border-radius: 8px;
+            padding: 9px 11px;
+            font-size: 10px;
+            line-height: 1.55;
+        }
 
-    @keyframes dash {
-      to { stroke-dashoffset: -12; }
-    }
+        .legend {
+            right: 14px;
+            bottom: 14px;
+            border-radius: 8px;
+            padding: 9px 11px;
+            font-size: 10px;
+            line-height: 1.55;
+        }
 
-    .drop-hint {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      color: #52525b;
-      font-size: 14px;
-      line-height: 1.45;
-      pointer-events: none;
-      text-align: center;
-      z-index: 1;
-      max-width: 260px;
-    }
+        .legend span { display: inline-flex; align-items: center; gap: 6px; margin-left: 9px; }
+        .legend i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
 
-    .drop-hint .icon {
-      font-size: 42px;
-      display: inline-flex;
-      margin-bottom: 10px;
-      filter: drop-shadow(0 8px 18px rgba(14, 165, 233, 0.18));
-    }
+        .net-inspector {
+            right: 14px;
+            top: 62px;
+            width: min(260px, calc(100% - 28px));
+            border-radius: 9px;
+            padding: 10px 11px;
+            pointer-events: auto;
+            font: 11px/1.4 system-ui;
+        }
 
-    .wiring-indicator {
-      position: absolute;
-      top: 12px;
-      right: 12px;
-      background: rgba(255, 152, 0, 0.9);
-      color: #000;
-      padding: 8px 16px;
-      border-radius: 20px;
-      font-size: 12px;
-      font-weight: 600;
-      z-index: 200;
-      pointer-events: none;
-      animation: pulse-opacity 1.2s ease-in-out infinite;
-    }
+        .net-inspector header { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+        .net-inspector strong { color: #67e8f9; font-size: 12px; }
+        .net-inspector small { color: #a1a1aa; }
+        .net-pins { margin-top: 7px; display: grid; gap: 4px; }
+        .net-pin { display: flex; justify-content: space-between; gap: 10px; padding-top: 4px; border-top: 1px solid #3f3f46; }
+        .net-pin span { color: #e4e4e7; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .net-pin code { color: #facc15; font: 700 10px ui-monospace, monospace; }
 
-    @keyframes pulse-opacity {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.7; }
-    }
+        .zoom-controls {
+            right: 14px;
+            top: 14px;
+            border-radius: 8px;
+            padding: 6px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            pointer-events: auto;
+        }
 
-    /* Zoom controls */
-    .zoom-controls {
-      position: absolute;
-      bottom: 56px;
-      right: 14px;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      z-index: 320;
-      pointer-events: auto;
-    }
+        .part-tools {
+            left: 14px;
+            top: 14px;
+            border-radius: 8px;
+            padding: 6px;
+            display: flex;
+            gap: 6px;
+            pointer-events: auto;
+        }
 
-    .zoom-btn {
-      width: 32px;
-      height: 32px;
-      border-radius: 6px;
-      border: 1px solid #3f3f46; /* Zinc 700 */
-      background: rgba(39, 39, 42, 0.9); /* Zinc 800 */
-      color: #a1a1aa; /* Zinc 400 */
-      font-size: 16px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: all 0.15s;
-      backdrop-filter: blur(8px);
-    }
+        .part-tools button {
+            border: 1px solid #3f3f46;
+            border-radius: 6px;
+            background: #27272a;
+            color: #e4e4e7;
+            padding: 7px 9px;
+            cursor: pointer;
+            font: 600 10px system-ui;
+        }
 
-    .zoom-btn:hover {
-      background: rgba(63, 63, 70, 0.95); /* Zinc 700 */
-      color: #fafafa;
-      border-color: #52525b; /* Zinc 600 */
-    }
+        .part-tools button:hover { border-color: #22d3ee; color: #cffafe; }
 
-    .zoom-label {
-      text-align: center;
-      font-size: 10px;
-      color: #666;
-      padding: 2px 0;
-      user-select: none;
-    }
+        .zoom-controls button {
+            width: 28px;
+            height: 28px;
+            border: 0;
+            border-radius: 5px;
+            background: #27272a;
+            color: #f4f4f5;
+            cursor: pointer;
+            font: 600 14px system-ui;
+        }
 
-    .shortcut-hint {
-      position: absolute;
-      bottom: 54px;
-      left: 14px;
-      font-size: 11px;
-      color: #71717a; /* Zinc 500 */
-      z-index: 200;
-      pointer-events: none;
-      line-height: 1.5;
-      max-width: min(560px, calc(100% - 110px));
-      padding: 6px 9px;
-      border: 1px solid rgba(63, 63, 70, 0.7);
-      border-radius: 6px;
-      background: rgba(18, 18, 20, 0.72);
-      backdrop-filter: blur(8px);
-    }
+        .zoom-controls button:hover { background: #3f3f46; }
+        .zoom-controls output { width: 42px; text-align: center; font: 600 10px system-ui; }
 
-    .color-picker-panel {
-      position: absolute;
-      top: 60px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(39, 39, 42, 0.95); /* Zinc 800 */
-      padding: 10px;
-      border-radius: 12px;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      display: flex;
-      gap: 6px;
-      z-index: 100;
-      backdrop-filter: blur(8px);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-    }
-
-    .color-swatch {
-      width: 20px;
-      height: 20px;
-      border-radius: 50%;
-      border: 2px solid transparent;
-      cursor: pointer;
-      transition: transform 0.1s, border-color 0.1s;
-    }
-
-    .color-swatch:hover {
-      transform: scale(1.1);
-    }
-    .color-swatch.active {
-      border-color: white;
-    }
-
-    @media (max-width: 900px) {
-      .shortcut-hint {
-        display: none;
-      }
-
-      .zoom-controls {
-        right: 10px;
-      }
-    }
-  `;
+        .workspace.drag-over::after {
+            content: 'Drop to place physical component';
+            position: absolute;
+            inset: 10px;
+            z-index: 6;
+            display: grid;
+            place-items: center;
+            border: 2px dashed #22d3ee;
+            border-radius: 12px;
+            color: #cffafe;
+            background: rgba(8, 145, 178, .1);
+            pointer-events: none;
+            font: 600 13px system-ui;
+        }
+    `;
 
     constructor() {
         super();
-        this._scale = 1;
-        this._panX = 0;
-        this._panY = 0;
-
-        // Pan state
-        this._isPanning = false;
-        this._panStartX = 0;
-        this._panStartY = 0;
-        this._panStartPanX = 0;
-        this._panStartPanY = 0;
-        this._spaceDown = false;
-
-        // Selection drag state
-        this._isSelectDragging = false;
-        this._selectStartX = 0;
-        this._selectStartY = 0;
-        this._selectEndX = 0;
-        this._selectEndY = 0;
-
-        // Event handlers
-        this._storeHandler = () => this.requestUpdate();
-        this._mouseHandler = () => this.requestUpdate();
-        this._keyDownHandler = (e) => this._onKeyDown(e);
-        this._keyUpHandler = (e) => this._onKeyUp(e);
-    }
-
-    connectedCallback() {
-        super.connectedCallback();
-        store.addEventListener('change', this._storeHandler);
-        store.addEventListener('mousemove', this._mouseHandler);
-        window.addEventListener('keydown', this._keyDownHandler);
-        window.addEventListener('keyup', this._keyUpHandler);
-    }
-
-    disconnectedCallback() {
-        super.disconnectedCallback();
-        store.removeEventListener('change', this._storeHandler);
-        store.removeEventListener('mousemove', this._mouseHandler);
-        window.removeEventListener('keydown', this._keyDownHandler);
-        window.removeEventListener('keyup', this._keyUpHandler);
-    }
-
-    get _canvasRect() {
-        const el = this.shadowRoot && this.shadowRoot.querySelector('.canvas-area');
-        return el ? el.getBoundingClientRect() : { left: 0, top: 0, width: 0, height: 0 };
-    }
-
-    _screenToWorld(screenX, screenY) {
-        return {
-            x: (screenX - this._panX) / this._scale,
-            y: (screenY - this._panY) / this._scale,
+        this.store = physicalCircuitStore;
+        this.interaction = new InteractionController(this.store);
+        this.camera = { pixelsPerMillimetre: CAMERA.pixelsPerMillimetre, zoom: 1, panX: 36, panY: 28 };
+        this._zoomLabel = '100%';
+        this._status = 'Drag or click any component in the library to add it.';
+        this._hoveredHole = null;
+        this._hoveredTerminalRef = null;
+        this._selectedComponentId = null;
+        this._selectedWireId = null;
+        this._selectedSurfaceId = null;
+        this._lastPointerWorld = { x: 0, y: 0 };
+        this._panning = null;
+        this._dragOver = false;
+        this._pendingPinCalibration = new Set();
+        this._storeHandler = () => this._renderScene();
+        this._interactionHandler = () => this._renderInteractionLayer();
+        this._keyHandler = event => this._onKeyDown(event);
+        this._physicalAddHandler = event => this._quickAddPhysical(event.detail?.componentId);
+        this._physicalSelectHandler = event => {
+            const componentId = event.detail?.componentId;
+            if (!this.store.project.components.some(component => component.id === componentId)) return;
+            this._selectedComponentId = componentId;
+            this._deselectWire();
+            this._selectedSurfaceId = null;
+            this._renderComponents();
         };
     }
 
     render() {
-        const isEmpty = store.instances.length === 0;
-        const zoomPct = Math.round(this._scale * 100);
-
-        // Sync viewport to store so other components can convert coords
-        store.updateViewport(this._scale, this._panX, this._panY);
-
+        const net = this._selectedNetView();
         return html`
-      <div
-        class="canvas-area"
-        style="background-position: ${this._panX}px ${this._panY}px; background-size: ${24 * this._scale}px ${24 * this._scale}px;"
-        @dragover=${this._onDragOver}
-        @drop=${this._onDrop}
-        @pointermove=${this._onPointerMove}
-        @pointerdown=${this._onPointerDown}
-        @pointerup=${this._onPointerUp}
-        @wheel=${this._onWheel}
-        @click=${this._onCanvasClick}
-        @contextmenu=${(e) => e.preventDefault()}
-      >
-        <div
-          class="canvas-world"
-          style="transform: translate(${this._panX}px, ${this._panY}px) scale(${this._scale})"
-        >
-          ${repeat(store.instances, i => i.id, i => html`
-            <placed-component
-              .instanceId=${i.id}
-              .componentId=${i.componentId}
-              style="position: absolute; left: ${i.x}px; top: ${i.y}px; z-index: 10;"
-            ></placed-component>
-          `)}
-
-          <svg class="wire-layer">
-            ${this._renderWires()}
-            ${this._renderTempWire()}
-          </svg>
-        </div>
-
-        ${this._renderSelectRect()}
-
-        ${isEmpty && this._scale === 1 && this._panX === 0 ? html`
-          <div class="drop-hint">
-            <span class="icon">${faIcon('bolt')}</span>
-            Drag components from the sidebar to get started
-          </div>
-        ` : ''}
-
-        ${store.wiringState ? html`
-          <div class="wiring-indicator">
-            ${faIcon('plug')} Click canvas for bends - click another pin to finish - Backspace removes bend - ESC cancels
-          </div>
-        ` : ''}
-
-        <div
-          class="zoom-controls"
-          @pointerdown=${this._stopCanvasControlEvent}
-          @click=${this._stopCanvasControlEvent}
-        >
-          <button type="button" class="zoom-btn" @click=${() => this._zoomTo(this._scale * 1.2)} title="Zoom in">${faIcon('plus')}</button>
-          <div class="zoom-label">${zoomPct}%</div>
-          <button type="button" class="zoom-btn" @click=${() => this._zoomTo(this._scale / 1.2)} title="Zoom out">${faIcon('minus')}</button>
-          <button type="button" class="zoom-btn" @click=${this._resetView} title="Fit components" style="margin-top: 4px; font-size: 12px;">${faIcon('house')}</button>
-        </div>
-
-        <div class="shortcut-hint">
-          Scroll to zoom - Middle-drag to pan - Ctrl+A select all - Ctrl+Z undo - Ctrl+Y redo - Delete = remove
-        </div>
-
-        ${store.selectedWireId ? this._renderColorPicker() : ''}
-      </div>
-    `;
+            <div class="workspace ${this._dragOver ? 'drag-over' : ''}"
+                @dragover=${this._onDragOver}
+                @dragleave=${this._onDragLeave}
+                @drop=${this._onDrop}>
+                <div class="stage-host"></div>
+                <div class="component-visual-layer" aria-hidden="true"></div>
+                <div class="mode-pill"><strong>Semantic physical editor</strong> · ${this._status}</div>
+                <div class="part-tools">
+                    <button @click=${() => this._quickAddPhysical('arduino-uno')} title="Add an Arduino Uno">+ Arduino</button>
+                    <button @click=${() => this._quickAddPhysical('test-ic')} title="Add the test IC using the reusable 300-mil DIP-8 package">+ Test IC</button>
+                    <button @click=${() => this._quickAddPhysical('led')} title="Place LED at the next valid footprint">+ LED</button>
+                    <button class="delete" @click=${this._deleteSelected} ?disabled=${!this._selectedComponentId && !this._selectedWireId && !this._selectedSurfaceId} title="Delete the selected component, wire, or breadboard">Delete selected</button>
+                </div>
+                <div class="zoom-controls" @pointerdown=${event => event.stopPropagation()}>
+                    <button @click=${() => this._zoomBy(1.2)} title="Zoom in">+</button>
+                    <output>${this._zoomLabel}</output>
+                    <button @click=${() => this._zoomBy(1 / 1.2)} title="Zoom out">−</button>
+                    <button @click=${this._resetCamera} title="Reset view">⌂</button>
+                </div>
+                ${net ? html`
+                    <section class="net-inspector" aria-label="Selected electrical net">
+                        <header>
+                            <strong>${net.label}</strong>
+                            <small>${net.wireCount} ${net.wireCount === 1 ? 'wire' : 'wires'}</small>
+                        </header>
+                        <div class="net-pins">
+                            ${net.terminals.map(terminal => html`
+                                <div class="net-pin">
+                                    <span title=${terminal.componentName}>${terminal.componentName}</span>
+                                    <code>${terminal.pinId}</code>
+                                </div>
+                            `)}
+                            ${net.terminals.length ? '' : html`<small>No component pins found on this net.</small>`}
+                        </div>
+                    </section>
+                ` : ''}
+                <div class="help">
+                    Drag parts anywhere · breadboard parts snap onto real holes<br>
+                    Start at a pin · click empty space for route points · click a pin to finish<br>
+                    Delete removes selection · wheel zoom · Ctrl+Z / Ctrl+Y undo/redo
+                </div>
+                <div class="legend">
+                    Target holes
+                    <span><i style="background:#22d3ee"></i>valid</span>
+                    <span><i style="background:#facc15"></i>connected strip</span>
+                </div>
+            </div>
+        `;
     }
 
-    _renderSelectRect() {
-        if (!this._isSelectDragging) return html``;
-        const x = Math.min(this._selectStartX, this._selectEndX);
-        const y = Math.min(this._selectStartY, this._selectEndY);
-        const w = Math.abs(this._selectEndX - this._selectStartX);
-        const h = Math.abs(this._selectEndY - this._selectStartY);
-        if (w < 2 && h < 2) return html``;
+    firstUpdated() {
+        const container = this.shadowRoot.querySelector('.stage-host');
+        this.visualLayer = this.shadowRoot.querySelector('.component-visual-layer');
+        this.stage = new Konva.Stage({ container, width: container.clientWidth, height: container.clientHeight });
+        this.backgroundLayer = new Konva.Layer({ listening: false });
+        this.boardLayer = new Konva.Layer();
+        this.wireLayer = new Konva.Layer();
+        this.componentLayer = new Konva.Layer();
+        this.interactionLayer = new Konva.Layer({ listening: false });
+        this.stage.add(this.backgroundLayer, this.boardLayer, this.componentLayer, this.wireLayer, this.interactionLayer);
+        this._setLayerDepth(this.backgroundLayer, 0);
+        this._setLayerDepth(this.boardLayer, 1);
+        this._setLayerDepth(this.componentLayer, 3);
+        this._setLayerDepth(this.wireLayer, 5);
+        this._setLayerDepth(this.interactionLayer, 6);
+        Konva.dragDistance = 4;
 
-        return html`
-      <div style="
-        position: absolute;
-        left: ${x}px; top: ${y}px;
-        width: ${w}px; height: ${h}px;
-        border: 2px dashed #4FC3F7;
-        background: rgba(79, 195, 247, 0.08);
-        pointer-events: none;
-        z-index: 300;
-      "></div>
-    `;
+        this.stage.on('wheel', event => this._onWheel(event));
+        this.stage.on('mousemove touchmove', event => this._onStageMove(event));
+        this.stage.on('mousedown touchstart', event => this._onStageDown(event));
+        this.stage.on('mouseup touchend', () => { this._panning = null; });
+        this.stage.on('mouseleave', () => { this._panning = null; });
+        this.stage.on('click tap', event => this._onStageClick(event));
+
+        this._resizeObserver = new ResizeObserver(() => this._resizeStage());
+        this._resizeObserver.observe(container);
+        this.store.addEventListener('change', this._storeHandler);
+        this.interaction.addEventListener('change', this._interactionHandler);
+        window.addEventListener('keydown', this._keyHandler);
+        window.addEventListener('elera-add-physical-component', this._physicalAddHandler);
+        window.addEventListener('elera-select-physical-component', this._physicalSelectHandler);
+        this._renderScene();
     }
 
-    _renderColorPicker() {
-        const wire = store.getWire(store.selectedWireId);
-        if (!wire) return svg``;
-
-        return html`
-      <div class="color-picker-panel">
-        ${WIRE_COLORS.map(color => html`
-          <div class="color-swatch ${wire.color === color ? 'active' : ''}"
-               style="background-color: ${color}"
-               @click=${(e) => { e.stopPropagation(); store.changeWireColor(wire.id, color); }}
-               title="Change to ${color}"
-          ></div>
-        `)}
-      </div>
-    `;
+    disconnectedCallback() {
+        super.disconnectedCallback();
+        this._resizeObserver?.disconnect();
+        this.store.removeEventListener('change', this._storeHandler);
+        this.interaction.removeEventListener('change', this._interactionHandler);
+        window.removeEventListener('keydown', this._keyHandler);
+        window.removeEventListener('elera-add-physical-component', this._physicalAddHandler);
+        window.removeEventListener('elera-select-physical-component', this._physicalSelectHandler);
+        clearTimeout(this._wireSelectionTimer);
+        this.stage?.destroy();
     }
 
-    // ——— Wire Rendering ————————————————————————————————
-    _renderWires() {
-        return store.wires.map((wire, index) => {
-            const from = store.getPinAbsolutePosition(wire.from.instanceId, wire.from.pinName);
-            const to = store.getPinAbsolutePosition(wire.to.instanceId, wire.to.pinName);
-            if (!from || !to) return svg``;
+    _resizeStage() {
+        const container = this.shadowRoot.querySelector('.stage-host');
+        if (!container || !this.stage) return;
+        this.stage.size({ width: container.clientWidth, height: container.clientHeight });
+        this._renderBackground();
+    }
 
-            // Get pin exit directions for smart routing
-            const exitDir1 = store.getPinExitDirection(wire.from.instanceId, wire.from.pinName);
-            const exitDir2 = store.getPinExitDirection(wire.to.instanceId, wire.to.pinName);
+    _setLayerDepth(layer, depth) {
+        const canvas = layer?.getCanvas?.()?._canvas;
+        if (canvas) canvas.style.zIndex = String(depth);
+    }
 
-            const stagger = store.getFanoutStagger(wire.id);
+    _applyCamera() {
+        const scale = this.camera.pixelsPerMillimetre * this.camera.zoom;
+        for (const layer of [this.boardLayer, this.wireLayer, this.componentLayer, this.interactionLayer]) {
+            layer.position({ x: this.camera.panX, y: this.camera.panY });
+            layer.scale({ x: scale, y: scale });
+        }
+        this._zoomLabel = `${Math.round(this.camera.zoom * 100)}%`;
+        this._renderBackground();
+        this._positionComponentVisuals();
+        this.requestUpdate();
+    }
 
-            const path = wirePath(from.x, from.y, to.x, to.y, {
-                index,
-                waypoints: wire.waypoints || [],
-                exitDir1,
-                exitDir2,
-                stagger1: stagger.s1,
-                stagger2: stagger.s2,
-                sharp: store.sharpCorners,
-                mode: wire.mode || 'orthogonal',
+    _pointerWorld() {
+        const pointer = this.stage?.getPointerPosition();
+        return pointer ? screenToWorld(pointer, this.camera) : this._lastPointerWorld;
+    }
+
+    _renderScene() {
+        if (!this.stage) return;
+        this._applyCamera();
+        this._renderBoards();
+        this._renderWires();
+        this._renderComponents();
+        this._renderInteractionLayer();
+    }
+
+    _renderBackground() {
+        if (!this.backgroundLayer || !this.stage) return;
+        this.backgroundLayer.destroyChildren();
+        this.backgroundLayer.add(new Konva.Rect({
+            x: 0, y: 0, width: this.stage.width(), height: this.stage.height(), fill: '#24272e', listening: false,
+        }));
+        const spacing = 2.54 * this.camera.pixelsPerMillimetre * this.camera.zoom;
+        if (spacing >= 6) {
+            this.backgroundLayer.add(new Konva.Shape({
+                listening: false,
+                sceneFunc: (context, shape) => {
+                    context.beginPath();
+                    const startX = ((this.camera.panX % spacing) + spacing) % spacing;
+                    const startY = ((this.camera.panY % spacing) + spacing) % spacing;
+                    for (let x = startX; x < this.stage.width(); x += spacing) {
+                        context.moveTo(x, 0); context.lineTo(x, this.stage.height());
+                    }
+                    for (let y = startY; y < this.stage.height(); y += spacing) {
+                        context.moveTo(0, y); context.lineTo(this.stage.width(), y);
+                    }
+                    context.fillStrokeShape(shape);
+                },
+                stroke: '#373d49', strokeWidth: 1,
+            }));
+            const majorSpacing = spacing * 5;
+            this.backgroundLayer.add(new Konva.Shape({
+                listening: false,
+                sceneFunc: (context, shape) => {
+                    context.beginPath();
+                    const startX = ((this.camera.panX % majorSpacing) + majorSpacing) % majorSpacing;
+                    const startY = ((this.camera.panY % majorSpacing) + majorSpacing) % majorSpacing;
+                    for (let x = startX; x < this.stage.width(); x += majorSpacing) {
+                        context.moveTo(x, 0); context.lineTo(x, this.stage.height());
+                    }
+                    for (let y = startY; y < this.stage.height(); y += majorSpacing) {
+                        context.moveTo(0, y); context.lineTo(this.stage.width(), y);
+                    }
+                    context.fillStrokeShape(shape);
+                },
+                stroke: '#4a5261', strokeWidth: 1.15,
+            }));
+        }
+        this.backgroundLayer.batchDraw();
+    }
+
+    _renderBoards() {
+        this.boardLayer.destroyChildren();
+        for (const surface of this.store.project.surfaces) {
+            const definition = getSurfaceDefinition(surface);
+            if (!definition) continue;
+            const group = new Konva.Group({
+                id: `surface:${surface.id}`,
+                name: 'placement-surface',
+                x: surface.transform.x,
+                y: surface.transform.y,
+                rotation: surface.transform.rotation || 0,
+                draggable: true,
             });
-            const color = wire.color || '#4CAF50';
-            const isSelected = store.selectedWireId === wire.id;
-
-            return svg`
-        <path
-          class="wire-hitarea"
-          d="${path}"
-          stroke-width="${16 / this._scale}"
-          @click=${(e) => { e.stopPropagation(); store.selectWire(wire.id); }}
-          @dblclick=${(e) => {
-            e.stopPropagation();
-            const el = this.shadowRoot.querySelector('.canvas-area');
-            const rect = el.getBoundingClientRect();
-            const world = this._screenToWorld(e.clientX - rect.left, e.clientY - rect.top);
-            store.addWireWaypoint(wire.id, world.x, world.y);
-          }}
-        />
-        <path
-          class="wire-outline"
-          d="${path}"
-          stroke="#ffffff"
-          stroke-width="${6 / this._scale}"
-          fill="none"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          opacity="0.15"
-        />
-        <path
-          class="wire ${isSelected ? 'selected' : ''}"
-          d="${path}"
-          stroke="${color}"
-          stroke-width="${4 / this._scale}"
-          fill="none"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          @click=${(e) => { e.stopPropagation(); store.selectWire(wire.id); }}
-          @dblclick=${(e) => {
-            e.stopPropagation();
-            const el = this.shadowRoot.querySelector('.canvas-area');
-            const rect = el.getBoundingClientRect();
-            const world = this._screenToWorld(e.clientX - rect.left, e.clientY - rect.top);
-            store.addWireWaypoint(wire.id, world.x, world.y);
-          }}
-        />
-        ${isSelected ? this._renderSegmentHandles(wire, from, to, exitDir1, exitDir2) : svg``}
-        ${isSelected ? this._renderWaypointHandles(wire, color) : svg``}
-      `;
-        });
-    }
-
-    _renderSegmentHandles(wire, from, to, exitDir1, exitDir2) {
-        if ((wire.mode || 'orthogonal') === 'freestyle') return svg``;
-        if (!wire.waypoints || wire.waypoints.length === 0) return svg``;
-        const points = getManualWirePoints([
-            from,
-            ...(wire.waypoints || []),
-            to,
-        ], 'orthogonal', { exitDir1, exitDir2 });
-
-        const segments = [];
-        for (let i = 0; i < points.length - 1; i++) {
-            const a = points[i];
-            const b = points[i + 1];
-            const horizontal = Math.abs(a.y - b.y) < 0.5;
-            const vertical = Math.abs(a.x - b.x) < 0.5;
-            if (!horizontal && !vertical) continue;
-            if (Math.abs(a.x - b.x) + Math.abs(a.y - b.y) < 12) continue;
-            segments.push(svg`
-              <line
-                class="segment-handle"
-                x1="${a.x}"
-                y1="${a.y}"
-                x2="${b.x}"
-                y2="${b.y}"
-                stroke-width="${14 / this._scale}"
-                @pointerdown=${(e) => {
-                    e.stopPropagation();
-                    this._startSegmentDrag(e, wire.id, i);
-                }}
-              />
-            `);
-        }
-
-        return segments;
-    }
-
-    _renderWaypointHandles(wire, color) {
-        const wps = wire.waypoints || [];
-        if (wps.length === 0) return svg``;
-
-        return wps.map((wp, i) => svg`
-      <circle
-        class="waypoint-handle"
-        cx="${wp.x}"
-        cy="${wp.y}"
-        r="${5 / this._scale}"
-        fill="${color}"
-        stroke="#fff"
-        stroke-width="${2 / this._scale}"
-        opacity="0.9"
-        @pointerdown=${(e) => {
-          e.stopPropagation();
-          this._startWaypointDrag(e, wire.id, i);
-        }}
-        @contextmenu=${(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          store.deleteWireWaypoint(wire.id, i);
-        }}
-      />
-    `);
-    }
-
-    _startWaypointDrag(e, wireId, wpIndex) {
-        e.preventDefault();
-        const el = this.shadowRoot.querySelector('.canvas-area');
-        el.setPointerCapture(e.pointerId);
-
-        const onMove = (ev) => {
-            const rect = el.getBoundingClientRect();
-            const world = this._screenToWorld(ev.clientX - rect.left, ev.clientY - rect.top);
-            store.moveWireWaypoint(wireId, wpIndex, world.x, world.y);
-        };
-
-        const onUp = () => {
-            el.removeEventListener('pointermove', onMove);
-            el.removeEventListener('pointerup', onUp);
-            store.moveWireWaypointDone(wireId);
-        };
-
-        el.addEventListener('pointermove', onMove);
-        el.addEventListener('pointerup', onUp);
-    }
-
-    _startSegmentDrag(e, wireId, segmentIndex) {
-        e.preventDefault();
-        const el = this.shadowRoot.querySelector('.canvas-area');
-        el.setPointerCapture(e.pointerId);
-
-        const onMove = (ev) => {
-            const rect = el.getBoundingClientRect();
-            const world = this._screenToWorld(ev.clientX - rect.left, ev.clientY - rect.top);
-            store.moveWireSegment(wireId, segmentIndex, world.x, world.y);
-        };
-
-        const onUp = () => {
-            el.removeEventListener('pointermove', onMove);
-            el.removeEventListener('pointerup', onUp);
-            store.moveWireWaypointDone(wireId);
-        };
-
-        el.addEventListener('pointermove', onMove);
-        el.addEventListener('pointerup', onUp);
-    }
-
-    _renderTempWire() {
-        if (!store.wiringState) return svg``;
-
-        const from = store.getPinAbsolutePosition(
-            store.wiringState.instanceId,
-            store.wiringState.pinName
-        );
-        if (!from) return svg``;
-
-        const cursor = store.snapWirePoint(store.mousePos);
-        const path = buildManualWirePath([
-            from,
-            ...(store.wiringState.waypoints || []),
-            cursor,
-        ], store.wiringState.mode || store.manualWireMode, store.sharpCorners, {
-            exitDir1: store.getPinExitDirection(store.wiringState.instanceId, store.wiringState.pinName),
-        });
-
-        return svg`
-      <path
-        class="temp-wire"
-        d="${path}"
-        stroke="#4FC3F7"
-        stroke-width="${2 / this._scale}"
-        fill="none"
-        stroke-linecap="round"
-        opacity="0.7"
-      />
-    `;
-    }
-
-    // ——— Zoom ——————————————————————————————————————————
-    _onWheel(e) {
-        e.preventDefault();
-        const rect = this._canvasRect;
-        const mouseX = e.clientX - rect.left;
-        const mouseY = e.clientY - rect.top;
-
-        // World position under mouse before zoom
-        const worldX = (mouseX - this._panX) / this._scale;
-        const worldY = (mouseY - this._panY) / this._scale;
-
-        // Determine zoom direction
-        const factor = e.deltaY > 0 ? 0.9 : 1.1;
-        const newScale = Math.max(0.15, Math.min(4, this._scale * factor));
-
-        // Adjust pan so world position stays under mouse
-        this._panX = mouseX - worldX * newScale;
-        this._panY = mouseY - worldY * newScale;
-        this._scale = newScale;
-    }
-
-    _zoomTo(newScale) {
-        const rect = this._canvasRect;
-        const centerX = rect.width / 2;
-        const centerY = rect.height / 2;
-
-        const worldX = (centerX - this._panX) / this._scale;
-        const worldY = (centerY - this._panY) / this._scale;
-
-        const clamped = Math.max(0.15, Math.min(4, newScale));
-        this._panX = centerX - worldX * clamped;
-        this._panY = centerY - worldY * clamped;
-        this._scale = clamped;
-    }
-
-    _resetView() {
-        if (store.instances.length === 0) {
-            this._scale = 1;
-            this._panX = 0;
-            this._panY = 0;
-            return;
-        }
-
-        const rect = this._canvasRect;
-        const bounds = store.instances.reduce((acc, inst) => {
-            const def = getComponentDef(inst.componentId);
-            const width = def?.size?.width || 80;
-            const height = def?.size?.height || 60;
-            const rotated = (inst.rotation || 0) === 90 || (inst.rotation || 0) === 270;
-            const visualWidth = rotated ? height : width;
-            const visualHeight = rotated ? width : height;
-            return {
-                left: Math.min(acc.left, inst.x),
-                top: Math.min(acc.top, inst.y),
-                right: Math.max(acc.right, inst.x + visualWidth),
-                bottom: Math.max(acc.bottom, inst.y + visualHeight),
-            };
-        }, { left: Infinity, top: Infinity, right: -Infinity, bottom: -Infinity });
-
-        const padding = 88;
-        const contentWidth = Math.max(1, bounds.right - bounds.left);
-        const contentHeight = Math.max(1, bounds.bottom - bounds.top);
-        const fitScale = Math.min(
-            (rect.width - padding * 2) / contentWidth,
-            (rect.height - padding * 2) / contentHeight
-        );
-        const nextScale = Math.max(0.15, Math.min(2, fitScale));
-        const centerX = (bounds.left + bounds.right) / 2;
-        const centerY = (bounds.top + bounds.bottom) / 2;
-
-        this._scale = nextScale;
-        this._panX = rect.width / 2 - centerX * nextScale;
-        this._panY = rect.height / 2 - centerY * nextScale;
-    }
-
-    _stopCanvasControlEvent(e) {
-        e.stopPropagation();
-    }
-
-    // ——— Pan ———————————————————————————————————————————
-    _onPointerDown(e) {
-        if (e.button === 1 || (this._spaceDown && e.button === 0)) {
-            e.preventDefault();
-            this._isPanning = true;
-            this._panStartX = e.clientX;
-            this._panStartY = e.clientY;
-            this._panStartPanX = this._panX;
-            this._panStartPanY = this._panY;
-
-            const el = this.shadowRoot.querySelector('.canvas-area');
-            el.setPointerCapture(e.pointerId);
-            el.style.cursor = 'grabbing';
-            return;
-        }
-
-        if (e.button === 0 && !this._spaceDown && !store.wiringState) {
-            const path = e.composedPath();
-            const isComponent = path.some(el => el.tagName && el.tagName.toLowerCase() === 'placed-component');
-            const isWire = path.some(el => el.classList && (el.classList.contains('wire') || el.classList.contains('wire-hitarea')));
-            const isPin = path.some(el => el.classList && el.classList.contains('pin-dot'));
-            if (!isComponent && !isWire && !isPin) {
-                this._isSelectDragging = true;
-                const rect = this._canvasRect;
-                this._selectStartX = e.clientX - rect.left;
-                this._selectStartY = e.clientY - rect.top;
-                this._selectEndX = this._selectStartX;
-                this._selectEndY = this._selectStartY;
-                this._selectRect = null;
-
-                const el = this.shadowRoot.querySelector('.canvas-area');
-                el.setPointerCapture(e.pointerId);
-            }
-        }
-    }
-
-    _onPointerMove(e) {
-        if (this._isPanning) {
-            this._panX = this._panStartPanX + (e.clientX - this._panStartX);
-            this._panY = this._panStartPanY + (e.clientY - this._panStartY);
-            this.requestUpdate();
-            return;
-        }
-
-        if (this._isSelectDragging) {
-            const rect = this._canvasRect;
-            this._selectEndX = e.clientX - rect.left;
-            this._selectEndY = e.clientY - rect.top;
-            this.requestUpdate();
-            return;
-        }
-
-        if (store.wiringState) {
-            const rect = this._canvasRect;
-            const screenX = e.clientX - rect.left;
-            const screenY = e.clientY - rect.top;
-            const world = this._screenToWorld(screenX, screenY);
-            store.updateMousePos(world.x, world.y);
-        }
-    }
-
-    _onPointerUp(e) {
-        if (this._isPanning) {
-            this._isPanning = false;
-            const el = this.shadowRoot.querySelector('.canvas-area');
-            el.releasePointerCapture(e.pointerId);
-            el.style.cursor = '';
-            return;
-        }
-
-        if (this._isSelectDragging) {
-            this._isSelectDragging = false;
-            const el = this.shadowRoot.querySelector('.canvas-area');
-            el.releasePointerCapture(e.pointerId);
-
-            const minX = Math.min(this._selectStartX, this._selectEndX);
-            const maxX = Math.max(this._selectStartX, this._selectEndX);
-            const minY = Math.min(this._selectStartY, this._selectEndY);
-            const maxY = Math.max(this._selectStartY, this._selectEndY);
-            const width = maxX - minX;
-            const height = maxY - minY;
-
-            if (width > 4 || height > 4) {
-                const selected = [];
-                for (const inst of store.instances) {
-                    const compDef = getComponentDef(inst.componentId);
-                    const size = compDef?.size || { width: 80, height: 60 };
-
-                    const instScreen = {
-                        x: inst.x * this._scale + this._panX,
-                        y: inst.y * this._scale + this._panY,
-                        w: size.width * this._scale,
-                        h: size.height * this._scale,
-                    };
-
-                    // Check rect intersection
-                    if (instScreen.x + instScreen.w > minX && instScreen.x < maxX &&
-                        instScreen.y + instScreen.h > minY && instScreen.y < maxY) {
-                        selected.push(inst.id);
+            group.setAttr('surfaceId', surface.id);
+            const rowA = definition.getHole('A1').y;
+            const rowE = definition.getHole('E1').y;
+            const rowF = definition.getHole('F1').y;
+            const rowJ = definition.getHole('J1').y;
+            const trenchTop = rowE + 1.25;
+            const trenchBottom = rowF - 1.25;
+            group.add(new Konva.Rect({
+                name: 'board-body', x: 0, y: 0, width: definition.width, height: definition.height,
+                cornerRadius: 2.2, fill: '#e4e4e7',
+                stroke: surface.id === this._selectedSurfaceId ? '#22d3ee' : '#a1a1aa',
+                strokeWidth: surface.id === this._selectedSurfaceId ? .8 : .35,
+                shadowColor: '#000', shadowBlur: 2.2, shadowOffsetY: 1.1, shadowOpacity: .34,
+            }));
+            group.add(new Konva.Rect({ x: 2.8, y: rowA - 2.3, width: definition.width - 5.6, height: rowJ - rowA + 4.6, fill: '#f4f4f5', cornerRadius: 1.2, listening: false }));
+            group.add(new Konva.Rect({ x: 2.8, y: trenchTop, width: definition.width - 5.6, height: trenchBottom - trenchTop, fill: '#d4d4d8', listening: false }));
+            group.add(new Konva.Line({ points: [5, definition.getHole('TP1').y, definition.width - 5, definition.getHole('TP1').y], stroke: '#ef4444', strokeWidth: .28, listening: false }));
+            group.add(new Konva.Line({ points: [5, definition.getHole('TN1').y, definition.width - 5, definition.getHole('TN1').y], stroke: '#3b82f6', strokeWidth: .28, listening: false }));
+            group.add(new Konva.Line({ points: [5, definition.getHole('BP1').y, definition.width - 5, definition.getHole('BP1').y], stroke: '#ef4444', strokeWidth: .28, listening: false }));
+            group.add(new Konva.Line({ points: [5, definition.getHole('BN1').y, definition.width - 5, definition.getHole('BN1').y], stroke: '#3b82f6', strokeWidth: .28, listening: false }));
+            group.add(new Konva.Shape({
+                listening: false,
+                sceneFunc: (context, shape) => {
+                    for (const hole of definition.holes) {
+                        context.beginPath();
+                        context.arc(hole.x, hole.y, .58, 0, Math.PI * 2);
+                        context.fillStrokeShape(shape);
                     }
-                }
-
-                if (e.ctrlKey || e.metaKey) {
-                    const current = new Set(store.selectedInstanceIds);
-                    for (const id of selected) {
-                        if (current.has(id)) current.delete(id);
-                        else current.add(id);
-                    }
-                    store.selectInstances([...current]);
-                } else {
-                    store.selectInstances(selected);
-                }
+                },
+                fill: '#27272a', stroke: '#71717a', strokeWidth: .16,
+            }));
+            for (const column of [1, 5, 10, 15, 20, 25, 30]) {
+                const hole = definition.getHole(`A${column}`);
+                group.add(new Konva.Text({ x: hole.x - 1.8, y: rowA - 3.2, width: 3.6, text: String(column), align: 'center', fontSize: 1.45, fill: '#52525b', listening: false }));
+                group.add(new Konva.Text({ x: hole.x - 1.8, y: rowJ + 1.25, width: 3.6, text: String(column), align: 'center', fontSize: 1.45, fill: '#52525b', listening: false }));
             }
+            group.add(new Konva.Text({ x: 3.2, y: (trenchTop + trenchBottom) / 2 - .8, text: 'ELERA  •  2.54 mm physical pitch', fontSize: 1.6, fill: '#71717a', listening: false }));
 
-            this._selectRect = null;
-            this.requestUpdate();
+            let origin = null;
+            group.on('dragstart', () => {
+                origin = { x: group.x(), y: group.y() };
+                this._status = 'Moving placement surface; mounted parts keep their hole bindings.';
+                this.requestUpdate();
+            });
+            group.on('dragmove', () => {
+                if (!origin) return;
+                const dx = group.x() - origin.x;
+                const dy = group.y() - origin.y;
+                for (const node of this.componentLayer.find(node => node.getAttr('surfaceId') === surface.id)) {
+                    node.position({ x: node.getAttr('baseX') + dx, y: node.getAttr('baseY') + dy });
+                    this._positionComponentVisual(node.getAttr('componentId'), {
+                        x: node.x(), y: node.y(), rotation: node.rotation(),
+                    });
+                }
+                this.componentLayer.batchDraw();
+            });
+            group.on('dragend', () => {
+                this.interaction.moveSurface(surface.id, { x: group.x(), y: group.y(), rotation: surface.transform.rotation || 0 });
+                this._status = 'Breadboard moved. Bindings and electrical nets are unchanged; routes were recomputed.';
+                this.requestUpdate();
+            });
+            group.on('click tap', event => {
+                if (!isPrimaryPointer(event)) return;
+                event.cancelBubble = true;
+                this._selectedSurfaceId = surface.id;
+                this._selectedComponentId = null;
+                this._deselectWire();
+                this._status = 'Breadboard selected. Press Delete or use Delete selected to remove it; mounted parts will remain free.';
+                this._renderBoards();
+                this.requestUpdate();
+            });
+            this.boardLayer.add(group);
+        }
+        this.boardLayer.batchDraw();
+    }
+
+    _renderWires() {
+        this.wireLayer.destroyChildren();
+        for (const wire of this.store.project.wires) {
+            const route = this.store.routes.get(wire.id);
+            if (!route || route.length < 2) continue;
+            const selected = wire.id === this._selectedWireId;
+            const color = wire.color || '#22d3ee';
+            const line = new Konva.Line({
+                id: `wire:${wire.id}`,
+                points: route.flatMap(point => [point.x, point.y]),
+                stroke: color,
+                strokeWidth: selected ? 1.12 : .72,
+                lineCap: 'round',
+                lineJoin: 'round',
+                shadowColor: '#000',
+                shadowBlur: .55,
+                shadowOffsetY: .28,
+                shadowOpacity: .7,
+                hitStrokeWidth: 3,
+            });
+            line.on('mouseenter', () => { this.stage.container().style.cursor = 'pointer'; });
+            line.on('mouseleave', () => { this.stage.container().style.cursor = ''; });
+            line.on('click tap', event => {
+                if (!isPrimaryPointer(event)) return;
+                event.cancelBubble = true;
+                this._selectedWireId = wire.id;
+                this._selectedComponentId = null;
+                this._selectedSurfaceId = null;
+                this._status = this.store.manualWireMode === 'orthogonal'
+                    ? 'Wire selected. Drag blue segments or yellow corners. Double-click the wire to add a corner.'
+                    : 'Wire selected. Drag yellow points; double-click the wire to add one; right-click a point to remove it.';
+                clearTimeout(this._wireSelectionTimer);
+                this._wireSelectionTimer = setTimeout(() => {
+                    this._renderWires();
+                    this._renderComponentVisuals();
+                    this.requestUpdate();
+                }, 180);
+            });
+            line.on('dblclick dbltap', event => {
+                event.cancelBubble = true;
+                clearTimeout(this._wireSelectionTimer);
+                const point = this._pointerWorld();
+                const waypoints = insertWireWaypoint(wire, route, point, {
+                    snap: this.store.manualWireSnap,
+                    gridSize: 2.54,
+                });
+                this._selectedWireId = wire.id;
+                this.store.setManualRoute(wire.id, waypoints);
+                this._status = 'Wire point added. Drag it to reshape the route.';
+                this.requestUpdate();
+            });
+            this.wireLayer.add(line);
+            if (selected && this.store.manualWireMode === 'orthogonal') this._addWireSegmentHandles(wire, route, line);
+            if (selected) this._addWireWaypointHandles(wire, route, line);
+        }
+        this.wireLayer.batchDraw();
+    }
+
+    _addWireSegmentHandles(wire, route, line) {
+        const points = editableWirePoints(wire, route);
+        for (let segmentIndex = 0; segmentIndex < points.length - 1; segmentIndex++) {
+            const a = points[segmentIndex], b = points[segmentIndex + 1];
+            const horizontal = Math.abs(a.y - b.y) < 1e-6;
+            const vertical = Math.abs(a.x - b.x) < 1e-6;
+            const length = Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
+            if ((!horizontal && !vertical) || length < 3) continue;
+            const handle = new Konva.Rect({
+                name: 'wire-segment-handle',
+                x: (a.x + b.x) / 2,
+                y: (a.y + b.y) / 2,
+                width: (horizontal ? 4.2 : 1.7) / this.camera.zoom,
+                height: (horizontal ? 1.7 : 4.2) / this.camera.zoom,
+                offsetX: (horizontal ? 2.1 : .85) / this.camera.zoom,
+                offsetY: (horizontal ? .85 : 2.1) / this.camera.zoom,
+                cornerRadius: .45 / this.camera.zoom,
+                fill: '#22d3ee',
+                stroke: '#cffafe',
+                strokeWidth: .3 / this.camera.zoom,
+                draggable: true,
+                hitStrokeWidth: 2.2 / this.camera.zoom,
+            });
+            handle.setAttrs({ wireId: wire.id, segmentIndex });
+            handle.on('mouseenter', () => {
+                this.stage.container().style.cursor = horizontal ? 'ns-resize' : 'ew-resize';
+            });
+            handle.on('mouseleave', () => { this.stage.container().style.cursor = ''; });
+            handle.on('click tap', event => { event.cancelBubble = true; });
+            handle.on('dragmove', event => {
+                event.cancelBubble = true;
+                const target = this._snapWireEditorPoint(handle.position(), route, { pitch: false });
+                const waypoints = moveWireSegment(wire, route, segmentIndex, target, {
+                    snap: false, gridSize: 2.54,
+                });
+                this._syncWireEditorPreview(wire.id, line, route, waypoints);
+            });
+            handle.on('dragend', event => {
+                event.cancelBubble = true;
+                const target = this._snapWireEditorPoint(handle.position(), route, { pitch: true });
+                this._clearWireAlignmentGuides();
+                const waypoints = moveWireSegment(wire, route, segmentIndex, target, {
+                    snap: false, gridSize: 2.54,
+                });
+                this.store.setManualRoute(wire.id, waypoints);
+                this._status = 'Manual orthogonal route saved. Drag another blue segment grip to continue.';
+                this.requestUpdate();
+            });
+            this.wireLayer.add(handle);
         }
     }
 
-    // ——— Drag & Drop from sidebar ———————————————————————
-    _onDragOver(e) {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = 'copy';
+    _addWireWaypointHandles(wire, route, line) {
+        const points = editableWirePoints(wire, route);
+        for (let waypointIndex = 0; waypointIndex < points.length - 2; waypointIndex++) {
+            const point = points[waypointIndex + 1];
+            const handle = new Konva.Circle({
+                name: 'wire-waypoint-handle',
+                x: point.x,
+                y: point.y,
+                radius: 1.15 / this.camera.zoom,
+                fill: '#facc15',
+                stroke: '#fff7cc',
+                strokeWidth: .42 / this.camera.zoom,
+                shadowColor: '#000',
+                shadowBlur: .7,
+                shadowOpacity: .75,
+                draggable: true,
+                hitStrokeWidth: 2.3 / this.camera.zoom,
+            });
+            handle.setAttrs({ wireId: wire.id, waypointIndex });
+            handle.on('mouseenter', () => { this.stage.container().style.cursor = 'move'; });
+            handle.on('mouseleave', () => { this.stage.container().style.cursor = ''; });
+            handle.on('click tap', event => { event.cancelBubble = true; });
+            handle.on('dragmove', event => {
+                event.cancelBubble = true;
+                const target = this._snapWireEditorPoint(handle.position(), route, { pitch: false });
+                const waypoints = moveWireWaypoint(wire, route, waypointIndex, target, {
+                    mode: this.store.manualWireMode,
+                    snap: false,
+                    gridSize: 2.54,
+                });
+                this._syncWireEditorPreview(wire.id, line, route, waypoints);
+            });
+            handle.on('dragend', event => {
+                event.cancelBubble = true;
+                const target = this._snapWireEditorPoint(handle.position(), route, { pitch: true });
+                this._clearWireAlignmentGuides();
+                const waypoints = moveWireWaypoint(wire, route, waypointIndex, target, {
+                    mode: this.store.manualWireMode,
+                    snap: false,
+                    gridSize: 2.54,
+                });
+                this.store.setManualRoute(wire.id, waypoints);
+                this._status = 'Manual wire route saved. Reset Wires returns it to automatic routing.';
+                this.requestUpdate();
+            });
+            handle.on('dblclick dbltap', event => {
+                event.cancelBubble = true;
+                this.store.setManualRoute(wire.id, removeWireWaypoint(wire, route, waypointIndex));
+                this._status = 'Wire point removed.';
+                this.requestUpdate();
+            });
+            handle.on('contextmenu', event => {
+                event.evt?.preventDefault?.();
+                event.cancelBubble = true;
+                this.store.setManualRoute(wire.id, removeWireWaypoint(wire, route, waypointIndex));
+                this._status = 'Wire point removed.';
+                this.requestUpdate();
+            });
+            this.wireLayer.add(handle);
+        }
     }
 
-    _onDrop(e) {
-        e.preventDefault();
-        const componentId = e.dataTransfer.getData('text/plain');
-        if (!componentId) return;
-
-        const rect = this._canvasRect;
-        const screenX = e.clientX - rect.left;
-        const screenY = e.clientY - rect.top;
-        const world = this._screenToWorld(screenX, screenY);
-
-        store.addInstance(componentId, world.x, world.y);
-    }
-
-    // ——— Canvas Click ——————————————————————————————————
-    _onCanvasClick(e) {
-        if (store.wiringState) {
-            const path = e.composedPath();
-            const isPin = path.some(el => el.classList && el.classList.contains('pin-dot'));
-            const isComponent = path.some(el => el.tagName && el.tagName.toLowerCase() === 'placed-component');
-            const isWire = path.some(el => el.classList && (el.classList.contains('wire') || el.classList.contains('wire-hitarea') || el.classList.contains('segment-handle')));
-            const isActionButton = path.some(el => el.classList && el.classList.contains('action-btn'));
-            if (!isPin && !isComponent && !isWire && !isActionButton) {
-                const rect = this._canvasRect;
-                const world = this._screenToWorld(e.clientX - rect.left, e.clientY - rect.top);
-                store.addDraftWirePoint(world.x, world.y);
+    _snapWireEditorPoint(point, route, { pitch = false } = {}) {
+        if (!this.store.manualWireSnap) return { x: point.x, y: point.y };
+        const origin = route[0] || { x: 0, y: 0 };
+        const fallback = pitch ? {
+            x: origin.x + Math.round((point.x - origin.x) / 2.54) * 2.54,
+            y: origin.y + Math.round((point.y - origin.y) / 2.54) * 2.54,
+        } : { x: point.x, y: point.y };
+        const tolerance = Math.min(1.27, 8 / (this.camera.pixelsPerMillimetre * this.camera.zoom));
+        let bestX = null, bestY = null;
+        const consider = (reference, priority) => {
+            const dx = Math.abs(point.x - reference.x), dy = Math.abs(point.y - reference.y);
+            if (dx <= tolerance && (!bestX || priority < bestX.priority ||
+                (priority === bestX.priority && dx < bestX.distance))) {
+                bestX = { value: reference.x, distance: dx, priority, reference };
             }
+            if (dy <= tolerance && (!bestY || priority < bestY.priority ||
+                (priority === bestY.priority && dy < bestY.distance))) {
+                bestY = { value: reference.y, distance: dy, priority, reference };
+            }
+        };
+        for (const routePoint of route) consider(routePoint, 0);
+        for (const component of this.store.project.components) {
+            const footprint = getFootprintDefinition(component.footprintId);
+            for (const pin of footprint?.pins || []) {
+                const pinPoint = resolveConnectionWorldPoint(this.store.project, componentPinRef(component.id, pin.pinId));
+                if (!pinPoint) continue;
+                consider(pinPoint, 1);
+            }
+        }
+        const snapped = { x: bestX?.value ?? fallback.x, y: bestY?.value ?? fallback.y };
+        this._renderWireAlignmentGuides(snapped, { x: bestX?.reference, y: bestY?.reference });
+        return snapped;
+    }
+
+    _renderWireAlignmentGuides(target, references) {
+        this._clearWireAlignmentGuides();
+        const color = '#facc15';
+        const addRuler = (a, b, vertical) => {
+            if (!a || !b || Math.hypot(a.x - b.x, a.y - b.y) < .2) return;
+            this.wireLayer.add(new Konva.Line({
+                name: 'wire-alignment-guide',
+                points: [a.x, a.y, b.x, b.y],
+                stroke: color, strokeWidth: .24 / this.camera.zoom, dash: [1, .7], opacity: .92,
+                listening: false,
+            }));
+            const tick = 1.15 / this.camera.zoom;
+            for (const point of [a, b]) {
+                this.wireLayer.add(new Konva.Line({
+                    name: 'wire-alignment-guide',
+                    points: vertical
+                        ? [point.x - tick, point.y, point.x + tick, point.y]
+                        : [point.x, point.y - tick, point.x, point.y + tick],
+                    stroke: color, strokeWidth: .32 / this.camera.zoom, listening: false,
+                }));
+            }
+        };
+        if (references.x) addRuler(references.x, { x: target.x, y: target.y }, true);
+        if (references.y) addRuler(references.y, { x: target.x, y: target.y }, false);
+        this.wireLayer.batchDraw();
+    }
+
+    _clearWireAlignmentGuides() {
+        if (!this.wireLayer) return;
+        for (const guide of this.wireLayer.find('.wire-alignment-guide')) guide.destroy();
+    }
+
+    _syncWireEditorPreview(wireId, line, route, waypoints) {
+        const preview = [route[0], ...waypoints, route.at(-1)];
+        line.points(preview.flatMap(point => [point.x, point.y]));
+
+        for (const handle of this.wireLayer.find('.wire-waypoint-handle')) {
+            if (handle.getAttr('wireId') !== wireId) continue;
+            const point = preview[handle.getAttr('waypointIndex') + 1];
+            handle.visible(Boolean(point));
+            if (point) handle.position(point);
+        }
+
+        for (const handle of this.wireLayer.find('.wire-segment-handle')) {
+            if (handle.getAttr('wireId') !== wireId) continue;
+            const index = handle.getAttr('segmentIndex');
+            const a = preview[index], b = preview[index + 1];
+            if (!a || !b) {
+                handle.visible(false);
+                continue;
+            }
+            const horizontal = Math.abs(a.y - b.y) < 1e-6;
+            const vertical = Math.abs(a.x - b.x) < 1e-6;
+            const length = Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
+            const visible = (horizontal || vertical) && length >= 3;
+            handle.visible(visible);
+            if (!visible) continue;
+            handle.position({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+            handle.size({
+                width: (horizontal ? 4.2 : 1.7) / this.camera.zoom,
+                height: (horizontal ? 1.7 : 4.2) / this.camera.zoom,
+            });
+            handle.offset({
+                x: (horizontal ? 2.1 : .85) / this.camera.zoom,
+                y: (horizontal ? .85 : 2.1) / this.camera.zoom,
+            });
+        }
+        this.wireLayer.batchDraw();
+    }
+
+    _renderComponents() {
+        this.componentLayer.destroyChildren();
+        for (const component of this.store.project.components) {
+            const footprint = getFootprintDefinition(component.footprintId);
+            if (!footprint) continue;
+            const transform = componentWorldTransform(this.store.project, component);
+            const group = new Konva.Group({
+                id: `component:${component.id}`,
+                name: 'physical-component',
+                x: transform.x,
+                y: transform.y,
+                rotation: transform.rotation,
+                draggable: true,
+            });
+            group.setAttrs({
+                componentId: component.id,
+                surfaceId: component.placement.type === 'surface' ? component.placement.surfaceId : null,
+                baseX: transform.x,
+                baseY: transform.y,
+            });
+            if (footprint.packageType === 'dip') this._drawDipPackage(group, component, footprint);
+            else if (component.definitionId === 'led') this._drawLed(group, component);
+            else this._drawGenericComponent(group, component, footprint);
+            this._drawComponentPins(group, component, footprint);
+            this._installComponentInteraction(group, component);
+            this.componentLayer.add(group);
+        }
+        this.componentLayer.batchDraw();
+        this._renderComponentVisuals();
+    }
+
+    _createComponentArtwork(component) {
+        const definition = componentLibrary[component.definitionId];
+        let artwork;
+        if (definition?.type === 'custom' && definition.imageUrl) {
+            artwork = document.createElement('img');
+            artwork.src = definition.imageUrl;
+            artwork.alt = definition.name || component.definitionId;
+        } else if (!definition?.tag || definition.tag === 'div') {
+            artwork = document.createElement('div');
+            artwork.classList.add('dom-dip');
+            artwork.textContent = definition?.name || component.definitionId;
         } else {
-            const path = e.composedPath();
-            const isComponent = path.some(el => el.tagName && el.tagName.toLowerCase() === 'placed-component');
-            const isWire = path.some(el => el.classList && (el.classList.contains('wire') || el.classList.contains('wire-hitarea')));
-            const isActionButton = path.some(el => el.classList && el.classList.contains('action-btn'));
-            if (!isComponent && !isWire && !isActionButton) {
-                store.clearSelection();
+            artwork = document.createElement(definition.tag);
+            for (const [name, value] of Object.entries(definition.attrs || {})) {
+                if (value !== false && value != null) artwork.setAttribute(name, String(value));
             }
         }
+        artwork.classList.add('component-artwork');
+        const nativeSize = getComponentGeometry(component.definitionId)?.native?.size;
+        const sourceWidth = Math.max(1, Number(nativeSize?.width || definition?.size?.width || 120));
+        const sourceHeight = Math.max(1, Number(nativeSize?.height || definition?.size?.height || 80));
+        artwork.style.width = `${sourceWidth}px`;
+        artwork.style.height = `${sourceHeight}px`;
+        artwork.dataset.sourceWidth = String(sourceWidth);
+        artwork.dataset.sourceHeight = String(sourceHeight);
+        return artwork;
     }
 
-    // ——— Keyboard ——————————————————————————————————————
-    _onKeyDown(e) {
-        // Don't capture when typing in inputs
-        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    _renderComponentVisuals() {
+        if (!this.visualLayer) return;
+        this.visualLayer.replaceChildren();
+        for (const component of this.store.project.components) {
+            const footprint = getFootprintDefinition(component.footprintId);
+            if (!footprint || footprint.packageType === 'dip') continue;
+            const wrapper = document.createElement('div');
+            wrapper.className = `component-visual${component.id === this._selectedComponentId ? ' selected' : ''}`;
+            wrapper.dataset.componentId = component.id;
+            wrapper.append(this._createComponentArtwork(component));
+            for (const pin of footprint.pins) {
+                const projected = projectFootprintPoint(footprint, pin);
+                const terminal = document.createElement('span');
+                terminal.className = 'visual-terminal';
+                terminal.dataset.pinX = String(projected.x);
+                terminal.dataset.pinY = String(projected.y);
+                wrapper.append(terminal);
+            }
+            this.visualLayer.append(wrapper);
+            this._positionComponentVisual(component.id);
+            this._queueArtworkPinCalibration(component.id);
+        }
+    }
 
-        if (e.key === 'Escape' && store.wiringState) {
-            store.cancelWiring();
-            e.preventDefault();
+    _fitArtworkPlacement(footprint, sourceWidth, sourceHeight) {
+        const bounds = footprint.routingBounds || { x: 0, y: 0, width: 24, height: 14 };
+        const scale = Math.min(bounds.width / sourceWidth, bounds.height / sourceHeight);
+        return {
+            x: bounds.x + (bounds.width - sourceWidth * scale) / 2,
+            y: bounds.y + (bounds.height - sourceHeight * scale) / 2,
+            scale,
+            rotation: 0,
+        };
+    }
+
+    _artworkPlacement(component, footprint, sourceWidth, sourceHeight) {
+        const geometry = getComponentGeometry(component.definitionId);
+        const nativePins = geometry?.native?.pins;
+        if (footprint.placementMode !== 'breadboard-rigid' || !nativePins) {
+            return this._fitArtworkPlacement(footprint, sourceWidth, sourceHeight);
+        }
+        const matches = footprint.pins
+            .filter(pin => nativePins[pin.pinId])
+            .map(pin => ({ native: nativePins[pin.pinId], target: projectFootprintPoint(footprint, pin) }));
+        const first = matches[0];
+        const second = matches.find(match =>
+            Math.hypot(match.native.x - first?.native.x, match.native.y - first?.native.y) > .001);
+        if (!first || !second) return this._fitArtworkPlacement(footprint, sourceWidth, sourceHeight);
+        const nativeAngle = Math.atan2(second.native.y - first.native.y, second.native.x - first.native.x);
+        const targetAngle = Math.atan2(second.target.y - first.target.y, second.target.x - first.target.x);
+        const rotation = (targetAngle - nativeAngle) * 180 / Math.PI;
+        const nativeDistance = Math.hypot(second.native.x - first.native.x, second.native.y - first.native.y);
+        const targetDistance = Math.hypot(second.target.x - first.target.x, second.target.y - first.target.y);
+        const scale = targetDistance / nativeDistance;
+        const radians = rotation * Math.PI / 180;
+        const rotatedX = (first.native.x * Math.cos(radians) - first.native.y * Math.sin(radians)) * scale;
+        const rotatedY = (first.native.x * Math.sin(radians) + first.native.y * Math.cos(radians)) * scale;
+        return { x: first.target.x - rotatedX, y: first.target.y - rotatedY, scale, rotation };
+    }
+
+    _queueArtworkPinCalibration(componentId, retries = 40) {
+        if (this._pendingPinCalibration.has(componentId)) return;
+        const component = this.store.project.components.find(item => item.id === componentId);
+        const footprint = getFootprintDefinition(component?.footprintId);
+        if (!component || footprint?.placementMode !== 'free') return;
+        this._pendingPinCalibration.add(componentId);
+        const inspect = remaining => requestAnimationFrame(() => {
+            const wrapper = [...(this.visualLayer?.children || [])].find(node => node.dataset.componentId === componentId);
+            const artwork = wrapper?.querySelector('.component-artwork');
+            const current = this.store.project.components.find(item => item.id === componentId);
+            const currentFootprint = getFootprintDefinition(current?.footprintId);
+            if (!artwork || !current || !currentFootprint) {
+                this._pendingPinCalibration.delete(componentId);
+                return;
+            }
+            const definition = componentLibrary[current.definitionId];
+            const rawPins = definition?.type === 'custom' ? definition.customPins : artwork.pinInfo;
+            if ((!rawPins || !rawPins.length) && remaining > 0) {
+                inspect(remaining - 1);
+                return;
+            }
+            this._pendingPinCalibration.delete(componentId);
+            if (!rawPins?.length) return;
+            const pins = calibratePhysicalPinInfo(current.definitionId, [...rawPins]);
+            const sourceWidth = Number(artwork.dataset.sourceWidth || 120);
+            const sourceHeight = Number(artwork.dataset.sourceHeight || 80);
+            const placement = this._fitArtworkPlacement(currentFootprint, sourceWidth, sourceHeight);
+            const calibrated = pins.map(pin => ({
+                pinId: pin.name,
+                x: placement.x + Number(pin.x) * placement.scale,
+                y: placement.y + Number(pin.y) * placement.scale,
+            }));
+            if (calibrateFreeComponentFootprint(current.definitionId, calibrated)) {
+                this.store.recomputeRoutes();
+            }
+        });
+        inspect(retries);
+    }
+
+    _positionComponentVisual(componentId, overrideTransform = null) {
+        if (!this.visualLayer) return;
+        const wrapper = [...this.visualLayer.children].find(node => node.dataset.componentId === componentId);
+        const component = this.store.project.components.find(item => item.id === componentId);
+        const footprint = getFootprintDefinition(component?.footprintId);
+        const artwork = wrapper?.querySelector('.component-artwork');
+        if (!wrapper || !component || !footprint || !artwork) return;
+        const transform = overrideTransform || componentWorldTransform(this.store.project, component);
+        const scale = this.camera.pixelsPerMillimetre * this.camera.zoom;
+        const sourceWidth = Number(artwork.dataset.sourceWidth || 120);
+        const sourceHeight = Number(artwork.dataset.sourceHeight || 80);
+        const placement = this._artworkPlacement(component, footprint, sourceWidth, sourceHeight);
+        wrapper.style.transform = `translate(${this.camera.panX + transform.x * scale}px, ${this.camera.panY + transform.y * scale}px) rotate(${transform.rotation || 0}deg)`;
+        artwork.style.transform = `translate(${placement.x * scale}px, ${placement.y * scale}px) rotate(${placement.rotation}deg) scale(${placement.scale * scale})`;
+        for (const terminal of wrapper.querySelectorAll('.visual-terminal')) {
+            terminal.style.transform = `translate(${Number(terminal.dataset.pinX) * scale - 3.5}px, ${Number(terminal.dataset.pinY) * scale - 3.5}px)`;
+        }
+    }
+
+    _positionComponentVisuals() {
+        if (!this.visualLayer) return;
+        for (const component of this.store.project.components) this._positionComponentVisual(component.id);
+    }
+
+    _drawDipPackage(group, component, footprint) {
+        const selected = component.id === this._selectedComponentId;
+        const pins = footprint.pins.map(pin => ({ ...pin, ...projectFootprintPoint(footprint, pin) }));
+        const xs = pins.map(pin => pin.x);
+        const ys = pins.map(pin => pin.y);
+        const left = Math.min(...xs) - footprint.pitch / 2;
+        const right = Math.max(...xs) + footprint.pitch / 2;
+        const topPins = Math.min(...ys);
+        const bottomPins = Math.max(...ys);
+        const bodyTop = topPins + Math.min(1.15, footprint.rowSpacing * .2);
+        const bodyBottom = bottomPins - Math.min(1.15, footprint.rowSpacing * .2);
+        for (const pin of pins) {
+            const bodyY = Math.abs(pin.y - topPins) < .001 ? bodyTop : bodyBottom;
+            group.add(new Konva.Line({
+                points: [pin.x, pin.y, pin.x, bodyY], stroke: '#d4d4d8', strokeWidth: .55, listening: false,
+            }));
+        }
+        group.add(new Konva.Rect({
+            x: left, y: bodyTop, width: right - left, height: bodyBottom - bodyTop, cornerRadius: .7,
+            fill: '#18181b', stroke: selected ? '#22d3ee' : '#52525b', strokeWidth: selected ? .65 : .3,
+            name: 'component-body', shadowColor: '#000', shadowBlur: 1.2, shadowOpacity: .5,
+        }));
+        const pin1 = pins.find(pin => pin.pinId === '1');
+        const lastPin = pins.find(pin => pin.pinId === String(footprint.pinCount));
+        const notchX = (pin1.x + lastPin.x) / 2;
+        const notchY = (pin1.y + lastPin.y) / 2;
+        group.add(new Konva.Arc({
+            x: notchX, y: notchY, innerRadius: .72, outerRadius: .8, angle: 180,
+            rotation: pin1.x <= left + footprint.pitch ? 90 : 270,
+            fill: '#a1a1aa', listening: false,
+        }));
+        group.add(new Konva.Circle({
+            x: pin1.x + .55, y: pin1.y < 0 ? bodyTop + .7 : bodyBottom - .7,
+            radius: .38, fill: '#a1a1aa', listening: false,
+        }));
+        const label = getPhysicalComponentDefinition(component.definitionId)?.visual?.label || `DIP-${footprint.pinCount}`;
+        group.add(new Konva.Text({
+            x: left + .5, y: (bodyTop + bodyBottom) / 2 - .85, width: right - left - 1,
+            text: label, align: 'center', fontSize: 1.55, fill: '#d4d4d8', listening: false,
+        }));
+    }
+
+    _drawLed(group, component) {
+        const selected = component.id === this._selectedComponentId;
+        group.add(new Konva.Line({ points: [0, 0, .15, -3.1], stroke: '#d4d4d8', strokeWidth: .45, listening: false }));
+        group.add(new Konva.Line({ points: [2.54, 0, 2.38, -3.1], stroke: '#d4d4d8', strokeWidth: .45, listening: false }));
+        group.add(new Konva.Circle({
+            x: 1.27, y: -4.15, radius: 2.45, fill: '#ef4444', opacity: .9,
+            stroke: selected ? '#22d3ee' : '#fecaca', strokeWidth: selected ? .65 : .28,
+            name: 'component-body', shadowColor: '#ef4444', shadowBlur: 1.5, shadowOpacity: .45,
+        }));
+        group.add(new Konva.Line({ points: [-.75, -2.85, 3.3, -2.85], stroke: '#fecaca', strokeWidth: .28, listening: false }));
+    }
+
+    _drawGenericComponent(group, component, footprint) {
+        const definition = componentLibrary[component.definitionId];
+        const nativeSize = getComponentGeometry(component.definitionId)?.native?.size;
+        const sourceWidth = Math.max(1, Number(nativeSize?.width || definition?.size?.width || 120));
+        const sourceHeight = Math.max(1, Number(nativeSize?.height || definition?.size?.height || 80));
+        const placement = this._artworkPlacement(component, footprint, sourceWidth, sourceHeight);
+        const radians = placement.rotation * Math.PI / 180;
+        const cos = Math.cos(radians) * placement.scale;
+        const sin = Math.sin(radians) * placement.scale;
+        const corners = [
+            { x: 0, y: 0 },
+            { x: sourceWidth, y: 0 },
+            { x: 0, y: sourceHeight },
+            { x: sourceWidth, y: sourceHeight },
+        ].map(point => ({
+            x: placement.x + point.x * cos - point.y * sin,
+            y: placement.y + point.x * sin + point.y * cos,
+        }));
+        const left = Math.min(...corners.map(point => point.x));
+        const right = Math.max(...corners.map(point => point.x));
+        const top = Math.min(...corners.map(point => point.y));
+        const bottom = Math.max(...corners.map(point => point.y));
+        // Interaction-only hit region. The DOM/Wokwi/custom artwork above it is
+        // the visual. Match its transformed bounds exactly: no placeholder and
+        // no selectable empty margin around the real component.
+        group.add(new Konva.Rect({
+            name: 'component-body', x: left, y: top, width: right - left, height: bottom - top,
+            fill: 'rgba(0, 0, 0, 0.001)',
+            strokeEnabled: false,
+        }));
+    }
+
+    _drawComponentPins(group, component, footprint) {
+        for (const pin of footprint.pins) {
+            const projected = projectFootprintPoint(footprint, pin);
+            const circle = new Konva.Circle({
+                name: 'semantic-terminal', x: projected.x, y: projected.y, radius: .82,
+                fill: '#f8fafc', stroke: '#0891b2', strokeWidth: .3, opacity: .94,
+            });
+            circle.setAttr('connectionRef', componentPinRef(component.id, pin.pinId));
+            circle.on('mouseenter', () => {
+                this._hoveredTerminalRef = circle.getAttr('connectionRef');
+                this.stage.container().style.cursor = 'crosshair';
+                if (this.interaction.state.type === 'drawing-wire') this._renderInteractionLayer();
+            });
+            circle.on('mouseleave', () => {
+                this._hoveredTerminalRef = null;
+                this.stage.container().style.cursor = '';
+                if (this.interaction.state.type === 'drawing-wire') this._renderInteractionLayer();
+            });
+            circle.on('click tap', event => {
+                if (!isPrimaryPointer(event)) return;
+                event.cancelBubble = true;
+                this._activateTerminal(circle.getAttr('connectionRef'));
+            });
+            group.add(circle);
+        }
+    }
+
+    _installComponentInteraction(group, component) {
+        let grabOffset = { x: 0, y: 0 };
+        group.on('mouseenter', () => { this.stage.container().style.cursor = 'move'; });
+        group.on('mouseleave', () => { this.stage.container().style.cursor = ''; });
+        group.on('dragstart', () => {
+            const pointer = this._pointerWorld();
+            grabOffset = { x: pointer.x - group.x(), y: pointer.y - group.y() };
+            this.interaction.beginComponentDrag(component.id);
+            this._selectedComponentId = component.id;
+            this._deselectWire();
+            this._selectedSurfaceId = null;
+            const footprint = getFootprintDefinition(component.footprintId);
+            this._status = footprint?.placementMode === 'breadboard-rigid'
+                ? 'Searching complete rigid-footprint placements…'
+                : 'Moving component…';
+            this.requestUpdate();
+        });
+        group.on('dragmove', () => {
+            const pointer = this._pointerWorld();
+            const anchor = { x: pointer.x - grabOffset.x, y: pointer.y - grabOffset.y };
+            const candidate = this.interaction.updateComponentDrag(anchor);
+            if (candidate) {
+                const preview = structuredClone(component);
+                preview.placement = { type: 'surface', surfaceId: candidate.surfaceId, rotation: candidate.rotation, bindings: candidate.bindings };
+                const transform = componentWorldTransform(this.store.project, preview);
+                group.position({ x: transform.x, y: transform.y });
+                group.rotation(transform.rotation);
+                this._status = `${Object.keys(candidate.bindings).length} target holes available · release to mount.`;
+            } else {
+                group.position(anchor);
+                this._status = component.placement.type === 'surface'
+                    ? 'Outside a valid footprint · release to detach into free space.'
+                    : 'Release to place the component here.';
+            }
+            this._positionComponentVisual(component.id, { x: group.x(), y: group.y(), rotation: group.rotation() });
+            this._previewConnectedWires(component, { x: group.x(), y: group.y(), rotation: group.rotation() });
+            this.componentLayer.batchDraw();
+            this.requestUpdate();
+        });
+        group.on('dragend', () => {
+            const pointer = this._pointerWorld();
+            const anchor = { x: pointer.x - grabOffset.x, y: pointer.y - grabOffset.y };
+            const committed = this.interaction.commitComponentDrag(anchor);
+            this._status = committed
+                ? (getFootprintDefinition(component.footprintId)?.placementMode === 'breadboard-rigid'
+                    ? (this.store.project.components.find(item => item.id === component.id)?.placement.type === 'surface'
+                        ? 'Placement snapped to breadboard holes.'
+                        : 'Component detached and placed freely.')
+                    : 'Component moved.')
+                : 'Component position was unchanged.';
+            this._renderScene();
+            this.requestUpdate();
+        });
+        group.on('click tap', event => {
+            if (!isPrimaryPointer(event)) return;
+            event.cancelBubble = true;
+            this._selectedComponentId = component.id;
+            this._deselectWire();
+            this._selectedSurfaceId = null;
+            this._status = `${getPhysicalComponentDefinition(component.definitionId)?.name || component.definitionId} selected.`;
+            this._renderComponents();
+            this.requestUpdate();
+        });
+    }
+
+    _previewConnectedWires(component, transform) {
+        const footprint = getFootprintDefinition(component.footprintId);
+        if (!footprint) return;
+        const previewPoint = ref => {
+            if (ref?.type !== 'component-pin' || ref.componentId !== component.id) return null;
+            const pin = footprint.pins.find(item => item.pinId === ref.pinId);
+            return pin ? applyTransform(projectFootprintPoint(footprint, pin), transform) : null;
+        };
+        for (const wire of this.store.project.wires) {
+            const from = previewPoint(wire.from), to = previewPoint(wire.to);
+            if (!from && !to) continue;
+            const line = this.wireLayer.findOne(node => node.id?.() === `wire:${wire.id}`);
+            if (!line) continue;
+            const route = this.store.routes.get(wire.id);
+            const points = moveWireRouteEndpoints(route, {
+                from,
+                to,
+                fromDirection: from ? pinExitDirection(this.store.project, wire.from) : null,
+                toDirection: to ? pinExitDirection(this.store.project, wire.to) : null,
+            });
+            line.points(points.flatMap(point => [point.x, point.y]));
+        }
+        this.wireLayer.batchDraw();
+    }
+
+    _renderInteractionLayer() {
+        if (!this.interactionLayer) return;
+        this.interactionLayer.destroyChildren();
+        if (this._hoveredHole) {
+            const surface = this.store.project.surfaces.find(item => item.id === this._hoveredHole.surfaceId);
+            for (const holeId of holesInElectricalGroup(surface, this._hoveredHole.holeId)) {
+                const point = holeWorldPosition(surface, holeId);
+                this.interactionLayer.add(new Konva.Circle({ x: point.x, y: point.y, radius: 1.05, fill: '#facc15', opacity: .38, listening: false }));
+            }
+            const point = holeWorldPosition(surface, this._hoveredHole.holeId);
+            this.interactionLayer.add(new Konva.Circle({ x: point.x, y: point.y, radius: 1.13, stroke: '#fde047', strokeWidth: .34, listening: false }));
         }
 
-        if ((e.key === 'Backspace' || e.key === 'Delete') && store.wiringState) {
-            store.removeLastDraftWirePoint();
-            e.preventDefault();
+        const state = this.interaction.state;
+        if (state.type === 'dragging-component') {
+            if (state.candidate) {
+                const surface = this.store.project.surfaces.find(item => item.id === state.candidate.surfaceId);
+                for (const holeId of Object.values(state.candidate.bindings)) {
+                    const point = holeWorldPosition(surface, holeId);
+                    this.interactionLayer.add(new Konva.Circle({
+                        x: point.x, y: point.y, radius: 1.16, fill: '#22d3ee', opacity: .48,
+                        stroke: '#a5f3fc', strokeWidth: .34, listening: false,
+                    }));
+                }
+            }
+        }
+
+        if (state.type === 'drawing-wire') {
+            const hoveredRef = this._hoveredTerminalRef || (this._hoveredHole
+                ? surfaceHoleRef(this._hoveredHole.surfaceId, this._hoveredHole.holeId)
+                : null);
+            const hoveredPoint = hoveredRef ? resolveConnectionWorldPoint(this.store.project, hoveredRef) : null;
+            const points = this.interaction.previewWire(hoveredPoint || this._lastPointerWorld, {
+                targetRef: hoveredRef,
+                snap: hoveredRef ? false : this.store.manualWireSnap,
+                gridSize: 2.54,
+            });
+            if (points.length > 1) {
+                this.interactionLayer.add(new Konva.Line({
+                    points: points.flatMap(point => [point.x, point.y]),
+                    stroke: '#67e8f9', strokeWidth: .52, dash: [1.2, .8], lineJoin: 'round', listening: false,
+                }));
+                const target = points.at(-1);
+                this.interactionLayer.add(new Konva.Circle({
+                    x: target.x, y: target.y, radius: .7, fill: '#facc15', stroke: '#fff7cc',
+                    strokeWidth: .22, listening: false,
+                }));
+            }
+        }
+        this.interactionLayer.batchDraw();
+    }
+
+    _onStageMove() {
+        const pointer = this.stage.getPointerPosition();
+        if (!pointer) return;
+        if (this._panning) {
+            this.camera.panX = this._panning.panX + pointer.x - this._panning.x;
+            this.camera.panY = this._panning.panY + pointer.y - this._panning.y;
+            this._applyCamera();
             return;
         }
-
-        if ((e.key === 'Delete' || e.key === 'Backspace') && (store.selectedInstanceIds.size > 0 || store.selectedWireId)) {
-            store.deleteSelected();
-            e.preventDefault();
+        this._lastPointerWorld = this._pointerWorld();
+        let nextHover = null;
+        for (const surface of this.store.project.surfaces) {
+            const nearest = nearestHole(surface, this._lastPointerWorld, { maxDistance: 1.18 });
+            if (nearest) {
+                nextHover = { surfaceId: surface.id, holeId: nearest.hole.id };
+                break;
+            }
         }
+        const changed = JSON.stringify(nextHover) !== JSON.stringify(this._hoveredHole);
+        this._hoveredHole = nextHover;
+        if (changed || this.interaction.state.type === 'drawing-wire') this._renderInteractionLayer();
+        this.stage.container().style.cursor = nextHover ? 'crosshair' : '';
+    }
 
-        if (e.key === 'a' && (e.ctrlKey || e.metaKey) && !e.shiftKey) {
-            store.selectAllInstances();
-            e.preventDefault();
-        }
-
-        if (e.key === 'z' && (e.ctrlKey || e.metaKey) && !e.shiftKey) {
-            store.undo();
-            e.preventDefault();
-        }
-
-        if ((e.key === 'y' && (e.ctrlKey || e.metaKey)) ||
-            (e.key === 'z' && (e.ctrlKey || e.metaKey) && e.shiftKey)) {
-            store.redo();
-            e.preventDefault();
-        }
-
-        if (e.key === 's' && (e.ctrlKey || e.metaKey)) {
-            store._saveToStorage();
-            e.preventDefault();
-        }
-
-        if (e.key === ' ') {
-            this._spaceDown = true;
-            e.preventDefault();
+    _onStageDown(event) {
+        const button = event.evt?.button;
+        if (button === 1) {
+            event.evt.preventDefault();
+            const pointer = this.stage.getPointerPosition();
+            this._panning = { x: pointer.x, y: pointer.y, panX: this.camera.panX, panY: this.camera.panY };
         }
     }
 
-    _onKeyUp(e) {
-        if (e.key === ' ') {
-            this._spaceDown = false;
+    _onStageClick(event) {
+        if (!isPrimaryPointer(event)) return;
+        if (event.target?.hasName?.('semantic-terminal')) return;
+        if (this._hoveredHole) {
+            this._activateTerminal(surfaceHoleRef(this._hoveredHole.surfaceId, this._hoveredHole.holeId));
+            return;
+        }
+        if (event.target === this.stage) {
+            if (this.interaction.state.type === 'drawing-wire') {
+                this.interaction.addWireWaypoint(this._lastPointerWorld, {
+                    snap: this.store.manualWireSnap,
+                    gridSize: 2.54,
+                });
+                this._status = 'Route point placed with pin-aware alignment. Keep clicking to route; click a pin to finish; Esc cancels.';
+                this.requestUpdate();
+                return;
+            }
+            this._selectedComponentId = null;
+            this._deselectWire();
+            this._selectedSurfaceId = null;
+            this._status = 'Click a component pin or breadboard hole to start a semantic wire.';
+            this._renderComponents();
+            this.requestUpdate();
         }
     }
+
+    _activateTerminal(ref) {
+        this._deselectWire();
+        const result = this.interaction.activateTerminal(ref);
+        this._status = result === 'started'
+            ? 'Wire started. Click empty space to place aligned route points; click another pin to finish; Esc cancels.'
+            : result === 'completed'
+                ? 'Wire created exactly along the previewed manual route. Clean is the only command that may reroute it.'
+                : 'Wire drawing cancelled.';
+        this.requestUpdate();
+    }
+
+    _deselectWire() {
+        if (!this._selectedWireId) return false;
+        this._selectedWireId = null;
+        clearTimeout(this._wireSelectionTimer);
+        if (this.wireLayer) this._renderWires();
+        this.requestUpdate();
+        return true;
+    }
+
+    _selectedNetView() {
+        if (!this._selectedWireId) return null;
+        const net = inspectWireNet(this.store.project, this._selectedWireId);
+        if (!net) return null;
+        const components = new Map(this.store.project.components.map(component => [component.id, component]));
+        const terminals = net.terminals.map(terminal => {
+            const component = components.get(terminal.componentId);
+            const definition = getPhysicalComponentDefinition(terminal.definitionId) || componentLibrary[terminal.definitionId];
+            return {
+                ...terminal,
+                componentName: `${definition?.name || terminal.definitionId} · ${component?.id || terminal.componentId}`,
+            };
+        }).sort((a, b) => a.componentName.localeCompare(b.componentName) || String(a.pinId).localeCompare(String(b.pinId), undefined, { numeric: true }));
+        return { label: net.label, wireCount: net.wireIds.length, terminals };
+    }
+
+    _onWheel(event) {
+        event.evt.preventDefault();
+        const pointer = this.stage.getPointerPosition();
+        const worldBefore = screenToWorld(pointer, this.camera);
+        const direction = event.evt.deltaY > 0 ? 1 / 1.12 : 1.12;
+        this.camera.zoom = Math.max(CAMERA.minZoom, Math.min(CAMERA.maxZoom, this.camera.zoom * direction));
+        const scale = this.camera.pixelsPerMillimetre * this.camera.zoom;
+        this.camera.panX = pointer.x - worldBefore.x * scale;
+        this.camera.panY = pointer.y - worldBefore.y * scale;
+        this._applyCamera();
+    }
+
+    _zoomBy(factor) {
+        const center = { x: this.stage.width() / 2, y: this.stage.height() / 2 };
+        const worldBefore = screenToWorld(center, this.camera);
+        this.camera.zoom = Math.max(CAMERA.minZoom, Math.min(CAMERA.maxZoom, this.camera.zoom * factor));
+        const scale = this.camera.pixelsPerMillimetre * this.camera.zoom;
+        this.camera.panX = center.x - worldBefore.x * scale;
+        this.camera.panY = center.y - worldBefore.y * scale;
+        this._applyCamera();
+    }
+
+    _resetCamera = () => {
+        this.camera.zoom = 1;
+        this.camera.panX = 36;
+        this.camera.panY = 28;
+        this._applyCamera();
+    };
+
+    _onDragOver(event) {
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'copy';
+        if (!this._dragOver) { this._dragOver = true; this.requestUpdate(); }
+    }
+
+    _onDragLeave(event) {
+        if (event.currentTarget.contains(event.relatedTarget)) return;
+        this._dragOver = false;
+        this.requestUpdate();
+    }
+
+    _onDrop(event) {
+        event.preventDefault();
+        this._dragOver = false;
+        const definitionId = event.dataTransfer.getData('text/plain');
+        const footprint = defaultFootprintForComponent(definitionId);
+        if (!footprint) {
+            this._status = 'That item is a placement surface, not a movable component.';
+            this.requestUpdate();
+            return;
+        }
+        const rect = this.stage.container().getBoundingClientRect();
+        const world = screenToWorld({ x: event.clientX - rect.left, y: event.clientY - rect.top }, this.camera);
+        const component = createComponentInstance({
+            id: this.store.newComponentId(), definitionId, footprintId: footprint.id, x: world.x, y: world.y,
+        });
+        this.store.execute(addComponentCommand(component));
+        if (footprint.placementMode === 'breadboard-rigid') {
+            this.interaction.beginComponentDrag(component.id);
+            this.interaction.updateComponentDrag(world);
+            this.interaction.commitComponentDrag(world);
+        }
+        const mounted = this.store.project.components.find(item => item.id === component.id)?.placement.type === 'surface';
+        this._selectedComponentId = component.id;
+        this._deselectWire();
+        this._selectedSurfaceId = null;
+        this._status = mounted
+            ? `${getPhysicalComponentDefinition(definitionId).name} mounted into ${footprint.pins.length} semantic holes.`
+            : `${getPhysicalComponentDefinition(definitionId).name} placed in free space; drag it onto the breadboard to mount.`;
+        this._renderComponentVisuals();
+        this.requestUpdate();
+    }
+
+    _quickAddPhysical(definitionId) {
+        const footprint = defaultFootprintForComponent(definitionId);
+        if (!footprint) {
+            this._status = 'That library item cannot be placed as a movable component.';
+            this.requestUpdate();
+            return;
+        }
+        const board = this.store.project.surfaces.find(surface => getSurfaceDefinition(surface));
+        const offset = this.store.project.components.filter(item => item.placement?.type === 'free').length * 5;
+        const fallback = board
+            ? { x: board.transform.x + getSurfaceDefinition(board).width + 10 + offset, y: board.transform.y + 12 + offset }
+            : { x: 35, y: 25 };
+        const component = createComponentInstance({
+            id: this.store.newComponentId(), definitionId, footprintId: footprint.id, x: fallback.x, y: fallback.y,
+        });
+        this.store.execute(addComponentCommand(component));
+        if (footprint.placementMode !== 'breadboard-rigid') {
+            this._selectedComponentId = component.id;
+            this._deselectWire();
+            this._selectedSurfaceId = null;
+            this._status = `${getPhysicalComponentDefinition(definitionId).name} added. Drag its body to move it; click a terminal to wire it.`;
+            this._renderComponentVisuals();
+            this.requestUpdate();
+            return;
+        }
+        this.interaction.beginComponentDrag(component.id);
+
+        let pointer = fallback;
+        if (board) {
+            const holes = getSurfaceDefinition(board).holes.filter(hole => hole.zone === 'terminal');
+            for (const hole of holes) {
+                pointer = holeWorldPosition(board, hole.id);
+                if (this.interaction.updateComponentDrag(pointer)) break;
+            }
+        }
+        this.interaction.commitComponentDrag(pointer);
+        const mounted = this.store.project.components.find(item => item.id === component.id)?.placement.type === 'surface';
+        this._selectedComponentId = component.id;
+        this._deselectWire();
+        this._selectedSurfaceId = null;
+        this._status = mounted
+            ? `${getPhysicalComponentDefinition(definitionId).name} mounted at the next complete valid footprint.`
+            : `No complete footprint was available; ${getPhysicalComponentDefinition(definitionId).name} remains in free space.`;
+        this._renderComponentVisuals();
+        this.requestUpdate();
+    }
+
+    _onKeyDown(event) {
+        const target = event.composedPath?.()[0] || event.target;
+        if (target?.matches?.('input, textarea, select, [contenteditable="true"]')) return;
+        const modifier = event.ctrlKey || event.metaKey;
+        if (modifier && event.key.toLowerCase() === 'z') {
+            event.preventDefault();
+            event.shiftKey ? this.store.redo() : this.store.undo();
+        } else if (modifier && event.key.toLowerCase() === 'y') {
+            event.preventDefault();
+            this.store.redo();
+        } else if (event.key === 'Escape') {
+            this.interaction.cancel();
+            this._status = 'Interaction cancelled.';
+            this.requestUpdate();
+        } else if ((event.key === 'Delete' || event.key === 'Backspace') && (this._selectedComponentId || this._selectedWireId || this._selectedSurfaceId)) {
+            event.preventDefault();
+            this._deleteSelected();
+        }
+    }
+
+    _deleteSelected = () => {
+        if (this._selectedWireId) {
+            this.store.execute(deleteWireCommand(this._selectedWireId));
+            this._selectedWireId = null;
+            this.interaction.cancel();
+            this._status = 'Wire deleted.';
+            this.requestUpdate();
+            return;
+        }
+        if (this._selectedSurfaceId) {
+            const surfaceId = this._selectedSurfaceId;
+            this.store.execute(deleteSurfaceCommand(surfaceId));
+            this._selectedSurfaceId = null;
+            this._status = 'Breadboard removed. Mounted components were detached into free space; board-hole wires were removed.';
+            this.requestUpdate();
+            return;
+        }
+        if (!this._selectedComponentId) return;
+        const component = this.store.project.components.find(item => item.id === this._selectedComponentId);
+        if (!component) return;
+        const name = getPhysicalComponentDefinition(component.definitionId)?.name || component.definitionId;
+        this.store.execute(deleteComponentCommand(component.id));
+        this._selectedComponentId = null;
+        this.interaction.cancel();
+        this._status = `${name} deleted. Connected wires were removed too.`;
+        this.requestUpdate();
+    };
 }
 
 customElements.define('circuit-canvas', CircuitCanvas);
