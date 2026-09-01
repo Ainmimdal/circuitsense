@@ -17,7 +17,21 @@ import { inspectWireNet } from '../physical/net-inspector.js';
 import { faIcon } from '../utils/fa-icons.js';
 
 const CAMERA = Object.freeze({ pixelsPerMillimetre: 5.2, minZoom: 0.42, maxZoom: 2.5 });
+const CSS_PIXELS_PER_INCH = 96;
+const MILLIMETRES_PER_CSS_PIXEL = 25.4 / CSS_PIXELS_PER_INCH;
 Konva.dragButtons = [0];
+
+function cssLengthMillimetres(value) {
+    const match = /^\s*(-?\d+(?:\.\d+)?)\s*(mm|cm|in|px)?\s*$/i.exec(String(value || ''));
+    if (!match) return null;
+    const amount = Number(match[1]);
+    if (!Number.isFinite(amount) || amount <= 0) return null;
+    const unit = String(match[2] || 'px').toLowerCase();
+    if (unit === 'mm') return amount;
+    if (unit === 'cm') return amount * 10;
+    if (unit === 'in') return amount * 25.4;
+    return amount * MILLIMETRES_PER_CSS_PIXEL;
+}
 
 function isPrimaryPointer(event) {
     const button = event?.evt?.button;
@@ -1051,6 +1065,9 @@ class CircuitCanvas extends LitElement {
     _artworkPlacement(component, footprint, sourceWidth, sourceHeight) {
         const geometry = getComponentGeometry(component.definitionId);
         const nativePins = geometry?.native?.pins;
+        if (footprint.placementMode === 'free' && footprint.artworkPlacement) {
+            return { ...footprint.artworkPlacement };
+        }
         if (footprint.placementMode !== 'breadboard-rigid' || !nativePins) {
             return this._fitArtworkPlacement(footprint, sourceWidth, sourceHeight);
         }
@@ -1073,6 +1090,34 @@ class CircuitCanvas extends LitElement {
         return { x: first.target.x - rotatedX, y: first.target.y - rotatedY, scale, rotation };
     }
 
+    _physicalArtworkCalibration(artwork, definition, pins, sourceWidth, sourceHeight, currentFootprint) {
+        if (!definition?.tag?.startsWith('wokwi-')) {
+            const placement = this._fitArtworkPlacement(currentFootprint, sourceWidth, sourceHeight);
+            return {
+                placement,
+                bounds: currentFootprint.routingBounds,
+                pins: pins.map(pin => ({
+                    pinId: pin.name,
+                    x: placement.x + Number(pin.x) * placement.scale,
+                    y: placement.y + Number(pin.y) * placement.scale,
+                })),
+            };
+        }
+        const svg = artwork.shadowRoot?.querySelector('svg');
+        const physicalWidth = cssLengthMillimetres(svg?.getAttribute('width')) || sourceWidth * MILLIMETRES_PER_CSS_PIXEL;
+        const physicalHeight = cssLengthMillimetres(svg?.getAttribute('height')) || sourceHeight * MILLIMETRES_PER_CSS_PIXEL;
+        const placement = { x: 0, y: 0, scale: MILLIMETRES_PER_CSS_PIXEL, rotation: 0 };
+        return {
+            placement,
+            bounds: { x: 0, y: 0, width: physicalWidth, height: physicalHeight },
+            pins: pins.map(pin => ({
+                pinId: pin.name,
+                x: Number(pin.x) * placement.scale,
+                y: Number(pin.y) * placement.scale,
+            })),
+        };
+    }
+
     _queueArtworkPinCalibration(componentId, retries = 40) {
         if (this._pendingPinCalibration.has(componentId)) return;
         const component = this.store.project.components.find(item => item.id === componentId);
@@ -1090,23 +1135,33 @@ class CircuitCanvas extends LitElement {
             }
             const definition = componentLibrary[current.definitionId];
             const rawPins = definition?.type === 'custom' ? definition.customPins : artwork.pinInfo;
-            if ((!rawPins || !rawPins.length) && remaining > 0) {
+            const isPinless = definition?.pinless === true;
+            if ((!rawPins || !rawPins.length) && !isPinless && remaining > 0) {
                 inspect(remaining - 1);
                 return;
             }
             this._pendingPinCalibration.delete(componentId);
-            if (!rawPins?.length) return;
-            const pins = calibratePhysicalPinInfo(current.definitionId, [...rawPins]);
+            if (!rawPins?.length && !isPinless) return;
+            const pins = rawPins?.length
+                ? calibratePhysicalPinInfo(current.definitionId, [...rawPins])
+                : [];
             const sourceWidth = Number(artwork.dataset.sourceWidth || 120);
             const sourceHeight = Number(artwork.dataset.sourceHeight || 80);
-            const placement = this._fitArtworkPlacement(currentFootprint, sourceWidth, sourceHeight);
-            const calibrated = pins.map(pin => ({
-                pinId: pin.name,
-                x: placement.x + Number(pin.x) * placement.scale,
-                y: placement.y + Number(pin.y) * placement.scale,
-            }));
-            if (calibrateFreeComponentFootprint(current.definitionId, calibrated)) {
+            const physical = this._physicalArtworkCalibration(
+                artwork, definition, pins, sourceWidth, sourceHeight, currentFootprint,
+            );
+            if (calibrateFreeComponentFootprint(current.definitionId, {
+                pins: physical.pins,
+                routingBounds: physical.bounds,
+                artworkPlacement: physical.placement,
+                allowEmptyPins: isPinless,
+            })) {
+                // Pin calibration changes component geometry, not just routes.
+                // Rebuild both marker layers immediately so the first visible
+                // frame cannot retain the temporary generated footprint.
+                this._renderComponents();
                 this.store.recomputeRoutes();
+                this._renderInteractionLayer();
             }
         });
         inspect(retries);

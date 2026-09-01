@@ -251,11 +251,12 @@ export function listPhysicalComponentDefinitions() {
         ...Object.keys(componentLibrary).filter(id => !COMPONENT_DEFINITIONS[id]).map(generatedPhysicalDefinition).filter(Boolean)];
 }
 
-export function calibrateFreeComponentFootprint(componentDefinitionId, pins) {
+export function calibrateFreeComponentFootprint(componentDefinitionId, calibration) {
     const definition = generatedPhysicalDefinition(componentDefinitionId);
     const footprint = definition ? getFootprintDefinition(definition.defaultFootprintId) : null;
-    if (!footprint || footprint.placementMode !== 'free' || !Array.isArray(pins) || !pins.length) return false;
-    const normalizedPins = pins
+    const record = Array.isArray(calibration) ? { pins: calibration } : calibration || {};
+    if (!footprint || footprint.placementMode !== 'free' || !Array.isArray(record.pins)) return false;
+    const normalizedPins = record.pins
         .map(pin => ({
             pinId: String(pin.pinId || pin.name || ''),
             x: Number(pin.x),
@@ -263,13 +264,37 @@ export function calibrateFreeComponentFootprint(componentDefinitionId, pins) {
             mount: 'terminal',
         }))
         .filter(pin => pin.pinId && Number.isFinite(pin.x) && Number.isFinite(pin.y));
-    if (!normalizedPins.length) return false;
-    const signature = normalizedPins.map(pin => `${pin.pinId}:${pin.x.toFixed(4)}:${pin.y.toFixed(4)}`).join('|');
+    const isValidPinlessCalibration = record.allowEmptyPins === true && footprint.pins.length === 0;
+    if (!normalizedPins.length && !isValidPinlessCalibration) return false;
+    const nextBounds = record.routingBounds && [record.routingBounds.x, record.routingBounds.y,
+        record.routingBounds.width, record.routingBounds.height].every(Number.isFinite)
+        ? {
+            x: Number(record.routingBounds.x), y: Number(record.routingBounds.y),
+            width: Number(record.routingBounds.width), height: Number(record.routingBounds.height),
+        }
+        : footprint.routingBounds;
+    const nextArtworkPlacement = record.artworkPlacement &&
+        [record.artworkPlacement.x, record.artworkPlacement.y, record.artworkPlacement.scale,
+            record.artworkPlacement.rotation].every(Number.isFinite)
+        ? {
+            x: Number(record.artworkPlacement.x), y: Number(record.artworkPlacement.y),
+            scale: Number(record.artworkPlacement.scale), rotation: Number(record.artworkPlacement.rotation),
+        }
+        : footprint.artworkPlacement;
+    const signature = [
+        ...normalizedPins.map(pin => `${pin.pinId}:${pin.x.toFixed(4)}:${pin.y.toFixed(4)}`),
+        `bounds:${nextBounds.x.toFixed(4)}:${nextBounds.y.toFixed(4)}:${nextBounds.width.toFixed(4)}:${nextBounds.height.toFixed(4)}`,
+        nextArtworkPlacement
+            ? `art:${nextArtworkPlacement.x.toFixed(4)}:${nextArtworkPlacement.y.toFixed(4)}:${nextArtworkPlacement.scale.toFixed(6)}:${nextArtworkPlacement.rotation.toFixed(2)}`
+            : 'art:fit',
+    ].join('|');
     if (footprint.calibrationSignature === signature) return false;
     const nextFootprint = deepFreeze({
         ...footprint,
-        anchorPinId: normalizedPins[0].pinId,
+        anchorPinId: normalizedPins[0]?.pinId || null,
         pins: normalizedPins,
+        routingBounds: nextBounds,
+        artworkPlacement: nextArtworkPlacement,
         calibrationSignature: signature,
     });
     const nextDefinition = deepFreeze({
