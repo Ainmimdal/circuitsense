@@ -59,10 +59,12 @@ export class PhysicalCircuitStore extends EventTarget {
         this.historyIndex = 0;
         this.nextComponentId = this.#nextSuffix('part');
         this.nextWireId = this.#nextSuffix('wire');
+        this.nextSurfaceId = this.#nextSuffix('breadboard');
     }
 
     #nextSuffix(prefix) {
         const ids = [
+            ...(this.project.surfaces || []).map(item => item.id),
             ...(this.project.components || []).map(item => item.id),
             ...(this.project.wires || []).map(item => item.id),
         ];
@@ -237,6 +239,7 @@ export class PhysicalCircuitStore extends EventTarget {
         this.historyIndex = 0;
         this.nextComponentId = this.#nextSuffix('part');
         this.nextWireId = this.#nextSuffix('wire');
+        this.nextSurfaceId = this.#nextSuffix('breadboard');
         this.#changed();
     }
 
@@ -246,6 +249,7 @@ export class PhysicalCircuitStore extends EventTarget {
         this.historyIndex = 0;
         this.nextComponentId = 1;
         this.nextWireId = 1;
+        this.nextSurfaceId = this.#nextSuffix('breadboard');
         this.#changed();
     }
 
@@ -255,6 +259,10 @@ export class PhysicalCircuitStore extends EventTarget {
 
     newWireId() {
         return `wire-${this.nextWireId++}`;
+    }
+
+    newSurfaceId() {
+        return `breadboard-${this.nextSurfaceId++}`;
     }
 
     recomputeRoutes() {

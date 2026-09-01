@@ -145,6 +145,8 @@ test('generic component hit boundaries are invisible and do not duplicate real a
     assert.match(method, /strokeEnabled:\s*false/);
     assert.match(method, /_artworkPlacement\(component, footprint, sourceWidth, sourceHeight\)/);
     assert.match(method, /width:\s*right\s*-\s*left,\s*height:\s*bottom\s*-\s*top/);
+    assert.match(method, /const calibratedBounds = footprint\.placementMode === 'free' && footprint\.artworkPlacement/);
+    assert.match(method, /\? footprint\.routingBounds/);
     assert.doesNotMatch(method, /footprint\.routingBounds\s*\|\|/);
     assert.doesNotMatch(method, /ARDUINO UNO|new Konva\.Text|#087ea4|#27272a/);
 });

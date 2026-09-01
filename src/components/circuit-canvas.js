@@ -6,10 +6,10 @@ import { calibratePhysicalPinInfo, getComponentGeometry } from '../core/componen
 import { physicalCircuitStore } from '../physical/circuit-store.js';
 import { InteractionController } from '../editor/interaction-controller.js';
 import { normalizeSelectionRect, rectsIntersect, routeIntersectsRect } from '../editor/selection.js';
-import { addComponentCommand, deleteSelectionCommand, deleteSurfaceCommand, mountComponentCommand, moveSelectionCommand, rotateFreeComponentCommand } from '../physical/commands.js';
+import { addComponentCommand, addSurfaceCommand, deleteSelectionCommand, deleteSurfaceCommand, mountComponentCommand, moveSelectionCommand, rotateFreeComponentCommand } from '../physical/commands.js';
 import { createComponentInstance, componentPinRef, componentWorldTransform, resolveConnectionWorldPoint, surfaceHoleRef } from '../physical/model.js';
 import { calibrateFreeComponentFootprint, defaultFootprintForComponent, getFootprintDefinition, getPhysicalComponentDefinition, projectFootprintPoint } from '../physical/footprints.js';
-import { getSurfaceDefinition, holeWorldPosition, holesInElectricalGroup, nearestHole } from '../physical/breadboard.js';
+import { createFullBreadboardSurface, createHalfBreadboardSurface, getSurfaceDefinition, holeWorldPosition, holesInElectricalGroup, nearestHole } from '../physical/breadboard.js';
 import { applyTransform, screenToWorld } from '../physical/geometry.js';
 import { pinExitDirection } from '../physical/routing.js';
 import { editableWirePoints, insertWireWaypoint, moveWireRouteEndpoints, moveWireSegment, moveWireWaypoint, removeWireWaypoint, translateWireRoute } from '../physical/wire-edit.js';
@@ -1251,18 +1251,31 @@ class CircuitCanvas extends LitElement {
         const sourceWidth = Math.max(1, Number(nativeSize?.width || definition?.size?.width || 120));
         const sourceHeight = Math.max(1, Number(nativeSize?.height || definition?.size?.height || 80));
         const placement = this._artworkPlacement(component, footprint, sourceWidth, sourceHeight);
-        const radians = placement.rotation * Math.PI / 180;
-        const cos = Math.cos(radians) * placement.scale;
-        const sin = Math.sin(radians) * placement.scale;
-        const corners = [
-            { x: 0, y: 0 },
-            { x: sourceWidth, y: 0 },
-            { x: 0, y: sourceHeight },
-            { x: sourceWidth, y: sourceHeight },
-        ].map(point => ({
-            x: placement.x + point.x * cos - point.y * sin,
-            y: placement.y + point.x * sin + point.y * cos,
-        }));
+        // Some Wokwi hosts use SVG viewBox dimensions while their inner SVG
+        // declares a much smaller physical CSS size (HX711: 580x430 versus
+        // 58x43mm). Calibrated bounds are the real visible artwork extent.
+        const calibratedBounds = footprint.placementMode === 'free' && footprint.artworkPlacement
+            ? footprint.routingBounds
+            : null;
+        const corners = calibratedBounds
+            ? [
+                { x: calibratedBounds.x, y: calibratedBounds.y },
+                { x: calibratedBounds.x + calibratedBounds.width, y: calibratedBounds.y },
+                { x: calibratedBounds.x, y: calibratedBounds.y + calibratedBounds.height },
+                { x: calibratedBounds.x + calibratedBounds.width, y: calibratedBounds.y + calibratedBounds.height },
+            ]
+            : (() => {
+                const radians = placement.rotation * Math.PI / 180;
+                const cos = Math.cos(radians) * placement.scale;
+                const sin = Math.sin(radians) * placement.scale;
+                return [
+                    { x: 0, y: 0 }, { x: sourceWidth, y: 0 },
+                    { x: 0, y: sourceHeight }, { x: sourceWidth, y: sourceHeight },
+                ].map(point => ({
+                    x: placement.x + point.x * cos - point.y * sin,
+                    y: placement.y + point.x * sin + point.y * cos,
+                }));
+            })();
         const left = Math.min(...corners.map(point => point.x));
         const right = Math.max(...corners.map(point => point.x));
         const top = Math.min(...corners.map(point => point.y));
@@ -1809,14 +1822,15 @@ class CircuitCanvas extends LitElement {
         event.preventDefault();
         this._dragOver = false;
         const definitionId = event.dataTransfer.getData('text/plain');
+        const rect = this.stage.container().getBoundingClientRect();
+        const world = screenToWorld({ x: event.clientX - rect.left, y: event.clientY - rect.top }, this.camera);
+        if (this._addBreadboardSurface(definitionId, world)) return;
         const footprint = defaultFootprintForComponent(definitionId);
         if (!footprint) {
             this._status = 'Move this item by dragging the breadboard itself.';
             this.requestUpdate();
             return;
         }
-        const rect = this.stage.container().getBoundingClientRect();
-        const world = screenToWorld({ x: event.clientX - rect.left, y: event.clientY - rect.top }, this.camera);
         const component = createComponentInstance({
             id: this.store.newComponentId(), definitionId, footprintId: footprint.id, x: world.x, y: world.y,
         });
@@ -1836,6 +1850,7 @@ class CircuitCanvas extends LitElement {
     }
 
     _quickAddPhysical(definitionId) {
+        if (this._addBreadboardSurface(definitionId)) return;
         const footprint = defaultFootprintForComponent(definitionId);
         if (!footprint) {
             this._status = 'That library item cannot be placed as a movable component.';
@@ -1876,6 +1891,22 @@ class CircuitCanvas extends LitElement {
                 : `No valid breadboard space was available. Move ${getPhysicalComponentDefinition(definitionId).name} beside the board or make room.`;
         this._renderComponentVisuals();
         this.requestUpdate();
+    }
+
+    _addBreadboardSurface(definitionId, position = null) {
+        if (!['breadboard-half', 'breadboard-full'].includes(definitionId)) return false;
+        const existing = this.store.project.surfaces.map(surface => getSurfaceDefinition(surface)).filter(Boolean);
+        const x = position?.x ?? (22 + existing.length * 12);
+        const y = position?.y ?? (18 + existing.length * 12);
+        const factory = definitionId === 'breadboard-full' ? createFullBreadboardSurface : createHalfBreadboardSurface;
+        const surface = factory({ id: this.store.newSurfaceId(), x, y });
+        this.store.execute(addSurfaceCommand(surface));
+        this._clearItemSelection();
+        this._selectedSurfaceId = surface.id;
+        this._status = `${getSurfaceDefinition(surface).name} added. Drag it to move or click a hole to wire.`;
+        this._renderScene();
+        this.requestUpdate();
+        return true;
     }
 
     _onKeyDown(event) {

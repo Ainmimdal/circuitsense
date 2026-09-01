@@ -4,8 +4,8 @@ import assert from 'node:assert/strict';
 import { PhysicalCircuitStore } from '../src/physical/circuit-store.js';
 import { InteractionController } from '../src/editor/interaction-controller.js';
 import { BreadboardSnapSolver } from '../src/physical/placement.js';
-import { holeWorldPosition } from '../src/physical/breadboard.js';
-import { addComponentCommand, deleteComponentCommand, deleteSurfaceCommand, moveSelectionCommand, moveSurfaceCommand } from '../src/physical/commands.js';
+import { createHalfBreadboardSurface, holeWorldPosition } from '../src/physical/breadboard.js';
+import { addComponentCommand, addSurfaceCommand, deleteComponentCommand, deleteSurfaceCommand, moveSelectionCommand, moveSurfaceCommand } from '../src/physical/commands.js';
 import { componentWorldTransform, createComponentInstance, resolveConnectionWorldPoint } from '../src/physical/model.js';
 import { defaultFootprintForComponent } from '../src/physical/footprints.js';
 
@@ -127,6 +127,19 @@ test('deleting a breadboard detaches mounted parts and removes only board-hole w
     assert.ok(Math.abs(after.y - before.y) < 1e-9);
     assert.equal(store.project.wires.some(wire => wire.id === 'surface-wire'), false);
     assert.equal(store.project.wires.some(wire => wire.id === 'wire-1'), true);
+});
+
+test('adding another breadboard is undoable and uses a distinct surface id', () => {
+    const store = new PhysicalCircuitStore({ load: false, routingWorker: null });
+    const surface = createHalfBreadboardSurface({ id: store.newSurfaceId(), x: 80, y: 30 });
+
+    store.execute(addSurfaceCommand(surface));
+
+    assert.equal(store.project.surfaces.length, 2);
+    assert.notEqual(store.project.surfaces[0].id, surface.id);
+    assert.deepEqual(store.project.surfaces[1].transform, { x: 80, y: 30, rotation: 0 });
+    store.undo();
+    assert.equal(store.project.surfaces.length, 1);
 });
 
 test('a multi-selection moves components and its wire route in one undoable command', () => {

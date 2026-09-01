@@ -18,6 +18,17 @@ export function addComponentCommand(component) {
     };
 }
 
+export function addSurfaceCommand(surface) {
+    return {
+        type: 'add-surface',
+        wireIds: [],
+        apply(project) {
+            if (project.surfaces.some(item => item.id === surface.id)) throw new Error(`Placement surface ${surface.id} already exists.`);
+            project.surfaces.push(clone(surface));
+        },
+    };
+}
+
 export function deleteComponentCommand(componentId) {
     return {
         type: 'delete-component',
