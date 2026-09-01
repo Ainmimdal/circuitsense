@@ -5,13 +5,14 @@ import { componentLibrary } from '../component-library.js';
 import { calibratePhysicalPinInfo, getComponentGeometry } from '../core/component-geometry.js';
 import { physicalCircuitStore } from '../physical/circuit-store.js';
 import { InteractionController } from '../editor/interaction-controller.js';
-import { addComponentCommand, deleteComponentCommand, deleteSurfaceCommand, deleteWireCommand } from '../physical/commands.js';
+import { normalizeSelectionRect, rectsIntersect, routeIntersectsRect } from '../editor/selection.js';
+import { addComponentCommand, deleteSelectionCommand, deleteSurfaceCommand, mountComponentCommand, moveSelectionCommand, rotateFreeComponentCommand } from '../physical/commands.js';
 import { createComponentInstance, componentPinRef, componentWorldTransform, resolveConnectionWorldPoint, surfaceHoleRef } from '../physical/model.js';
 import { calibrateFreeComponentFootprint, defaultFootprintForComponent, getFootprintDefinition, getPhysicalComponentDefinition, projectFootprintPoint } from '../physical/footprints.js';
 import { getSurfaceDefinition, holeWorldPosition, holesInElectricalGroup, nearestHole } from '../physical/breadboard.js';
 import { applyTransform, screenToWorld } from '../physical/geometry.js';
 import { pinExitDirection } from '../physical/routing.js';
-import { editableWirePoints, insertWireWaypoint, moveWireRouteEndpoints, moveWireSegment, moveWireWaypoint, removeWireWaypoint } from '../physical/wire-edit.js';
+import { editableWirePoints, insertWireWaypoint, moveWireRouteEndpoints, moveWireSegment, moveWireWaypoint, removeWireWaypoint, translateWireRoute } from '../physical/wire-edit.js';
 import { inspectWireNet } from '../physical/net-inspector.js';
 import { faIcon } from '../utils/fa-icons.js';
 
@@ -253,11 +254,16 @@ class CircuitCanvas extends LitElement {
         this._status = 'Drag a component onto the canvas to begin';
         this._hoveredHole = null;
         this._hoveredTerminalRef = null;
+        this._selectedComponentIds = new Set();
+        this._selectedWireIds = new Set();
         this._selectedComponentId = null;
         this._selectedWireId = null;
         this._selectedSurfaceId = null;
         this._lastPointerWorld = { x: 0, y: 0 };
         this._panning = null;
+        this._marquee = null;
+        this._groupDrag = null;
+        this._suppressStageClick = false;
         this._dragOver = false;
         this._pendingPinCalibration = new Set();
         this._storeHandler = event => {
@@ -274,9 +280,7 @@ class CircuitCanvas extends LitElement {
         this._physicalSelectHandler = event => {
             const componentId = event.detail?.componentId;
             if (!this.store.project.components.some(component => component.id === componentId)) return;
-            this._selectedComponentId = componentId;
-            this._deselectWire();
-            this._selectedSurfaceId = null;
+            this._selectComponent(componentId);
             this._renderComponents();
         };
     }
@@ -286,8 +290,7 @@ class CircuitCanvas extends LitElement {
         const showStatus = this.store.project.components.length === 0
             || this.interaction.state?.type !== 'idle'
             || this._dragOver
-            || this._selectedComponentId
-            || this._selectedWireId
+            || this._selectedItemCount() > 0
             || this._selectedSurfaceId;
         return html`
             <div class="workspace ${this._dragOver ? 'drag-over' : ''}"
@@ -326,7 +329,9 @@ class CircuitCanvas extends LitElement {
                 <div class="help">
                     Drag parts onto empty space. Breadboard parts snap to valid holes.<br>
                     To wire, click a pin, add corners in empty space, then click another pin.<br>
-                    Press Delete to remove a selection. Use the wheel to zoom.
+                    Drag blue segments or yellow corners to reshape a selected wire.<br>
+                    Drag empty space to select a group. Hold Shift to add or remove items.<br>
+                    Drag a selected item to move the group. Press Delete to remove it. Use the wheel to zoom.
                 </div>
                 <div class="legend">
                     <span><i class="valid-dot"></i>Valid connection</span>
@@ -356,8 +361,8 @@ class CircuitCanvas extends LitElement {
         this.stage.on('wheel', event => this._onWheel(event));
         this.stage.on('mousemove touchmove', event => this._onStageMove(event));
         this.stage.on('mousedown touchstart', event => this._onStageDown(event));
-        this.stage.on('mouseup touchend', () => { this._panning = null; });
-        this.stage.on('mouseleave', () => { this._panning = null; });
+        this.stage.on('mouseup touchend', event => this._onStageUp(event));
+        this.stage.on('mouseleave', event => this._onStageUp(event));
         this.stage.on('click tap', event => this._onStageClick(event));
 
         this._resizeObserver = new ResizeObserver(() => this._resizeStage());
@@ -416,6 +421,11 @@ class CircuitCanvas extends LitElement {
 
     _renderScene() {
         if (!this.stage) return;
+        const componentIds = new Set(this.store.project.components.map(component => component.id));
+        const wireIds = new Set(this.store.project.wires.map(wire => wire.id));
+        this._selectedComponentIds = new Set([...this._selectedComponentIds].filter(id => componentIds.has(id)));
+        this._selectedWireIds = new Set([...this._selectedWireIds].filter(id => wireIds.has(id)));
+        this._syncSelectionPrimaries();
         this._applyCamera();
         this._renderBoards();
         this._renderWires();
@@ -549,9 +559,8 @@ class CircuitCanvas extends LitElement {
             group.on('click tap', event => {
                 if (!isPrimaryPointer(event)) return;
                 event.cancelBubble = true;
+                this._clearItemSelection();
                 this._selectedSurfaceId = surface.id;
-                this._selectedComponentId = null;
-                this._deselectWire();
                 this._status = 'Breadboard selected. Press Delete to remove it; mounted parts will remain free.';
                 this._renderBoards();
                 this.requestUpdate();
@@ -582,10 +591,14 @@ class CircuitCanvas extends LitElement {
             });
             line.on('mouseenter', () => { this.stage.container().style.cursor = 'pointer'; });
             line.on('mouseleave', () => { this.stage.container().style.cursor = ''; });
+            line.draggable(true);
+            line.on('dragstart', event => this._beginWireDrag(event, line, wire.id));
+            line.on('dragmove', event => this._updateGroupDrag(event));
+            line.on('dragend', event => this._finishGroupDrag(event));
             line.on('click tap', event => {
                 if (!isPrimaryPointer(event)) return;
                 event.cancelBubble = true;
-                this._selectWire(wire.id);
+                this._selectWireWithOptions(wire.id, { additive: Boolean(event.evt?.shiftKey), toggle: Boolean(event.evt?.shiftKey), preserveGroup: true });
             });
             line.on('dblclick dbltap', event => {
                 event.cancelBubble = true;
@@ -594,7 +607,7 @@ class CircuitCanvas extends LitElement {
                     snap: this.store.manualWireSnap,
                     gridSize: 2.54,
                 });
-                this._selectedWireId = wire.id;
+                this._selectWire(wire.id);
                 this.store.setManualRoute(wire.id, waypoints);
                 this._status = 'Wire point added. Drag it to reshape the route.';
                 this.requestUpdate();
@@ -605,18 +618,76 @@ class CircuitCanvas extends LitElement {
         this.wireLayer.batchDraw();
     }
 
-    _selectWire(wireId) {
-        if (!this.store.project.wires.some(wire => wire.id === wireId)) return false;
-        this._selectedWireId = wireId;
+    _selectedItemCount() {
+        return this._selectedComponentIds.size + this._selectedWireIds.size;
+    }
+
+    _syncSelectionPrimaries() {
+        if (!this._selectedComponentIds.has(this._selectedComponentId)) {
+            this._selectedComponentId = [...this._selectedComponentIds].at(-1) || null;
+        }
+        if (!this._selectedWireIds.has(this._selectedWireId)) {
+            this._selectedWireId = [...this._selectedWireIds].at(-1) || null;
+        }
+    }
+
+    _clearItemSelection() {
+        this._selectedComponentIds.clear();
+        this._selectedWireIds.clear();
         this._selectedComponentId = null;
-        this._selectedSurfaceId = null;
-        this._status = this.store.manualWireMode === 'orthogonal'
-            ? 'Wire selected. Drag a straight section or corner. Double-click the wire to add a corner.'
-            : 'Wire selected. Drag a point to reshape it. Double-click the wire to add a point.';
-        this._refreshWireSelectionVisuals();
+        this._selectedWireId = null;
+        this._clearWireSelectionVisuals();
         this._syncComponentVisualSelection();
+        this._renderInteractionLayer();
+    }
+
+    _selectComponent(componentId, { additive = false, toggle = false, preserveGroup = false } = {}) {
+        if (!this.store.project.components.some(component => component.id === componentId)) return false;
+        if (!additive && !(preserveGroup && this._selectedComponentIds.has(componentId) && this._selectedItemCount() > 1)) {
+            this._clearItemSelection();
+        }
+        if (toggle && this._selectedComponentIds.has(componentId)) this._selectedComponentIds.delete(componentId);
+        else this._selectedComponentIds.add(componentId);
+        this._selectedComponentId = this._selectedComponentIds.has(componentId) ? componentId : null;
+        this._syncSelectionPrimaries();
+        this._selectedSurfaceId = null;
+        this._refreshSelectionVisuals();
+        return true;
+    }
+
+    _selectWire(wireId) {
+        const selected = this._selectWireWithOptions(wireId);
+        this._refreshWireSelectionVisuals();
+        return selected;
+    }
+
+    _selectWireWithOptions(wireId, { additive = false, toggle = false, preserveGroup = false } = {}) {
+        if (!this.store.project.wires.some(wire => wire.id === wireId)) return false;
+        if (!additive && !(preserveGroup && this._selectedWireIds.has(wireId) && this._selectedItemCount() > 1)) {
+            this._clearItemSelection();
+        }
+        if (toggle && this._selectedWireIds.has(wireId)) this._selectedWireIds.delete(wireId);
+        else this._selectedWireIds.add(wireId);
+        this._selectedWireId = this._selectedWireIds.has(wireId) ? wireId : null;
+        this._syncSelectionPrimaries();
+        this._selectedSurfaceId = null;
+        this._status = this._selectedItemCount() === 0
+            ? 'Selection cleared.'
+            : this._selectedItemCount() > 1
+            ? `${this._selectedItemCount()} items selected. Drag one to move the group; hold Shift to adjust the selection.`
+            : (this.store.manualWireMode === 'orthogonal'
+                ? 'Wire selected. Drag it to move its route, or drag a straight section or corner to reshape it.'
+                : 'Wire selected. Drag it to move its route, or drag a point to reshape it.');
+        this._refreshSelectionVisuals();
         this.requestUpdate();
         return true;
+    }
+
+    _refreshSelectionVisuals() {
+        this._refreshWireSelectionVisuals();
+        this._syncComponentVisualSelection();
+        this._renderInteractionLayer();
+        this.requestUpdate();
     }
 
     _clearWireSelectionVisuals() {
@@ -629,35 +700,36 @@ class CircuitCanvas extends LitElement {
     _refreshWireSelectionVisuals() {
         if (!this.wireLayer) return;
         this._clearWireSelectionVisuals();
-        const wire = this.store.project.wires.find(item => item.id === this._selectedWireId);
-        const route = wire ? this.store.routes.get(wire.id) : null;
-        const line = wire ? this.wireLayer.findOne(node => node.id?.() === `wire:${wire.id}`) : null;
-        if (!wire || !route || route.length < 2 || !line) {
-            this.wireLayer.batchDraw();
-            return;
+        for (const wireId of this._selectedWireIds) {
+            const wire = this.store.project.wires.find(item => item.id === wireId);
+            const route = wire ? this.store.routes.get(wire.id) : null;
+            const line = wire ? this.wireLayer.findOne(node => node.id?.() === `wire:${wire.id}`) : null;
+            if (!wire || !route || route.length < 2 || !line) continue;
+            const color = wire.color || this._themeColor('--accent-sensors');
+            this.wireLayer.add(new Konva.Line({
+                id: `wire-selection:${wire.id}`,
+                name: 'wire-selection-overlay',
+                points: route.flatMap(point => [point.x, point.y]),
+                stroke: color,
+                strokeWidth: .72,
+                lineCap: 'round',
+                lineJoin: 'round',
+                shadowColor: this._themeColor('--primary-hover'),
+                shadowBlur: 2.2,
+                shadowOpacity: 1,
+                listening: false,
+            }));
+            if (this._selectedWireIds.size === 1 && this._selectedComponentIds.size === 0) {
+                if (this.store.manualWireMode === 'orthogonal') this._addWireSegmentHandles(wire, route, line);
+                this._addWireWaypointHandles(wire, route, line);
+            }
         }
-        const color = wire.color || this._themeColor('--accent-sensors');
-        this.wireLayer.add(new Konva.Line({
-            id: `wire-selection:${wire.id}`,
-            name: 'wire-selection-overlay',
-            points: route.flatMap(point => [point.x, point.y]),
-            stroke: color,
-            strokeWidth: .72,
-            lineCap: 'round',
-            lineJoin: 'round',
-            shadowColor: this._themeColor('--primary-hover'),
-            shadowBlur: 2.2,
-            shadowOpacity: 1,
-            listening: false,
-        }));
-        if (this.store.manualWireMode === 'orthogonal') this._addWireSegmentHandles(wire, route, line);
-        this._addWireWaypointHandles(wire, route, line);
         this.wireLayer.batchDraw();
     }
 
     _syncComponentVisualSelection() {
         for (const wrapper of this.visualLayer?.children || []) {
-            wrapper.classList.toggle('selected', wrapper.dataset.componentId === this._selectedComponentId);
+            wrapper.classList.toggle('selected', this._selectedComponentIds.has(wrapper.dataset.componentId));
         }
     }
 
@@ -948,7 +1020,7 @@ class CircuitCanvas extends LitElement {
             const footprint = getFootprintDefinition(component.footprintId);
             if (!footprint || footprint.packageType === 'dip') continue;
             const wrapper = document.createElement('div');
-            wrapper.className = `component-visual${component.id === this._selectedComponentId ? ' selected' : ''}`;
+            wrapper.className = `component-visual${this._selectedComponentIds.has(component.id) ? ' selected' : ''}`;
             wrapper.dataset.componentId = component.id;
             wrapper.append(this._createComponentArtwork(component));
             for (const pin of footprint.pins) {
@@ -1065,7 +1137,7 @@ class CircuitCanvas extends LitElement {
     }
 
     _drawDipPackage(group, component, footprint) {
-        const selected = component.id === this._selectedComponentId;
+        const selected = this._selectedComponentIds.has(component.id);
         const pins = footprint.pins.map(pin => ({ ...pin, ...projectFootprintPoint(footprint, pin) }));
         const xs = pins.map(pin => pin.x);
         const ys = pins.map(pin => pin.y);
@@ -1107,7 +1179,7 @@ class CircuitCanvas extends LitElement {
     }
 
     _drawLed(group, component) {
-        const selected = component.id === this._selectedComponentId;
+        const selected = this._selectedComponentIds.has(component.id);
         group.add(new Konva.Line({ points: [0, 0, .15, -3.1], stroke: '#d4d4d8', strokeWidth: .45, listening: false }));
         group.add(new Konva.Line({ points: [2.54, 0, 2.38, -3.1], stroke: '#d4d4d8', strokeWidth: .45, listening: false }));
         group.add(new Konva.Circle({
@@ -1181,20 +1253,29 @@ class CircuitCanvas extends LitElement {
         let grabOffset = { x: 0, y: 0 };
         group.on('mouseenter', () => { this.stage.container().style.cursor = 'move'; });
         group.on('mouseleave', () => { this.stage.container().style.cursor = ''; });
-        group.on('dragstart', () => {
+        group.on('dragstart', event => {
+            this._selectComponent(component.id, {
+                additive: Boolean(event.evt?.shiftKey),
+                preserveGroup: true,
+            });
+            if (this._selectedItemCount() > 1) {
+                this._beginGroupDrag(group);
+                return;
+            }
             const pointer = this._pointerWorld();
             grabOffset = { x: pointer.x - group.x(), y: pointer.y - group.y() };
             this.interaction.beginComponentDrag(component.id);
-            this._selectedComponentId = component.id;
-            this._deselectWire();
-            this._selectedSurfaceId = null;
             const footprint = getFootprintDefinition(component.footprintId);
             this._status = footprint?.placementMode === 'breadboard-rigid'
                 ? 'Move over the breadboard to find a valid set of holes.'
                 : 'Release to place the component.';
             this.requestUpdate();
         });
-        group.on('dragmove', () => {
+        group.on('dragmove', event => {
+            if (this._groupDrag) {
+                this._updateGroupDrag(event);
+                return;
+            }
             const pointer = this._pointerWorld();
             const anchor = { x: pointer.x - grabOffset.x, y: pointer.y - grabOffset.y };
             const candidate = this.interaction.updateComponentDrag(anchor);
@@ -1216,7 +1297,11 @@ class CircuitCanvas extends LitElement {
             this.componentLayer.batchDraw();
             this.requestUpdate();
         });
-        group.on('dragend', () => {
+        group.on('dragend', event => {
+            if (this._groupDrag) {
+                this._finishGroupDrag(event);
+                return;
+            }
             const pointer = this._pointerWorld();
             const anchor = { x: pointer.x - grabOffset.x, y: pointer.y - grabOffset.y };
             const committed = this.interaction.commitComponentDrag(anchor);
@@ -1233,13 +1318,126 @@ class CircuitCanvas extends LitElement {
         group.on('click tap', event => {
             if (!isPrimaryPointer(event)) return;
             event.cancelBubble = true;
-            this._selectedComponentId = component.id;
-            this._deselectWire();
-            this._selectedSurfaceId = null;
-            this._status = `Drag ${getPhysicalComponentDefinition(component.definitionId)?.name || component.definitionId} to move it, or press Delete to remove it.`;
+            this._selectComponent(component.id, {
+                additive: Boolean(event.evt?.shiftKey),
+                toggle: Boolean(event.evt?.shiftKey),
+                preserveGroup: true,
+            });
+            this._status = this._selectedItemCount() === 0
+                ? 'Selection cleared.'
+                : this._selectedItemCount() > 1
+                ? `${this._selectedItemCount()} items selected. Drag one to move the group; hold Shift to adjust the selection.`
+                : `Drag ${getPhysicalComponentDefinition(component.definitionId)?.name || component.definitionId} to move it, or press Delete to remove it.`;
             this._renderComponents();
             this.requestUpdate();
         });
+    }
+
+    _beginWireDrag(event, line, wireId) {
+        this._selectWireWithOptions(wireId, {
+            additive: Boolean(event.evt?.shiftKey),
+            preserveGroup: true,
+        });
+        this._beginGroupDrag(line);
+    }
+
+    _beginGroupDrag(sourceNode) {
+        const pointer = this._pointerWorld();
+        this.interaction.cancel();
+        for (const name of ['wire-segment-handle', 'wire-waypoint-handle', 'wire-alignment-guide']) {
+            for (const node of this.wireLayer.find(`.${name}`)) node.destroy();
+        }
+        this.wireLayer.batchDraw();
+        this._groupDrag = {
+            sourceNode,
+            startPointer: { ...pointer },
+            componentIds: [...this._selectedComponentIds],
+            wireIds: [...this._selectedWireIds],
+            componentTransforms: Object.fromEntries(this.store.project.components
+                .filter(component => this._selectedComponentIds.has(component.id))
+                .map(component => [component.id, componentWorldTransform(this.store.project, component)])),
+            routes: Object.fromEntries([...this.store.routes].map(([wireId, points]) =>
+                [wireId, points.map(point => ({ ...point }))])),
+            delta: { x: 0, y: 0 },
+        };
+        this._status = `Moving ${this._selectedItemCount()} selected ${this._selectedItemCount() === 1 ? 'item' : 'items'}.`;
+        this.requestUpdate();
+    }
+
+    _selectionPreviewRoute(wire, route, delta) {
+        const selectedComponents = new Set(this._groupDrag?.componentIds || []);
+        const selectedWires = new Set(this._groupDrag?.wireIds || []);
+        const endpointMoves = ref => ref?.type === 'component-pin' && selectedComponents.has(ref.componentId);
+        const shiftEndpoint = (point, moved) => moved
+            ? { x: point.x + delta.x, y: point.y + delta.y }
+            : { ...point };
+        const from = shiftEndpoint(route[0], endpointMoves(wire.from));
+        const to = shiftEndpoint(route.at(-1), endpointMoves(wire.to));
+        return selectedWires.has(wire.id)
+            ? translateWireRoute(route, { delta, from, to })
+            : moveWireRouteEndpoints(route, {
+                from,
+                to,
+                fromDirection: pinExitDirection(this.store.project, wire.from),
+                toDirection: pinExitDirection(this.store.project, wire.to),
+            });
+    }
+
+    _updateGroupDrag(event) {
+        if (!this._groupDrag) return;
+        event.cancelBubble = true;
+        const pointer = this._pointerWorld();
+        const delta = {
+            x: pointer.x - this._groupDrag.startPointer.x,
+            y: pointer.y - this._groupDrag.startPointer.y,
+        };
+        this._groupDrag.delta = delta;
+        for (const componentId of this._groupDrag.componentIds) {
+            const transform = this._groupDrag.componentTransforms[componentId];
+            const node = this.componentLayer.findOne(item => item.getAttr?.('componentId') === componentId);
+            if (!transform || !node) continue;
+            const preview = { x: transform.x + delta.x, y: transform.y + delta.y, rotation: transform.rotation || 0 };
+            node.position(preview);
+            node.rotation(preview.rotation);
+            this._positionComponentVisual(componentId, preview);
+        }
+        for (const wire of this.store.project.wires) {
+            const route = this._groupDrag.routes[wire.id];
+            if (!route) continue;
+            const touchesSelection = [wire.from, wire.to].some(ref =>
+                ref?.type === 'component-pin' && this._groupDrag.componentIds.includes(ref.componentId));
+            if (!touchesSelection && !this._groupDrag.wireIds.includes(wire.id)) continue;
+            const line = this.wireLayer.findOne(node => node.id?.() === `wire:${wire.id}`);
+            if (!line) continue;
+            line.position({ x: 0, y: 0 });
+            const preview = this._selectionPreviewRoute(wire, route, delta);
+            const points = preview.flatMap(point => [point.x, point.y]);
+            line.points(points);
+            this.wireLayer.findOne(node => node.id?.() === `wire-selection:${wire.id}`)?.points(points);
+        }
+        this.componentLayer.batchDraw();
+        this.wireLayer.batchDraw();
+        this._renderInteractionLayer();
+    }
+
+    _finishGroupDrag(event) {
+        if (!this._groupDrag) return;
+        event.cancelBubble = true;
+        const drag = this._groupDrag;
+        this._groupDrag = null;
+        if (drag.sourceNode?.id?.().startsWith('wire:')) drag.sourceNode.position({ x: 0, y: 0 });
+        if (Math.hypot(drag.delta.x, drag.delta.y) > 1e-6) {
+            this.store.execute(moveSelectionCommand({
+                componentIds: drag.componentIds,
+                wireIds: drag.wireIds,
+                delta: drag.delta,
+                routes: drag.routes,
+            }));
+            this._status = `${drag.componentIds.length + drag.wireIds.length} selected ${drag.componentIds.length + drag.wireIds.length === 1 ? 'item' : 'items'} moved together.`;
+        } else {
+            this._renderScene();
+        }
+        this.requestUpdate();
     }
 
     _previewConnectedWires(component, transform) {
@@ -1270,6 +1468,26 @@ class CircuitCanvas extends LitElement {
     _renderInteractionLayer() {
         if (!this.interactionLayer) return;
         this.interactionLayer.destroyChildren();
+        const selectionColor = this._themeColor('--primary-hover');
+        for (const componentId of this._selectedComponentIds) {
+            const node = this.componentLayer.findOne(item => item.getAttr?.('componentId') === componentId);
+            if (!node) continue;
+            const bounds = node.getClientRect({ relativeTo: this.componentLayer, skipShadow: true });
+            this.interactionLayer.add(new Konva.Rect({
+                x: bounds.x - .8, y: bounds.y - .8, width: bounds.width + 1.6, height: bounds.height + 1.6,
+                stroke: selectionColor, strokeWidth: .35 / this.camera.zoom, dash: [1.2, .7],
+                cornerRadius: .6, listening: false,
+            }));
+        }
+        if (this._marquee?.active) {
+            const rect = normalizeSelectionRect(this._marquee.startWorld, this._marquee.currentWorld);
+            this.interactionLayer.add(new Konva.Rect({
+                x: rect.x, y: rect.y, width: rect.width, height: rect.height,
+                fill: this._themeColor('--primary'), opacity: .14,
+                stroke: selectionColor, strokeWidth: .42 / this.camera.zoom, dash: [1.4, .8],
+                listening: false,
+            }));
+        }
         if (this._hoveredHole) {
             const surface = this.store.project.surfaces.find(item => item.id === this._hoveredHole.surfaceId);
             for (const holeId of holesInElectricalGroup(surface, this._hoveredHole.holeId)) {
@@ -1329,6 +1547,19 @@ class CircuitCanvas extends LitElement {
             return;
         }
         this._lastPointerWorld = this._pointerWorld();
+        if (this._marquee) {
+            this._marquee.currentWorld = { ...this._lastPointerWorld };
+            this._marquee.currentScreen = { ...pointer };
+            const distance = Math.hypot(pointer.x - this._marquee.startScreen.x, pointer.y - this._marquee.startScreen.y);
+            if (distance >= 4) this._marquee.active = true;
+            if (this._marquee.active) {
+                this._applyMarqueeSelection();
+                this._status = `${this._selectedItemCount()} ${this._selectedItemCount() === 1 ? 'item' : 'items'} inside selection.`;
+                this.requestUpdate();
+            }
+            this._renderInteractionLayer();
+            return;
+        }
         let nextHover = null;
         for (const surface of this.store.project.surfaces) {
             const nearest = nearestHole(surface, this._lastPointerWorld, { maxDistance: 1.18 });
@@ -1349,11 +1580,72 @@ class CircuitCanvas extends LitElement {
             event.evt.preventDefault();
             const pointer = this.stage.getPointerPosition();
             this._panning = { x: pointer.x, y: pointer.y, panX: this.camera.panX, panY: this.camera.panY };
+            return;
         }
+        if ((button === undefined || button === 0) && event.target === this.stage &&
+            !this._hoveredHole && this.interaction.state.type === 'idle') {
+            const pointer = this.stage.getPointerPosition();
+            if (!pointer) return;
+            const additive = Boolean(event.evt?.shiftKey);
+            this._marquee = {
+                startWorld: this._pointerWorld(),
+                currentWorld: this._pointerWorld(),
+                startScreen: { ...pointer },
+                currentScreen: { ...pointer },
+                active: false,
+                additive,
+                baseComponentIds: additive ? new Set(this._selectedComponentIds) : new Set(),
+                baseWireIds: additive ? new Set(this._selectedWireIds) : new Set(),
+            };
+        }
+    }
+
+    _onStageUp(event) {
+        this._panning = null;
+        if (!this._marquee) return;
+        if (this._marquee.active) {
+            event.cancelBubble = true;
+            this._applyMarqueeSelection();
+            this._suppressStageClick = true;
+            this._status = this._selectedItemCount()
+                ? `${this._selectedItemCount()} ${this._selectedItemCount() === 1 ? 'item' : 'items'} selected. Drag one to move the selection; hold Shift to add more.`
+                : 'Nothing was inside the selection.';
+            this._marquee = null;
+            this._renderComponents();
+            this._refreshSelectionVisuals();
+            return;
+        }
+        this._marquee = null;
+    }
+
+    _applyMarqueeSelection() {
+        if (!this._marquee) return;
+        const rect = normalizeSelectionRect(this._marquee.startWorld, this._marquee.currentWorld);
+        const componentIds = new Set(this._marquee.baseComponentIds);
+        const wireIds = new Set(this._marquee.baseWireIds);
+        for (const component of this.store.project.components) {
+            const node = this.componentLayer.findOne(item => item.getAttr?.('componentId') === component.id);
+            const bounds = node?.getClientRect({ relativeTo: this.componentLayer, skipShadow: true });
+            if (bounds && rectsIntersect(rect, bounds)) componentIds.add(component.id);
+        }
+        for (const wire of this.store.project.wires) {
+            if (routeIntersectsRect(this.store.routes.get(wire.id), rect)) wireIds.add(wire.id);
+        }
+        this._selectedComponentIds = componentIds;
+        this._selectedWireIds = wireIds;
+        this._selectedComponentId = [...componentIds].at(-1) || null;
+        this._selectedWireId = [...wireIds].at(-1) || null;
+        this._selectedSurfaceId = null;
+        this._refreshWireSelectionVisuals();
+        this._syncComponentVisualSelection();
     }
 
     _onStageClick(event) {
         if (!isPrimaryPointer(event)) return;
+        if (this._suppressStageClick) {
+            this._suppressStageClick = false;
+            return;
+        }
         if (event.target?.hasName?.('semantic-terminal')) return;
         if (this._hoveredHole) {
             this._activateTerminal(surfaceHoleRef(this._hoveredHole.surfaceId, this._hoveredHole.holeId));
@@ -1369,8 +1661,7 @@ class CircuitCanvas extends LitElement {
                 this.requestUpdate();
                 return;
             }
-            this._selectedComponentId = null;
-            this._deselectWire();
+            if (!event.evt?.shiftKey) this._clearItemSelection();
             this._selectedSurfaceId = null;
             this._status = 'Click a component pin or breadboard hole to start a wire.';
             this._renderComponents();
@@ -1390,7 +1681,8 @@ class CircuitCanvas extends LitElement {
     }
 
     _deselectWire() {
-        if (!this._selectedWireId) return false;
+        if (!this._selectedWireIds.size) return false;
+        this._selectedWireIds.clear();
         this._selectedWireId = null;
         this._clearWireSelectionVisuals();
         this.wireLayer?.batchDraw();
@@ -1399,7 +1691,7 @@ class CircuitCanvas extends LitElement {
     }
 
     _selectedNetView() {
-        if (!this._selectedWireId) return null;
+        if (!this._selectedWireId || this._selectedWireIds.size !== 1 || this._selectedComponentIds.size) return null;
         const net = inspectWireNet(this.store.project, this._selectedWireId);
         if (!net) return null;
         const components = new Map(this.store.project.components.map(component => [component.id, component]));
@@ -1480,9 +1772,7 @@ class CircuitCanvas extends LitElement {
             this.interaction.commitComponentDrag(world);
         }
         const mounted = this.store.project.components.find(item => item.id === component.id)?.placement.type === 'surface';
-        this._selectedComponentId = component.id;
-        this._deselectWire();
-        this._selectedSurfaceId = null;
+        this._selectComponent(component.id);
             this._status = mounted
                 ? `${getPhysicalComponentDefinition(definitionId).name} snapped into ${footprint.pins.length} valid breadboard holes.`
                 : `Drag ${getPhysicalComponentDefinition(definitionId).name} to move it, or place it over a breadboard to snap it in.`;
@@ -1507,9 +1797,7 @@ class CircuitCanvas extends LitElement {
         });
         this.store.execute(addComponentCommand(component));
         if (footprint.placementMode !== 'breadboard-rigid') {
-            this._selectedComponentId = component.id;
-            this._deselectWire();
-            this._selectedSurfaceId = null;
+            this._selectComponent(component.id);
                 this._status = `${getPhysicalComponentDefinition(definitionId).name} added. Drag it to move, or click a pin to start wiring.`;
             this._renderComponentVisuals();
             this.requestUpdate();
@@ -1527,9 +1815,7 @@ class CircuitCanvas extends LitElement {
         }
         this.interaction.commitComponentDrag(pointer);
         const mounted = this.store.project.components.find(item => item.id === component.id)?.placement.type === 'surface';
-        this._selectedComponentId = component.id;
-        this._deselectWire();
-        this._selectedSurfaceId = null;
+        this._selectComponent(component.id);
             this._status = mounted
                 ? `${getPhysicalComponentDefinition(definitionId).name} snapped into the next available breadboard position.`
                 : `No valid breadboard space was available. Move ${getPhysicalComponentDefinition(definitionId).name} beside the board or make room.`;
@@ -1551,18 +1837,58 @@ class CircuitCanvas extends LitElement {
             this.interaction.cancel();
             this._status = 'Interaction cancelled.';
             this.requestUpdate();
-        } else if ((event.key === 'Delete' || event.key === 'Backspace') && (this._selectedComponentId || this._selectedWireId || this._selectedSurfaceId)) {
+        } else if (event.key.toLowerCase() === 'r' && this._selectedComponentIds.size === 1 && this._selectedWireIds.size === 0) {
+            const component = this.store.project.components.find(item => item.id === this._selectedComponentId);
+            event.preventDefault();
+            const delta = event.shiftKey ? -90 : 90;
+            let rotated = false;
+            if (component?.placement?.type === 'free') {
+                rotated = this.store.execute(rotateFreeComponentCommand(component.id, delta));
+            } else if (component?.placement?.type === 'surface') {
+                const footprint = getFootprintDefinition(component.footprintId);
+                const rotations = footprint?.validRotations || [];
+                const desired = ((Number(component.placement.rotation || 0) + delta) % 360 + 360) % 360;
+                const ordered = [...rotations].sort((a, b) => {
+                    const distance = value => Math.min(Math.abs(value - desired), 360 - Math.abs(value - desired));
+                    return distance(a) - distance(b) || a - b;
+                });
+                const surface = this.store.project.surfaces.find(item => item.id === component.placement.surfaceId);
+                const anchorHoleId = component.placement.bindings?.[footprint?.anchorPinId];
+                const anchorWorld = surface && anchorHoleId ? holeWorldPosition(surface, anchorHoleId) : null;
+                for (const preferredRotation of ordered) {
+                    const candidate = anchorWorld ? this.interaction.solver.solve({
+                        project: this.store.project,
+                        component,
+                        pointerWorld: anchorWorld,
+                        surfaceId: surface.id,
+                        preferredRotation,
+                    }) : null;
+                    if (!candidate || candidate.rotation === component.placement.rotation ||
+                        !this.interaction.solver.validateCandidate(this.store.project, component, candidate)) continue;
+                    rotated = this.store.execute(mountComponentCommand(component.id, candidate));
+                    break;
+                }
+            }
+            this._status = rotated
+                ? `${getPhysicalComponentDefinition(component.definitionId)?.name || component.definitionId} rotated ${event.shiftKey ? 'counter-clockwise' : 'clockwise'}.`
+                : 'No legal rotated placement is available here.';
+            this.requestUpdate();
+        } else if ((event.key === 'Delete' || event.key === 'Backspace') && (this._selectedItemCount() || this._selectedSurfaceId)) {
             event.preventDefault();
             this._deleteSelected();
         }
     }
 
     _deleteSelected = () => {
-        if (this._selectedWireId) {
-            this.store.execute(deleteWireCommand(this._selectedWireId));
-            this._selectedWireId = null;
+        if (this._selectedItemCount()) {
+            const count = this._selectedItemCount();
+            this.store.execute(deleteSelectionCommand({
+                componentIds: [...this._selectedComponentIds],
+                wireIds: [...this._selectedWireIds],
+            }));
+            this._clearItemSelection();
             this.interaction.cancel();
-            this._status = 'Wire deleted.';
+            this._status = `${count} selected ${count === 1 ? 'item' : 'items'} deleted. Connected wires were removed too.`;
             this.requestUpdate();
             return;
         }
@@ -1574,15 +1900,6 @@ class CircuitCanvas extends LitElement {
             this.requestUpdate();
             return;
         }
-        if (!this._selectedComponentId) return;
-        const component = this.store.project.components.find(item => item.id === this._selectedComponentId);
-        if (!component) return;
-        const name = getPhysicalComponentDefinition(component.definitionId)?.name || component.definitionId;
-        this.store.execute(deleteComponentCommand(component.id));
-        this._selectedComponentId = null;
-        this.interaction.cancel();
-        this._status = `${name} deleted. Connected wires were removed too.`;
-        this.requestUpdate();
     };
 }
 

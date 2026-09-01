@@ -27,17 +27,49 @@ function snapPoint(point, enabled, gridSize) {
     };
 }
 
-function connectorFromEndpoint(endpoint, pivot, direction, escape = 2.54) {
-    if (!endpoint || !pivot) return [endpoint || pivot].filter(Boolean);
-    if (direction === 'up' || direction === 'down') {
-        const y = endpoint.y + (direction === 'up' ? -escape : escape);
-        return simplify([endpoint, { x: endpoint.x, y }, { x: pivot.x, y }, pivot]);
+function followsDirection(endpoint, next, direction) {
+    if (direction === 'up') return next.y < endpoint.y - 1e-6;
+    if (direction === 'down') return next.y > endpoint.y + 1e-6;
+    if (direction === 'left') return next.x < endpoint.x - 1e-6;
+    if (direction === 'right') return next.x > endpoint.x + 1e-6;
+    return true;
+}
+
+function rubberBandEndpoint(points, endpoint, direction, escape = 2.54) {
+    if (!endpoint || points.length < 2) return points;
+    const result = points.map(point => ({ ...point }));
+    const oldEndpoint = result[0], pivot = result[1];
+    const vertical = Math.abs(oldEndpoint.x - pivot.x) < 1e-6;
+    const horizontal = Math.abs(oldEndpoint.y - pivot.y) < 1e-6;
+    result[0] = { ...endpoint };
+
+    if (result.length === 2) {
+        const other = result[1];
+        if (vertical && Math.abs(endpoint.x - other.x) > 1e-6) result.splice(1, 0, { x: endpoint.x, y: other.y });
+        else if (horizontal && Math.abs(endpoint.y - other.y) > 1e-6) result.splice(1, 0, { x: other.x, y: endpoint.y });
+        return simplify(result);
     }
-    if (direction === 'left' || direction === 'right') {
-        const x = endpoint.x + (direction === 'left' ? -escape : escape);
-        return simplify([endpoint, { x, y: endpoint.y }, { x, y: pivot.y }, pivot]);
+
+    if (vertical) {
+        pivot.x = endpoint.x;
+        if (!followsDirection(endpoint, pivot, direction) && result.length >= 4 &&
+            Math.abs(pivot.y - result[2].y) < 1e-6) {
+            const laneY = endpoint.y + (direction === 'up' ? -escape : escape);
+            pivot.y = laneY;
+            result[2].y = laneY;
+        }
+    } else if (horizontal) {
+        pivot.y = endpoint.y;
+        if (!followsDirection(endpoint, pivot, direction) && result.length >= 4 &&
+            Math.abs(pivot.x - result[2].x) < 1e-6) {
+            const laneX = endpoint.x + (direction === 'left' ? -escape : escape);
+            pivot.x = laneX;
+            result[2].x = laneX;
+        }
     }
-    return simplify([endpoint, { x: pivot.x, y: endpoint.y }, pivot]);
+    // Freestyle/diagonal legs simply stretch from the moved endpoint. Orthogonal
+    // legs slide their existing first segment and do not manufacture new bends.
+    return simplify(result);
 }
 
 export function moveWireRouteEndpoints(points, {
@@ -45,15 +77,31 @@ export function moveWireRouteEndpoints(points, {
 } = {}) {
     if (!Array.isArray(points) || points.length < 2) return [];
     let result = points.map(point => ({ ...point }));
-    if (from) {
-        const pivot = result[1] || result.at(-1);
-        result = [...connectorFromEndpoint(from, pivot, fromDirection), ...result.slice(2)];
+    if (from) result = rubberBandEndpoint(result, from, fromDirection);
+    if (to) result = rubberBandEndpoint(result.reverse(), to, toDirection).reverse();
+    return simplify(result);
+}
+
+function appendOrthogonalTarget(points, target) {
+    const from = points.at(-1);
+    if (!from || !target) return;
+    if (Math.abs(from.x - target.x) > 1e-6 && Math.abs(from.y - target.y) > 1e-6) {
+        points.push({ x: target.x, y: from.y });
     }
-    if (to) {
-        const pivot = result.at(-2) || result[0];
-        const connector = connectorFromEndpoint(to, pivot, toDirection).reverse();
-        result = [...result.slice(0, -2), ...connector];
-    }
+    points.push({ x: target.x, y: target.y });
+}
+
+export function translateWireRoute(points, { delta, from, to } = {}) {
+    if (!Array.isArray(points) || points.length < 2 || !from || !to) return [];
+    const movement = { x: Number(delta?.x || 0), y: Number(delta?.y || 0) };
+    const translated = points.map(point => ({
+        x: Number(point.x) + movement.x,
+        y: Number(point.y) + movement.y,
+    }));
+    const result = [{ x: Number(from.x), y: Number(from.y) }];
+    appendOrthogonalTarget(result, translated[0]);
+    for (const point of translated.slice(1)) result.push(point);
+    appendOrthogonalTarget(result, { x: Number(to.x), y: Number(to.y) });
     return simplify(result);
 }
 

@@ -299,7 +299,8 @@ function _ruleServoOnSerial(ctx, results) {
         const boardId = key.slice(0, separator);
         const pinName = key.slice(separator + 1);
         const board = ctx.instances.find(instance => instance.id === boardId);
-        const serialPins = getComponentDef(board?.componentId)?.autoWirePins?.serial || ['0', '1'];
+        const uart = getComponentDef(board?.componentId)?.autoWirePins?.uart;
+        const serialPins = uart ? [...(uart.rx || []), ...(uart.tx || [])] : ['0', '1'];
         if (!serialPins.includes(pinName)) continue;
 
         for (const u of usages) {

@@ -3,13 +3,16 @@ import { applyTransform, normalizeDegrees } from './geometry.js';
 import { componentWorldTransform, resolveConnectionWorldPoint } from './model.js';
 import { getFootprintDefinition, projectFootprintPoint } from './footprints.js';
 
-const COMPONENT_MARGIN = 3;
+export const ROUTING_COMPONENT_MARGIN = 3;
+export const ROUTING_WIRE_SEPARATION = 1.8;
+const COMPONENT_MARGIN = ROUTING_COMPONENT_MARGIN;
 const CORRIDOR_GAP = 2.54;
-const WIRE_SEPARATION = 1.8;
+const WIRE_SEPARATION = ROUTING_WIRE_SEPARATION;
 const TURN_PENALTY = 8;
 const CROSSING_PENALTY = 12;
 const PARALLEL_LANE_PENALTY = 18;
 const PARALLEL_LENGTH_PENALTY = 0.6;
+const BUS_CORRIDOR_SWITCH_PENALTY = 48;
 const MAX_GRAPH_NODES = 2600;
 const HEADER_ALIGNMENT_TOLERANCE = 1;
 
@@ -45,9 +48,11 @@ function cleanAutomaticPoints(points) {
         for (let index = result.length - 2; index > 0; index--) {
             const before = result[index - 1], current = result[index], after = result[index + 1];
             const collinearVertical = Math.abs(before.x - current.x) < 1e-6 &&
-                Math.abs(current.x - after.x) < 1e-6;
+                Math.abs(current.x - after.x) < 1e-6 &&
+                (current.y - before.y) * (after.y - current.y) >= 0;
             const collinearHorizontal = Math.abs(before.y - current.y) < 1e-6 &&
-                Math.abs(current.y - after.y) < 1e-6;
+                Math.abs(current.y - after.y) < 1e-6 &&
+                (current.x - before.x) * (after.x - current.x) >= 0;
             if (!collinearVertical && !collinearHorizontal) continue;
             result.splice(index, 1);
             changed = true;
@@ -225,6 +230,29 @@ function wireEndpointCacheKey(wire, ref) {
     return JSON.stringify([wire.id, endpointCacheKey(ref)]);
 }
 
+function supplyBusKind(wire) {
+    const pins = [wire.from?.pinId || wire.from?.holeId, wire.to?.pinId || wire.to?.holeId]
+        .filter(Boolean).map(value => String(value).toUpperCase());
+    if (pins.some(pin => /(GND|VSS|DGND|AGND)/.test(pin))) return 'gnd';
+    if (pins.some(pin => /^(?:3V3|3\.3V)$/.test(pin))) return '3v3';
+    if (pins.some(pin => /^5V$/.test(pin))) return '5v';
+    if (pins.some(pin => /^VIN$/.test(pin))) return 'vin';
+    if (pins.some(pin => /^(?:VCC|VDD|V\+|PWR|POWER)$/.test(pin))) return 'vcc';
+    return null;
+}
+
+function supplyBusKey(project, wire) {
+    const kind = supplyBusKind(wire);
+    if (!kind) return null;
+    const controllerRef = [wire.from, wire.to].find(ref => {
+        if (ref?.type !== 'component-pin') return false;
+        const component = project.components.find(item => item.id === ref.componentId);
+        return Boolean(getComponentDef(component?.definitionId)?.autoWirePins);
+    });
+    const side = controllerRef ? pinExitDirection(project, controllerRef) : null;
+    return `${controllerRef?.componentId || 'shared'}:${kind}:${side || 'shared'}`;
+}
+
 function routingSnapshot(project) {
     const obstacles = componentRoutingObstacles(project);
     const obstacleByComponentId = new Map(obstacles.map(obstacle => [obstacle.id, obstacle]));
@@ -246,7 +274,7 @@ function routingSnapshot(project) {
             const direction = directionFor(ref);
             const groupKey = JSON.stringify([ref.componentId, direction]);
             if (!laneGroups.has(groupKey)) laneGroups.set(groupKey, []);
-            laneGroups.get(groupKey).push({ wire, ref, point: pointFor(ref), direction });
+            laneGroups.get(groupKey).push({ wire, ref, point: pointFor(ref), direction, busKey: supplyBusKey(project, wire) });
         }
     }
     for (const peers of laneGroups.values()) {
@@ -258,7 +286,12 @@ function routingSnapshot(project) {
             return alongHeader || String(a.ref.pinId).localeCompare(String(b.ref.pinId)) ||
                 String(a.wire.id).localeCompare(String(b.wire.id));
         });
-        peers.forEach((peer, index) => laneOffsets.set(wireEndpointCacheKey(peer.wire, peer.ref), index * WIRE_SEPARATION));
+        const groupOffsets = new Map();
+        for (const peer of peers) {
+            const laneKey = peer.busKey || `wire:${peer.wire.id}:${endpointCacheKey(peer.ref)}`;
+            if (!groupOffsets.has(laneKey)) groupOffsets.set(laneKey, groupOffsets.size * WIRE_SEPARATION);
+            laneOffsets.set(wireEndpointCacheKey(peer.wire, peer.ref), groupOffsets.get(laneKey));
+        }
     }
     return {
         obstacles,
@@ -272,22 +305,22 @@ function routingSnapshot(project) {
 function escapeFor(ref, point, obstacle, oppositePoint, direction, lane) {
     if (!obstacle || ref?.type !== 'component-pin') return point;
     if (direction === 'up') {
-        const base = obstacle.top - 0.01;
-        const limit = Number.isFinite(oppositePoint?.y) ? Math.min(base, oppositePoint.y) : -Infinity;
+        const base = Math.min(obstacle.top - 0.01, point.y - 0.01);
+        const limit = Number.isFinite(oppositePoint?.y) && oppositePoint.y <= base ? oppositePoint.y : -Infinity;
         return { x: point.x, y: Math.max(base - lane, limit) };
     }
     if (direction === 'down') {
-        const base = obstacle.bottom + 0.01;
-        const limit = Number.isFinite(oppositePoint?.y) ? Math.max(base, oppositePoint.y) : Infinity;
+        const base = Math.max(obstacle.bottom + 0.01, point.y + 0.01);
+        const limit = Number.isFinite(oppositePoint?.y) && oppositePoint.y >= base ? oppositePoint.y : Infinity;
         return { x: point.x, y: Math.min(base + lane, limit) };
     }
     if (direction === 'left') {
-        const base = obstacle.left - 0.01;
-        const limit = Number.isFinite(oppositePoint?.x) ? Math.min(base, oppositePoint.x) : -Infinity;
+        const base = Math.min(obstacle.left - 0.01, point.x - 0.01);
+        const limit = Number.isFinite(oppositePoint?.x) && oppositePoint.x <= base ? oppositePoint.x : -Infinity;
         return { x: Math.max(base - lane, limit), y: point.y };
     }
-    const base = obstacle.right + 0.01;
-    const limit = Number.isFinite(oppositePoint?.x) ? Math.max(base, oppositePoint.x) : Infinity;
+    const base = Math.max(obstacle.right + 0.01, point.x + 0.01);
+    const limit = Number.isFinite(oppositePoint?.x) && oppositePoint.x >= base ? oppositePoint.x : Infinity;
     return { x: Math.min(base + lane, limit), y: point.y };
 }
 
@@ -303,25 +336,58 @@ function routeContext(project, wire, snapshot = routingSnapshot(project)) {
     const from = snapshot.pointFor(wire.from), to = snapshot.pointFor(wire.to);
     if (!from || !to) return null;
     const fromDirection = snapshot.directionFor(wire.from), toDirection = snapshot.directionFor(wire.to);
+    const escape1 = escapeFor(wire.from, from, snapshot.obstacleFor(wire.from), to, fromDirection, snapshot.laneFor(wire, wire.from));
+    const escape2 = escapeFor(wire.to, to, snapshot.obstacleFor(wire.to), from, toDirection, snapshot.laneFor(wire, wire.to));
+    const busKey = supplyBusKey(project, wire);
+    const controllerIndex = [wire.from, wire.to].findIndex(ref => {
+        if (ref?.type !== 'component-pin') return false;
+        const component = project.components.find(item => item.id === ref.componentId);
+        return Boolean(getComponentDef(component?.definitionId)?.autoWirePins);
+    });
+    const controllerDirection = controllerIndex === 0 ? fromDirection : controllerIndex === 1 ? toDirection : null;
+    const controllerEscape = controllerIndex === 0 ? escape1 : controllerIndex === 1 ? escape2 : null;
+    const busLane = busKey && controllerEscape && ['up', 'down'].includes(controllerDirection)
+        ? { direction: 'h', coordinate: controllerEscape.y }
+        : busKey && controllerEscape && ['left', 'right'].includes(controllerDirection)
+            ? { direction: 'v', coordinate: controllerEscape.x }
+            : null;
     return { wire, from, to, obstacles: snapshot.obstacles, fromDirection, toDirection,
-        escape1: escapeFor(wire.from, from, snapshot.obstacleFor(wire.from), to, fromDirection, snapshot.laneFor(wire, wire.from)),
-        escape2: escapeFor(wire.to, to, snapshot.obstacleFor(wire.to), from, toDirection, snapshot.laneFor(wire, wire.to)),
-        netType: classifyWire(wire) };
+        escape1, escape2, netType: classifyWire(wire), busKey, busLane, controllerIndex };
 }
 
 function pathClear(points, obstacles) {
     return routeSegments(points).every(segment => segmentClear(segment.a, segment.b, obstacles));
 }
 
-function pathCost(points, usedSegments) {
+function pathCost(points, usedSegments, busKey = null, preferredBusLane = null) {
     let cost = Math.max(0, points.length - 2) * TURN_PENALTY;
+    const reservedBusLane = preferredBusLane || (busKey
+        ? usedSegments.find(segment => segment.busKey === busKey && segment.busLane)?.busLane
+        : null);
     for (const segment of routeSegments(points)) {
-        cost += segmentLength(segment.a, segment.b);
+        const length = segmentLength(segment.a, segment.b);
+        let reusableBusLength = 0;
+        const direction = segmentDirection(segment.a, segment.b);
+        const onReservedBusLane = reservedBusLane?.direction === direction &&
+            (direction === 'h'
+                ? Math.abs(segment.a.y - reservedBusLane.coordinate) < 1e-6
+                : direction === 'v' && Math.abs(segment.a.x - reservedBusLane.coordinate) < 1e-6);
+        if (reservedBusLane?.direction === direction && !onReservedBusLane) cost += BUS_CORRIDOR_SWITCH_PENALTY;
         for (const used of usedSegments) {
             const overlap = parallelOverlap(segment, used);
-            if (overlap > 0) cost += PARALLEL_LANE_PENALTY + overlap * PARALLEL_LENGTH_PENALTY;
+            const sharesBus = Boolean(busKey && used.busKey === busKey);
+            const usesReservedBusLane = sharesBus && used.busLane?.direction === direction &&
+                (direction === 'h'
+                    ? Math.abs(segment.a.y - used.busLane.coordinate) < 1e-6
+                    : direction === 'v' && Math.abs(segment.a.x - used.busLane.coordinate) < 1e-6);
+            if (usesReservedBusLane) reusableBusLength = length;
+            else if (sharesBus) reusableBusLength = Math.max(reusableBusLength, overlap);
+            if (overlap > 0 && !sharesBus) cost += PARALLEL_LANE_PENALTY + overlap * PARALLEL_LENGTH_PENALTY;
             if (segmentCrosses(segment, used)) cost += CROSSING_PENALTY;
         }
+        // Existing copper on the same supply domain is the preferred trunk;
+        // charge only for the new branch length added by this conductor.
+        cost += Math.max(0, length - reusableBusLength);
     }
     return cost;
 }
@@ -421,9 +487,70 @@ function reachedOppositeAxis(direction, escape, opposite) {
     return false;
 }
 
+function backtracksEndpointExit(direction, escape, current, next, endpoint) {
+    const vectors = {
+        up: { x: 0, y: -1 }, down: { x: 0, y: 1 },
+        left: { x: -1, y: 0 }, right: { x: 1, y: 0 },
+    };
+    const exit = vectors[direction];
+    if (!exit) return false;
+    if (endpoint === 'source') {
+        if (pointKey(current) !== pointKey(escape)) return false;
+        const step = { x: next.x - current.x, y: next.y - current.y };
+        return step.x * exit.x + step.y * exit.y < -1e-6;
+    }
+    if (pointKey(next) !== pointKey(escape)) return false;
+    const incoming = { x: next.x - current.x, y: next.y - current.y };
+    return incoming.x * exit.x + incoming.y * exit.y > 1e-6;
+}
+
+function pathBacktracksEndpoint(points, context) {
+    const segments = routeSegments(points);
+    const first = segments[0], last = segments.at(-1);
+    return Boolean(first && backtracksEndpointExit(context.fromDirection, context.escape1, first.a, first.b, 'source')) ||
+        Boolean(last && backtracksEndpointExit(context.toDirection, context.escape2, last.a, last.b, 'target'));
+}
+
+function endpointSafeFallbackCandidates(context) {
+    const { escape1: from, escape2: to, obstacles } = context;
+    const sourceVertical = ['up', 'down'].includes(context.fromDirection);
+    const targetVertical = ['up', 'down'].includes(context.toDirection);
+    const sourceHorizontal = ['left', 'right'].includes(context.fromDirection);
+    const targetHorizontal = ['left', 'right'].includes(context.toDirection);
+    const candidates = [];
+    const xs = new Set([
+        (from.x + to.x) / 2,
+        Math.min(from.x, to.x) - CORRIDOR_GAP,
+        Math.max(from.x, to.x) + CORRIDOR_GAP,
+    ]);
+    const ys = new Set([
+        (from.y + to.y) / 2,
+        Math.min(from.y, to.y) - CORRIDOR_GAP,
+        Math.max(from.y, to.y) + CORRIDOR_GAP,
+    ]);
+    for (const obstacle of obstacles) {
+        xs.add(obstacle.left - CORRIDOR_GAP); xs.add(obstacle.right + CORRIDOR_GAP);
+        ys.add(obstacle.top - CORRIDOR_GAP); ys.add(obstacle.bottom + CORRIDOR_GAP);
+    }
+    if (sourceVertical && targetVertical) {
+        for (const x of xs) candidates.push(cleanPoints([from, { x, y: from.y }, { x, y: to.y }, to]));
+    } else if (sourceHorizontal && targetHorizontal) {
+        for (const y of ys) candidates.push(cleanPoints([from, { x: from.x, y }, { x: to.x, y }, to]));
+    } else if (sourceVertical && targetHorizontal) {
+        candidates.push(cleanPoints([from, { x: to.x, y: from.y }, to]));
+    } else if (sourceHorizontal && targetVertical) {
+        candidates.push(cleanPoints([from, { x: from.x, y: to.y }, to]));
+    }
+    return candidates;
+}
+
 function fallbackPath(context, usedSegments) {
     const { escape1: from, escape2: to, obstacles } = context;
-    const candidates = [cleanPoints([from, { x: to.x, y: from.y }, to]), cleanPoints([from, { x: from.x, y: to.y }, to])];
+    const candidates = [
+        ...endpointSafeFallbackCandidates(context),
+        cleanPoints([from, { x: to.x, y: from.y }, to]),
+        cleanPoints([from, { x: from.x, y: to.y }, to]),
+    ];
     for (const obstacle of obstacles) {
         candidates.push(cleanPoints([from, { x: obstacle.left - CORRIDOR_GAP, y: from.y },
             { x: obstacle.left - CORRIDOR_GAP, y: to.y }, to]));
@@ -436,17 +563,18 @@ function fallbackPath(context, usedSegments) {
         const crossesTargetCap = reachedOppositeAxis(context.toDirection, to, context.from) &&
             crossesCappedExit(context.toDirection, to, segment.a, segment.b);
         return !crossesSourceCap && !crossesTargetCap;
-    });
+    }) && !pathBacktracksEndpoint(points, context);
     const capped = candidates.filter(respectsCaps);
-    const eligible = capped.length ? capped : candidates;
+    const eligible = capped.length ? capped : endpointSafeFallbackCandidates(context);
     const valid = eligible.filter(points => pathClear(points, obstacles));
-    const score = points => pathCost(points, usedSegments) + routeSegments(points)
+    const score = points => pathCost(points, usedSegments, context.busKey, context.busLane) + routeSegments(points)
         .reduce((total, segment) => total + obstacles.filter(rect => rectIntersectsSegment(rect, segment)).length * 100000, 0);
     return (valid.length ? valid : eligible).sort((a, b) => score(a) - score(b))[0];
 }
 
 function findOrthogonalPath(context, usedRoutes) {
-    const usedSegments = usedRoutes.flatMap(routeSegments);
+    const usedSegments = usedRoutes.flatMap(route => routeSegments(route.points || route)
+        .map(segment => ({ ...segment, busKey: route.busKey || null, busLane: route.busLane || null })));
     const { xs, ys } = gridValues(context, usedSegments);
     if (xs.length * ys.length > MAX_GRAPH_NODES) return fallbackPath(context, usedSegments);
     const nodes = new Map();
@@ -471,16 +599,19 @@ function findOrthogonalPath(context, usedRoutes) {
             yIndex < ys.length - 1 ? { x: current.x, y: ys[yIndex + 1] } : null,
         ].filter(Boolean);
         for (const next of neighbors) {
+            const backtracksSource = backtracksEndpointExit(context.fromDirection, start, current, next, 'source');
+            const backtracksTarget = backtracksEndpointExit(context.toDirection, end, current, next, 'target');
             const crossesSourceCap = reachedOppositeAxis(context.fromDirection, start, context.to) &&
                 crossesCappedExit(context.fromDirection, start, current, next);
             const crossesTargetCap = reachedOppositeAxis(context.toDirection, end, context.from) &&
                 crossesCappedExit(context.toDirection, end, current, next);
-            if (crossesSourceCap || crossesTargetCap) continue;
+            if (backtracksSource || backtracksTarget || crossesSourceCap || crossesTargetCap) continue;
             if (!segmentClear(current, next, context.obstacles)) continue;
             const direction = segmentDirection(current, next);
             const bend = currentDirection !== 'n' && currentDirection !== direction ? TURN_PENALTY : 0;
             const nextState = stateKey(next, direction);
-            const tentative = (gScore.get(currentState) ?? Infinity) + pathCost([current, next], usedSegments) + bend;
+            const tentative = (gScore.get(currentState) ?? Infinity) +
+                pathCost([current, next], usedSegments, context.busKey, context.busLane) + bend;
             if (tentative >= (gScore.get(nextState) ?? Infinity)) continue;
             cameFrom.set(nextState, currentState); gScore.set(nextState, tentative);
             const nextScore = tentative + segmentLength(next, end);
@@ -490,27 +621,165 @@ function findOrthogonalPath(context, usedRoutes) {
     return fallbackPath(context, usedSegments);
 }
 
+function directBusPath(context) {
+    if (!context.busLane) return null;
+    const from = context.escape1, to = context.escape2;
+    const lane = context.busLane.coordinate;
+    const points = context.busLane.direction === 'h'
+        ? cleanPoints([from, { x: from.x, y: lane }, { x: to.x, y: lane }, to])
+        : cleanPoints([from, { x: lane, y: from.y }, { x: lane, y: to.y }, to]);
+    if (pathBacktracksEndpoint(points, context) || !pathClear(points, context.obstacles)) return null;
+    return points;
+}
+
+function followsExitDirection(a, b, direction) {
+    const vector = {
+        up: { x: 0, y: -1 }, down: { x: 0, y: 1 },
+        left: { x: -1, y: 0 }, right: { x: 1, y: 0 },
+    }[direction];
+    return Boolean(vector && (b.x - a.x) * vector.x + (b.y - a.y) * vector.y > 1e-6);
+}
+
+function collapseEndpointHairpin(points, context, endpoint) {
+    const source = endpoint === 'source';
+    let ordered = source ? [...points] : [...points].reverse();
+    const direction = source ? context.fromDirection : context.toDirection;
+    const ref = source ? context.wire.from : context.wire.to;
+    const obstacles = context.obstacles.filter(obstacle => obstacle.id !== ref?.componentId);
+    while (ordered.length >= 4) {
+        const [a, b, c, d] = ordered;
+        const firstAxis = segmentDirection(a, b), returnAxis = segmentDirection(c, d);
+        if (firstAxis !== returnAxis || !['h', 'v'].includes(firstAxis)) break;
+        const firstDelta = firstAxis === 'v' ? b.y - a.y : b.x - a.x;
+        const returnDelta = firstAxis === 'v' ? d.y - c.y : d.x - c.x;
+        if (firstDelta * returnDelta >= -1e-6) break;
+        const corner = firstAxis === 'v' ? { x: a.x, y: d.y } : { x: d.x, y: a.y };
+        const replacement = cleanPoints([a, corner, d]);
+        const oldLength = routeLength([a, b, c, d]);
+        if (replacement.length < 2 || !followsExitDirection(replacement[0], replacement[1], direction) ||
+            routeLength(replacement) >= oldLength - 1e-6 || !pathClear(replacement, obstacles)) break;
+        ordered = cleanAutomaticPoints([replacement[0], ...replacement.slice(1, -1), ...ordered.slice(3)]);
+    }
+    return source ? ordered : ordered.reverse();
+}
+
+function routeFollowsEndpointDirections(points, context) {
+    if (points.length < 2) return true;
+    const sourceOkay = !context.fromDirection || followsExitDirection(points[0], points[1], context.fromDirection);
+    const targetOkay = !context.toDirection || followsExitDirection(points.at(-1), points.at(-2), context.toDirection);
+    return sourceOkay && targetOkay;
+}
+
+function collapseCollinearBacktracks(points, context) {
+    let result = [...points], changed = true;
+    while (changed) {
+        changed = false;
+        for (let index = 0; index <= result.length - 3; index++) {
+            const [a, b, c] = result.slice(index, index + 3);
+            const firstAxis = segmentDirection(a, b), returnAxis = segmentDirection(b, c);
+            if (firstAxis !== returnAxis || !['h', 'v'].includes(firstAxis)) continue;
+            const firstDelta = firstAxis === 'v' ? b.y - a.y : b.x - a.x;
+            const returnDelta = firstAxis === 'v' ? c.y - b.y : c.x - b.x;
+            if (firstDelta * returnDelta >= -1e-6) continue;
+            const excludedIds = new Set();
+            // Endpoint fan-out can contain two preliminary segments before the
+            // redundant reversal. Its own component clearance box must not veto
+            // a shortcut that remains inside that endpoint's legal exit corridor.
+            if (index <= 2 && context.wire.from?.componentId) excludedIds.add(context.wire.from.componentId);
+            if (index + 2 >= result.length - 3 && context.wire.to?.componentId) excludedIds.add(context.wire.to.componentId);
+            const obstacles = context.obstacles.filter(obstacle => !excludedIds.has(obstacle.id));
+            if (!pathClear(cleanPoints([a, c]), obstacles)) continue;
+            const candidate = cleanAutomaticPoints([...result.slice(0, index + 1), ...result.slice(index + 2)]);
+            if (!routeFollowsEndpointDirections(candidate, context) ||
+                routeLength(candidate) >= routeLength(result) - 1e-6) continue;
+            result = candidate;
+            changed = true;
+            break;
+        }
+    }
+    return result;
+}
+
+function collapseClearHairpins(points, context) {
+    let result = [...points], changed = true;
+    while (changed) {
+        changed = false;
+        for (let index = 0; index <= result.length - 4; index++) {
+            const [a, b, c, d] = result.slice(index, index + 4);
+            const firstAxis = segmentDirection(a, b), returnAxis = segmentDirection(c, d);
+            if (firstAxis !== returnAxis || !['h', 'v'].includes(firstAxis)) continue;
+            const firstDelta = firstAxis === 'v' ? b.y - a.y : b.x - a.x;
+            const returnDelta = firstAxis === 'v' ? d.y - c.y : d.x - c.x;
+            if (firstDelta * returnDelta >= -1e-6) continue;
+            const corners = firstAxis === 'v'
+                ? [{ x: a.x, y: d.y }, { x: d.x, y: a.y }]
+                : [{ x: d.x, y: a.y }, { x: a.x, y: d.y }];
+            const excludedIds = new Set();
+            if (index <= 2 && context.wire.from?.componentId) excludedIds.add(context.wire.from.componentId);
+            if (index + 3 >= result.length - 3 && context.wire.to?.componentId) excludedIds.add(context.wire.to.componentId);
+            const obstacles = context.obstacles.filter(obstacle => !excludedIds.has(obstacle.id));
+            const candidates = corners.map(corner => cleanPoints([a, corner, d]))
+                .filter(replacement => replacement.length >= 2 && pathClear(replacement, obstacles))
+                .map(replacement => cleanAutomaticPoints([
+                    ...result.slice(0, index + 1), ...replacement.slice(1, -1), ...result.slice(index + 3),
+                ]))
+                .filter(candidate => routeFollowsEndpointDirections(candidate, context) &&
+                    routeLength(candidate) < routeLength(result) - 1e-6)
+                .sort((left, right) => routeLength(left) - routeLength(right) || left.length - right.length);
+            if (!candidates.length) continue;
+            result = candidates[0];
+            changed = true;
+            break;
+        }
+    }
+    return result;
+}
+
+function finalizeAutomaticRoute(points, context) {
+    const clean = cleanAutomaticPoints(points);
+    const endpoints = collapseEndpointHairpin(collapseEndpointHairpin(clean, context, 'source'), context, 'target');
+    const withoutSpikes = collapseCollinearBacktracks(endpoints, context);
+    const withoutHairpins = collapseClearHairpins(withoutSpikes, context);
+    return cleanAutomaticPoints(collapseCollinearBacktracks(withoutHairpins, context));
+}
+
 function routedContext(context, usedRoutes) {
     if (context.wire.route?.mode === 'manual') return cleanPoints([context.from, ...(context.wire.route.waypoints || []), context.to]);
+    const busPath = directBusPath(context);
+    if (busPath) {
+        return finalizeAutomaticRoute([context.from, context.escape1, ...busPath.slice(1, -1), context.escape2, context.to], context);
+    }
     if (!usedRoutes.length) {
         const shortest = findOrthogonalPath(context, []);
-        return cleanAutomaticPoints([context.from, context.escape1, ...shortest.slice(1, -1), context.escape2, context.to]);
+        return finalizeAutomaticRoute([context.from, context.escape1, ...shortest.slice(1, -1), context.escape2, context.to], context);
     }
     const spaced = findOrthogonalPath(context, usedRoutes);
+    if (context.busKey && usedRoutes.some(route => route.busKey === context.busKey)) {
+        return finalizeAutomaticRoute([context.from, context.escape1, ...spaced.slice(1, -1), context.escape2, context.to], context);
+    }
     const directLength = segmentLength(context.escape1, context.escape2);
     const lowerBoundDetour = Math.max(WIRE_SEPARATION * 4 + TURN_PENALTY, directLength * 0.18);
     if (routeLength(spaced) <= directLength + lowerBoundDetour) {
-        return cleanAutomaticPoints([context.from, context.escape1, ...spaced.slice(1, -1), context.escape2, context.to]);
+        return finalizeAutomaticRoute([context.from, context.escape1, ...spaced.slice(1, -1), context.escape2, context.to], context);
     }
     const shortest = findOrthogonalPath(context, []);
     const allowedSeparationDetour = Math.max(WIRE_SEPARATION * 4 + TURN_PENALTY, routeLength(shortest) * 0.18);
     const middle = routeLength(spaced) <= routeLength(shortest) + allowedSeparationDetour ? spaced : shortest;
-    return cleanAutomaticPoints([context.from, context.escape1, ...middle.slice(1, -1), context.escape2, context.to]);
+    return finalizeAutomaticRoute([context.from, context.escape1, ...middle.slice(1, -1), context.escape2, context.to], context);
 }
 
 export function routeWire(project, wire, { existingRoutes = [] } = {}) {
-    const context = routeContext(project, wire, routingSnapshot(project));
-    return context ? routedContext(context, existingRoutes) : null;
+    const snapshot = routingSnapshot(project);
+    const context = routeContext(project, wire, snapshot);
+    const routed = existingRoutes.map(route => Array.isArray(route)
+        ? { points: route, busKey: null }
+        : (() => {
+            const existingContext = route.wire ? routeContext(project, route.wire, snapshot) : null;
+            return { ...route,
+                busKey: route.busKey ?? existingContext?.busKey ?? null,
+                busLane: route.busLane ?? existingContext?.busLane ?? null };
+        })());
+    return context ? routedContext(context, routed) : null;
 }
 
 export function routeAllWires(project) {
@@ -523,7 +792,8 @@ export function routeAllWires(project) {
             Math.min(a.context.from.y, a.context.to.y) - Math.min(b.context.from.y, b.context.to.y) || a.index - b.index);
     for (const { context } of contexts) {
         const points = routedContext(context, usedRoutes);
-        routes.set(context.wire.id, points); usedRoutes.push(points);
+        routes.set(context.wire.id, points);
+        usedRoutes.push({ points, busKey: context.busKey, busLane: context.busLane });
     }
     return routes;
 }

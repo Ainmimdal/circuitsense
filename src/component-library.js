@@ -46,7 +46,11 @@ export const ARDUINO_PINS = {
     i2c: { sda: 'A4', scl: 'A5' },
     power: ['5V', '3.3V'],
     ground: ['GND.1', 'GND.2', 'GND.3'],
-    serial: ['0', '1'],
+    uart: { rx: ['0'], tx: ['1'] },
+    constraints: {
+        '0': [{ type: 'serial_reserved', severity: 'warning' }],
+        '1': [{ type: 'serial_reserved', severity: 'warning' }],
+    },
     maxCurrent_mA: 500,
     pinMaxCurrent_mA: 40,
 };
@@ -64,7 +68,8 @@ export const ARDUINO_MEGA_PINS = {
     i2c: { sda: 'SDA', scl: 'SCL' },
     power: ['5V', '3.3V'],
     ground: ['GND.1', 'GND.2', 'GND.3', 'GND.4', 'GND.5'],
-    serial: ['0', '1', '14', '15', '16', '17', '18', '19'],
+    uart: { rx: ['0', '15', '17', '19'], tx: ['1', '14', '16', '18'] },
+    constraints: Object.fromEntries(['0', '1'].map(pin => [pin, [{ type: 'serial_reserved', severity: 'warning' }]])),
     maxCurrent_mA: 500,
     pinMaxCurrent_mA: 40,
 };
@@ -76,7 +81,11 @@ export const NANO_RP2040_PINS = {
     i2c: { sda: 'A4', scl: 'A5' },
     power: ['3.3V', '5V'],
     ground: ['GND.1', 'GND.2'],
-    serial: ['RX', 'TX'],
+    uart: { rx: ['RX'], tx: ['TX'] },
+    constraints: {
+        RX: [{ type: 'serial_reserved', severity: 'warning' }],
+        TX: [{ type: 'serial_reserved', severity: 'warning' }],
+    },
     maxCurrent_mA: 500,
     pinMaxCurrent_mA: 12,
 };
@@ -88,7 +97,16 @@ export const ESP32_DEVKIT_PINS = {
     i2c: { sda: 'D21', scl: 'D22' },
     power: ['3V3'],
     ground: ['GND.1', 'GND.2'],
-    serial: ['RX0', 'TX0', 'RX2', 'TX2'],
+    uart: { rx: ['RX0', 'RX2'], tx: ['TX0', 'TX2'] },
+    constraints: {
+        VP: [{ type: 'input_only', severity: 'error' }],
+        VN: [{ type: 'input_only', severity: 'error' }],
+        D34: [{ type: 'input_only', severity: 'error' }],
+        D35: [{ type: 'input_only', severity: 'error' }],
+        D4: [{ type: 'boot_strap', severity: 'warning' }],
+        RX0: [{ type: 'serial_reserved', severity: 'warning' }],
+        TX0: [{ type: 'serial_reserved', severity: 'warning' }],
+    },
     maxCurrent_mA: 500,
     pinMaxCurrent_mA: 20,
 };
@@ -100,7 +118,7 @@ export const FRANZININHO_PINS = {
     i2c: { sda: 'PB0', scl: 'PB2' },
     power: ['VCC.1', 'VCC.2'],
     ground: ['GND.1', 'GND.2'],
-    serial: [],
+    uart: { rx: [], tx: [] },
     maxCurrent_mA: 500,
     pinMaxCurrent_mA: 20,
 };

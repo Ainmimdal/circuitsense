@@ -56,7 +56,7 @@ class PlacedComponent extends LitElement {
     }
 
     :host(.selected) .rotatable-group {
-      outline-color: #4FC3F7;
+      outline-color: var(--primary-hover);
     }
 
     .wokwi-container {
@@ -108,7 +108,7 @@ class PlacedComponent extends LitElement {
 
     /* Active pin during wiring — always visible */
     .pin-dot.active {
-      background: #FF9800 !important;
+      background: var(--primary-hover) !important;
       transform: translate(-50%, -50%) scale(1.5);
       opacity: 1;
       pointer-events: all;
@@ -145,10 +145,10 @@ class PlacedComponent extends LitElement {
       position: absolute;
       transform: translate(-50%, -100%);
       margin-top: -10px;
-      background: rgba(39, 39, 42, 0.95); /* Zinc 800 */
-      color: #fafafa;
+      background: var(--panel);
+      color: var(--text);
       padding: 3px 10px;
-      border-radius: 6px;
+      border-radius: 4px;
       font-size: 10px;
       font-weight: 500;
       white-space: nowrap;
@@ -156,7 +156,7 @@ class PlacedComponent extends LitElement {
       z-index: 30;
       opacity: 0;
       transition: opacity 0.12s;
-      border: 1px solid rgba(255,255,255,0.1);
+      border: 1px solid var(--panel-border);
       -webkit-font-smoothing: antialiased;
     }
 
@@ -175,7 +175,8 @@ class PlacedComponent extends LitElement {
       pointer-events: all;
       padding: 2px;
       border-radius: 4px;
-      background: rgba(24, 24, 27, 0.85); /* Zinc 900 */
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
     }
 
     :host(:hover) .action-bar,
@@ -184,10 +185,10 @@ class PlacedComponent extends LitElement {
     }
 
     .action-btn {
-      width: 20px;
-      height: 20px;
+      width: 34px;
+      height: 34px;
       border-radius: 4px;
-      border: 1px solid rgba(255,255,255,0.15);
+      border: 1px solid var(--panel-border);
       font-size: 10px;
       cursor: pointer;
       display: flex;
@@ -219,13 +220,13 @@ class PlacedComponent extends LitElement {
     }
 
     .autowire-btn {
-      background: rgba(30, 136, 229, 0.75);
-      color: white;
-      border-color: rgba(21, 101, 192, 0.5);
+      background: var(--primary);
+      color: var(--text);
+      border-color: var(--panel-border);
     }
 
     .autowire-btn:hover {
-      background: #42A5F5;
+      background: var(--primary-hover);
     }
 
     .rotate-btn {
@@ -244,10 +245,10 @@ class PlacedComponent extends LitElement {
       top: -28px;
       left: 50%;
       transform: translateX(-50%);
-      background: rgba(30, 136, 229, 0.95);
-      color: white;
+      background: var(--primary);
+      color: var(--text);
       padding: 5px 14px;
-      border-radius: 8px;
+      border-radius: 4px;
       font-size: 10px;
       white-space: nowrap;
       pointer-events: none;

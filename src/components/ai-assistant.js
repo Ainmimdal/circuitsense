@@ -1,109 +1,20 @@
-/**
- * AI Assistant Side Panel — VS Code Copilot-style interface.
- * Demonstrates AI-assisted circuit generation with fake model responses
- * and real tool calls that place components and wire them.
- */
+/** Provider-neutral Elera circuit agent panel. */
 import { LitElement, html, css } from 'lit';
-import { store } from '../store.js';
-import { autoWire } from '../services/auto-wire-engine.js';
+import { EleraAiAgent } from '../ai/agent.js';
+import { loadAiSettings, providerDefinition } from '../ai/config.js';
+import { physicalCircuitStore } from '../physical/circuit-store.js';
 import { faIcon } from '../utils/fa-icons.js';
 
-// ── Hardcoded demo scenario ──────────────────────────────
 const DEMO_PROMPT = 'Build me an LED blink circuit with a push button to toggle it on and off';
-
-const DEMO_STEPS = [
-    {
-        type: 'thinking',
-        text: 'Analyzing request...',
-        delay: 600,
-    },
-    {
-        type: 'response',
-        text: `I'll build a circuit with an Arduino Uno, an LED with a 220Ω current-limiting resistor, and a push button for toggling.
-
-Here's my plan:`,
-        delay: 400,
-    },
-    {
-        type: 'plan',
-        items: [
-            '1 × Arduino Uno (main board)',
-            '1 × LED (red, output indicator)',
-            '1 × Resistor 220Ω (current limiter for LED)',
-            '1 × Push Button (toggle input)',
-        ],
-        delay: 300,
-    },
-    {
-        type: 'toolcall',
-        label: 'elera.placeComponents',
-        args: {
-            components: [
-                { id: 'arduino-uno', x: 100, y: 100 },
-                { id: 'led', x: 520, y: 60 },
-                { id: 'resistor', x: 520, y: 180 },
-                { id: 'pushbutton', x: 520, y: 320 },
-            ],
-        },
-        delay: 800,
-    },
-    {
-        type: 'toolcall',
-        label: 'elera.autoWire',
-        args: { targets: ['led', 'resistor', 'pushbutton'] },
-        delay: 600,
-    },
-    {
-        type: 'toolcall',
-        label: 'elera.connectSeries',
-        args: {
-            description: 'Wire resistor in series with LED (pin 7 → R1 → LED → GND)',
-            wires: [
-                { from: 'arduino:7', to: 'resistor:1' },
-                { from: 'resistor:2', to: 'led:A' },
-                { from: 'led:C', to: 'arduino:GND.1' },
-            ],
-        },
-        delay: 500,
-    },
-    {
-        type: 'response',
-        text: `Circuit is ready. The LED is wired through the 220Ω resistor to digital pin 7, and the push button is on pin 2. Check the validation bar for any remaining issues.`,
-        delay: 300,
-    },
-    {
-        type: 'code',
-        language: 'arduino',
-        content: `// LED Toggle with Push Button
-const int LED_PIN = 7;
-const int BTN_PIN = 2;
-bool ledState = false;
-bool lastBtn = HIGH;
-
-void setup() {
-  pinMode(LED_PIN, OUTPUT);
-  pinMode(BTN_PIN, INPUT_PULLUP);
-}
-
-void loop() {
-  bool btn = digitalRead(BTN_PIN);
-  if (btn == LOW && lastBtn == HIGH) {
-    ledState = !ledState;
-    digitalWrite(LED_PIN, ledState ? HIGH : LOW);
-    delay(50); // debounce
-  }
-  lastBtn = btn;
-}`,
-        delay: 200,
-    },
-];
 
 class AiAssistant extends LitElement {
     static properties = {
         _open: { state: true },
         _messages: { state: true },
         _running: { state: true },
-        _currentStep: { state: true },
+        _draft: { state: true },
+        _settings: { state: true },
+        _usage: { state: true },
     };
 
     static styles = css`
@@ -122,6 +33,8 @@ class AiAssistant extends LitElement {
       border-left: 1px solid #27272a;
       display: flex;
       flex-direction: column;
+      min-height: 0;
+      box-sizing: border-box;
       z-index: 100;
       animation: slideIn 0.2s ease;
     }
@@ -156,7 +69,7 @@ class AiAssistant extends LitElement {
 
     .panel-header .badge {
       font-size: 10px;
-      background: #6366f1;
+      background: var(--primary);
       padding: 2px 8px;
       border-radius: 10px;
       color: white;
@@ -190,7 +103,10 @@ class AiAssistant extends LitElement {
     /* Messages */
     .messages {
       flex: 1;
+      min-height: 0;
       overflow-y: auto;
+      overscroll-behavior: contain;
+      scrollbar-gutter: stable;
       padding: 16px;
       display: flex;
       flex-direction: column;
@@ -251,6 +167,19 @@ class AiAssistant extends LitElement {
       font-size: 13px;
       line-height: 1.6;
       padding: 2px 0;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    .msg-error {
+      padding: 10px 12px;
+      border: 1px solid #7f1d1d;
+      border-radius: 4px;
+      color: #fecaca;
+      background: rgba(127, 29, 29, .18);
+      font-size: 12px;
+      line-height: 1.5;
+      white-space: pre-wrap;
     }
 
     /* Plan list */
@@ -282,7 +211,7 @@ class AiAssistant extends LitElement {
       width: 5px;
       height: 5px;
       border-radius: 50%;
-      background: #6366f1;
+      background: var(--primary);
       flex-shrink: 0;
     }
 
@@ -292,7 +221,7 @@ class AiAssistant extends LitElement {
       border: 1px solid #27272a;
       border-radius: 8px;
       overflow: hidden;
-      font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+      font-family: var(--font-tech, '0xProto', monospace);
     }
 
     .toolcall-header {
@@ -302,11 +231,34 @@ class AiAssistant extends LitElement {
       padding: 8px 12px;
       background: #18181b;
       border-bottom: 1px solid #27272a;
+      cursor: pointer;
+      list-style: none;
+      user-select: none;
+    }
+
+    .toolcall-header::-webkit-details-marker { display: none; }
+    .toolcall-header::before {
+      content: '';
+      width: 0;
+      height: 0;
+      border-top: 4px solid transparent;
+      border-bottom: 4px solid transparent;
+      border-left: 5px solid currentColor;
+      color: #71717a;
+      transform-origin: 2px 4px;
+      transition: transform 0.15s ease;
+      flex-shrink: 0;
+    }
+    .toolcall[open] > .toolcall-header::before { transform: rotate(90deg); }
+    .toolcall:not([open]) > .toolcall-header { border-bottom: 0; }
+    .toolcall-header:focus-visible {
+      outline: 2px solid var(--primary-hover);
+      outline-offset: -2px;
     }
 
     .toolcall-header .fn-icon {
       font-size: 11px;
-      color: #6366f1;
+      color: var(--text);
       display: inline-flex;
     }
 
@@ -320,7 +272,7 @@ class AiAssistant extends LitElement {
 
     .toolcall-header .fn-name {
       font-size: 11px;
-      color: #a78bfa;
+      color: var(--text);
       font-weight: 600;
     }
 
@@ -342,6 +294,11 @@ class AiAssistant extends LitElement {
       color: #22c55e;
     }
 
+    .toolcall-header .status.pending { background: rgba(234, 179, 8, .15); color: #facc15; }
+    .toolcall-header .status.error,
+    .toolcall-header .status.rejected { background: rgba(239, 68, 68, .15); color: #f87171; }
+    .toolcall-header .status.skipped { background: rgba(113, 113, 122, .2); color: #a1a1aa; }
+
     .toolcall-body {
       padding: 10px 12px;
       font-size: 11px;
@@ -351,12 +308,37 @@ class AiAssistant extends LitElement {
     }
 
     .toolcall-body .key {
-      color: #6366f1;
+      color: var(--text);
     }
 
     .toolcall-body .val {
       color: #a1a1aa;
     }
+
+    .tool-result {
+      padding: 8px 12px;
+      border-top: 1px solid #27272a;
+      color: #a1a1aa;
+      font-size: 10px;
+      line-height: 1.45;
+      white-space: pre-wrap;
+      max-height: 110px;
+      overflow: auto;
+    }
+
+    .approval-actions { display: flex; gap: 7px; padding: 0 12px 10px; }
+    .approval-actions button {
+      height: 30px;
+      padding: 0 10px;
+      border: 1px solid var(--panel-border);
+      border-radius: 4px;
+      color: var(--text);
+      background: var(--panel);
+      font: 600 10px var(--font-ui, 'Public Sans', sans-serif);
+      cursor: pointer;
+    }
+    .approval-actions .approve { background: var(--primary); border-color: var(--primary); }
+    .approval-actions button:hover { background: var(--primary-hover); }
 
     /* Code block */
     .code-block {
@@ -379,7 +361,7 @@ class AiAssistant extends LitElement {
 
     .code-content {
       padding: 12px;
-      font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+      font-family: var(--font-tech, '0xProto', monospace);
       font-size: 11px;
       line-height: 1.6;
       color: #a1a1aa;
@@ -403,7 +385,7 @@ class AiAssistant extends LitElement {
     .thinking .dots span {
       width: 6px;
       height: 6px;
-      background: #6366f1;
+      background: var(--primary);
       border-radius: 50%;
       animation: pulse 1.2s infinite;
     }
@@ -446,7 +428,7 @@ class AiAssistant extends LitElement {
     }
 
     .premade-prompt:hover {
-      border-color: #6366f1;
+      border-color: var(--primary-hover);
       background: #1e1e24;
     }
 
@@ -481,7 +463,7 @@ class AiAssistant extends LitElement {
     }
 
     .input-row input:focus {
-      border-color: #6366f1;
+      border-color: var(--primary-hover);
     }
 
     .input-row input::placeholder {
@@ -492,7 +474,7 @@ class AiAssistant extends LitElement {
       padding: 9px 14px;
       border-radius: 8px;
       border: none;
-      background: #6366f1;
+      background: var(--primary);
       color: white;
       font-size: 12px;
       cursor: pointer;
@@ -501,8 +483,9 @@ class AiAssistant extends LitElement {
       transition: background 0.15s;
     }
 
-    .send-btn:hover { background: #4f46e5; }
+    .send-btn:hover { background: var(--primary-hover); }
     .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .send-btn.stop { background: #7f1d1d; border-color: #991b1b; }
 
     /* Powered by */
     .powered-by {
@@ -512,6 +495,73 @@ class AiAssistant extends LitElement {
       color: #3f3f46;
       border-top: 1px solid #1e1e22;
     }
+
+    /* Shared editor design system. */
+    .panel {
+      top: 56px;
+      background: var(--panel);
+      border-left-color: var(--panel-border);
+      color: var(--text);
+      font-family: var(--font-ui, 'Public Sans', sans-serif);
+      box-shadow: -14px 0 30px color-mix(in srgb, var(--ink) 72%, transparent);
+    }
+    .panel-header, .prompt-area { background: var(--panel); border-color: var(--panel-border); }
+    .panel-header .title { color: var(--text); }
+    .panel-header .badge {
+      border: 1px solid var(--panel-border);
+      border-radius: 4px;
+      color: var(--text-muted);
+      background: var(--primary);
+      font: 9px/1.4 var(--font-ui, 'Public Sans', sans-serif);
+    }
+    .close-btn { width: 34px; height: 34px; padding: 0; border: 1px solid var(--panel-border); border-radius: 4px; color: var(--text-muted); }
+    .close-btn:hover { background: var(--primary-hover); color: var(--text); }
+    .messages::-webkit-scrollbar-thumb { background: var(--panel-border); border-radius: 1px; }
+    .empty-state p, .thinking .label { color: var(--text-muted); }
+    .empty-state .hint { color: var(--text-muted); }
+    .empty-state .sparkle { color: var(--text-muted); }
+    .msg-user, .plan-block, .toolcall, .code-block, .premade-prompt, .input-row input {
+      border-color: var(--panel-border);
+      border-radius: 4px;
+      background: var(--panel);
+    }
+    .msg-bot, .msg-user { color: var(--text); }
+    .plan-block .plan-title { color: var(--text-muted); text-transform: none; letter-spacing: 0; font-weight: 600; }
+    .plan-block .plan-item { color: var(--text); }
+    .plan-block .plan-item .dot, .thinking .dots span { border-radius: 50%; background: var(--primary-hover); }
+    .toolcall { font-family: var(--font-ui, 'Public Sans', sans-serif); }
+    .toolcall-header, .code-header { background: var(--panel); border-color: var(--panel-border); }
+    .toolcall-header .fn-icon, .toolcall-header .fn-name, .toolcall-body .key { color: var(--text); }
+    .toolcall-body, .toolcall-body .val, .code-header { color: var(--text-muted); }
+    .toolcall-header .status.running, .toolcall-header .status.done { background: var(--primary); color: var(--text); }
+    .toolcall-header .status { border-radius: 4px; }
+    .premade-prompt:hover, .input-row input:focus { border-color: var(--primary-hover); background: var(--panel); }
+    .input-row input { color: var(--text); }
+    .input-row input::placeholder { color: var(--text-muted); }
+    .send-btn { height: 34px; padding: 0 14px; border: 1px solid var(--primary); border-radius: 4px; background: var(--primary); color: var(--text); }
+    .send-btn:hover { background: var(--primary-hover); }
+    .powered-by { border-color: var(--panel-border); color: var(--text-muted); font-family: var(--font-ui, 'Public Sans', sans-serif); }
+
+    @media (max-width: 900px) {
+      .panel {
+        top: auto;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        width: auto;
+        height: min(70vh, 620px);
+        border-left: 0;
+        border-top: 1px solid var(--panel-border);
+        box-shadow: 0 -18px 38px color-mix(in srgb, var(--ink) 76%, transparent);
+        animation-name: slideUp;
+      }
+      @keyframes slideUp {
+        from { transform: translateY(100%); }
+        to { transform: translateY(0); }
+      }
+      .close-btn, .send-btn { min-width: 34px; min-height: 34px; }
+      .input-row input { min-height: 34px; box-sizing: border-box; }
+    }
   `;
 
     constructor() {
@@ -519,9 +569,37 @@ class AiAssistant extends LitElement {
         this._open = false;
         this._messages = [];
         this._running = false;
-        this._currentStep = -1;
-        // Track placed instance IDs for wiring
-        this._placedInstances = {};
+        this._draft = '';
+        this._settings = loadAiSettings();
+        this._usage = {
+            requests: 0, inputTokens: 0, cachedInputTokens: 0,
+            cacheWriteTokens: 0, outputTokens: 0, reasoningTokens: 0, totalTokens: 0, cost: null,
+        };
+        this._abortController = null;
+        this._approvalResolvers = new Map();
+        this._settingsUpdatedHandler = () => {
+            this._settings = loadAiSettings();
+            this._agent.updateSettings(this._settings);
+        };
+        this._agent = new EleraAiAgent({
+            store: physicalCircuitStore,
+            settings: this._settings,
+            onEvent: event => this._handleAgentEvent(event),
+            approve: request => this._requestApproval(request),
+        });
+    }
+
+    connectedCallback() {
+        super.connectedCallback();
+        window.addEventListener('elera-ai-settings-updated', this._settingsUpdatedHandler);
+    }
+
+    disconnectedCallback() {
+        this._abortController?.abort();
+        for (const resolve of this._approvalResolvers.values()) resolve(false);
+        this._approvalResolvers.clear();
+        window.removeEventListener('elera-ai-settings-updated', this._settingsUpdatedHandler);
+        super.disconnectedCallback();
     }
 
     toggle() {
@@ -533,110 +611,8 @@ class AiAssistant extends LitElement {
         }));
     }
 
-    async _runDemo() {
-        if (this._running) return;
-        this._running = true;
-
-        // Add user message
-        this._messages = [...this._messages, { type: 'user', text: DEMO_PROMPT }];
-        this.requestUpdate();
-        await this.updateComplete;
-        this._scrollBottom();
-
-        // Process each step
-        for (let i = 0; i < DEMO_STEPS.length; i++) {
-            this._currentStep = i;
-            const step = DEMO_STEPS[i];
-
-            // Show thinking for a beat
-            this._messages = [...this._messages, { type: 'thinking', text: step.type === 'thinking' ? step.text : '' }];
-            this.requestUpdate();
-            await this.updateComplete;
-            this._scrollBottom();
-
-            await this._delay(step.delay);
-
-            // Remove thinking indicator
-            this._messages = this._messages.filter(m => m.type !== 'thinking');
-
-            if (step.type === 'thinking') {
-                // Already handled, skip
-            } else if (step.type === 'response') {
-                this._messages = [...this._messages, { type: 'bot', text: step.text }];
-            } else if (step.type === 'plan') {
-                this._messages = [...this._messages, { type: 'plan', items: step.items }];
-            } else if (step.type === 'toolcall') {
-                // Show tool call as "running"
-                const tcMsg = { type: 'toolcall', label: step.label, args: step.args, status: 'running' };
-                this._messages = [...this._messages, tcMsg];
-                this.requestUpdate();
-                await this.updateComplete;
-                this._scrollBottom();
-
-                // Execute the actual tool call
-                await this._executeToolCall(step);
-                await this._delay(400);
-
-                // Mark as done
-                tcMsg.status = 'done';
-                this._messages = [...this._messages];
-            } else if (step.type === 'code') {
-                this._messages = [...this._messages, { type: 'code', language: step.language, content: step.content }];
-            }
-
-            this.requestUpdate();
-            await this.updateComplete;
-            this._scrollBottom();
-        }
-
-        this._running = false;
-        this._currentStep = -1;
-        this.requestUpdate();
-    }
-
-    async _executeToolCall(step) {
-        if (step.label === 'elera.placeComponents') {
-            // Clear canvas first
-            store.clearProject();
-            await this._delay(100);
-
-            for (const comp of step.args.components) {
-                const inst = store.addInstance(comp.id, comp.x, comp.y);
-                this._placedInstances[comp.id] = inst.id;
-            }
-        } else if (step.label === 'elera.autoWire') {
-            // Auto-wire the push button (it works standalone)
-            await this._delay(200);
-            for (const target of step.args.targets) {
-                const instId = this._placedInstances[target];
-                if (instId && target === 'pushbutton') {
-                    autoWire(instId);
-                }
-            }
-            store.commitAutoWire();
-        } else if (step.label === 'elera.connectSeries') {
-            // Manual series wiring for LED + resistor
-            await this._delay(200);
-            const arduinoId = this._placedInstances['arduino-uno'];
-            const resistorId = this._placedInstances['resistor'];
-            const ledId = this._placedInstances['led'];
-
-            if (arduinoId && resistorId && ledId) {
-                // Arduino pin 7 → Resistor pin 1
-                store.completeWiringDirect(arduinoId, '7', resistorId, '1');
-                await this._delay(150);
-                // Resistor pin 2 → LED Anode
-                store.completeWiringDirect(resistorId, '2', ledId, 'A');
-                await this._delay(150);
-                // LED Cathode → Arduino GND
-                store.completeWiringDirect(ledId, 'C', arduinoId, 'GND.1');
-                store.commitAutoWire();
-            }
-        }
-    }
-
-    _delay(ms) {
-        return new Promise(r => setTimeout(r, ms));
+    _withoutThinking() {
+        return this._messages.filter(message => message.type !== 'thinking');
     }
 
     _scrollBottom() {
@@ -645,28 +621,126 @@ class AiAssistant extends LitElement {
     }
 
     _openSettings() {
-        this.dispatchEvent(new CustomEvent('open-ai-settings', {
-            detail: { tab: 'keys' },
-            bubbles: true,
-            composed: true,
-        }));
+        window.dispatchEvent(new CustomEvent('elera-open-ai-settings'));
+    }
+
+    async _handleAgentEvent(event) {
+        if (event.type === 'thinking') {
+            this._messages = [...this._withoutThinking(), { type: 'thinking', text: 'Analyzing the circuit and available tools...' }];
+        } else if (event.type === 'assistant-text') {
+            this._messages = [...this._withoutThinking(), { type: 'bot', text: event.text }];
+        } else if (event.type === 'usage') {
+            this._usage = {
+                requests: this._usage.requests + 1,
+                inputTokens: this._usage.inputTokens + (event.usage.inputTokens || 0),
+                cachedInputTokens: this._usage.cachedInputTokens + (event.usage.cachedInputTokens || 0),
+                cacheWriteTokens: this._usage.cacheWriteTokens + (event.usage.cacheWriteTokens || 0),
+                outputTokens: this._usage.outputTokens + (event.usage.outputTokens || 0),
+                reasoningTokens: this._usage.reasoningTokens + (event.usage.reasoningTokens || 0),
+                totalTokens: this._usage.totalTokens + (event.usage.totalTokens || 0),
+                cost: event.usage.cost == null
+                    ? this._usage.cost
+                    : (this._usage.cost || 0) + event.usage.cost,
+            };
+        } else if (event.type === 'tool-call') {
+            const messages = this._withoutThinking();
+            const index = messages.findIndex(message => message.type === 'toolcall' && message.callId === event.callId);
+            const next = {
+                type: 'toolcall', callId: event.callId, label: event.name,
+                args: event.args || {}, status: event.status, mutating: event.mutating,
+            };
+            if (index >= 0) messages[index] = { ...messages[index], ...next };
+            else messages.push(next);
+            this._messages = [...messages];
+        } else if (event.type === 'tool-result') {
+            const messages = this._withoutThinking();
+            const index = messages.findIndex(message => message.type === 'toolcall' && message.callId === event.callId);
+            if (index >= 0) messages[index] = { ...messages[index], status: event.status, result: event.result };
+            else messages.push({ type: 'toolcall', callId: event.callId, label: event.name, args: event.args || {}, status: event.status, result: event.result });
+            this._messages = [...messages];
+        } else if (event.type === 'idle') {
+            this._messages = this._withoutThinking();
+        }
+        await this.updateComplete;
+        this._scrollBottom();
+    }
+
+    _requestApproval(request) {
+        return new Promise(resolve => {
+            this._approvalResolvers.set(request.callId, resolve);
+            this.requestUpdate();
+        });
+    }
+
+    _resolveApproval(callId, approved) {
+        const resolve = this._approvalResolvers.get(callId);
+        if (!resolve) return;
+        this._approvalResolvers.delete(callId);
+        resolve(approved);
+        this.requestUpdate();
+    }
+
+    async _send(event = null) {
+        event?.preventDefault?.();
+        if (this._running) return;
+        const prompt = this._draft.trim();
+        if (!prompt) return;
+        this._settings = loadAiSettings();
+        this._agent.updateSettings(this._settings);
+        this._messages = [...this._withoutThinking(), { type: 'user', text: prompt }];
+        this._draft = '';
+        this._running = true;
+        this._abortController = new AbortController();
+        await this.updateComplete;
+        this._scrollBottom();
+        try {
+            await this._agent.run(prompt, { signal: this._abortController.signal });
+        } catch (error) {
+            if (error?.name !== 'AbortError') {
+                this._messages = [...this._withoutThinking(), { type: 'error', text: error?.message || String(error) }];
+                if (error?.code === 'MISSING_API_KEY') this._openSettings();
+            } else {
+                this._messages = [...this._withoutThinking(), { type: 'bot', text: 'Request cancelled.' }];
+            }
+        } finally {
+            for (const resolve of this._approvalResolvers.values()) resolve(false);
+            this._approvalResolvers.clear();
+            this._running = false;
+            this._abortController = null;
+            await this.updateComplete;
+            this._scrollBottom();
+        }
+    }
+
+    _cancel() {
+        for (const resolve of this._approvalResolvers.values()) resolve(false);
+        this._approvalResolvers.clear();
+        this._abortController?.abort();
+    }
+
+    _newConversation() {
+        if (this._running) return;
+        this._agent.reset();
+        this._messages = [];
+        this._draft = '';
+        this._usage = {
+            requests: 0, inputTokens: 0, cachedInputTokens: 0,
+            cacheWriteTokens: 0, outputTokens: 0, reasoningTokens: 0, totalTokens: 0, cost: null,
+        };
+    }
+
+    _formatTokens(value) {
+        if (value >= 1000000) return `${(value / 1000000).toFixed(1)}m`;
+        if (value >= 1000) return `${(value / 1000).toFixed(1)}k`;
+        return String(value || 0);
     }
 
     _renderToolCallBody(args) {
-        if (args.components) {
-            return args.components.map(c =>
-                html`<span class="key">+</span> <span class="val">${c.id}</span> at (${c.x}, ${c.y})\n`
-            );
-        }
-        if (args.targets) {
-            return html`<span class="key">targets:</span> <span class="val">[${args.targets.join(', ')}]</span>`;
-        }
-        if (args.wires) {
-            return html`<span class="val">${args.description}</span>\n${args.wires.map(w =>
-                html`<span class="key">wire</span> ${w.from} → ${w.to}\n`
-            )}`;
-        }
         return JSON.stringify(args, null, 2);
+    }
+
+    _statusLabel(status) {
+        return ({ pending: 'Approval needed', running: 'Running', done: 'Done', error: 'Failed', rejected: 'Rejected', skipped: 'Skipped' })[status] || status;
     }
 
     render() {
@@ -679,8 +753,9 @@ class AiAssistant extends LitElement {
         <div class="panel-header">
           <span class="icon">${faIcon('wand')}</span>
           <span class="title">Elera AI</span>
-          <span class="badge">PREVIEW</span>
+          <span class="badge">${providerDefinition(this._settings.provider).label}</span>
           <div class="header-actions">
+            <button class="close-btn" @click=${this._newConversation} ?disabled=${this._running} title="New conversation">${faIcon('rotateLeft')}</button>
             <button class="close-btn" @click=${this._openSettings} title="AI settings">${faIcon('gear')}</button>
             <button class="close-btn" @click=${() => this.toggle()} title="Close">${faIcon('xmark')}</button>
           </div>
@@ -691,7 +766,7 @@ class AiAssistant extends LitElement {
             <div class="empty-state">
               <div class="sparkle">${faIcon('wand')}</div>
               <p>Describe the Arduino circuit you want to build, and Elera AI will design and wire it for you.</p>
-              <p class="hint">Configure BYOK providers from AI settings</p>
+              <p class="hint">The model can use Elera’s component, wiring, layout, and validation tools.</p>
             </div>
           ` : ''}
 
@@ -702,24 +777,33 @@ class AiAssistant extends LitElement {
           ${!this._running && !hasMessages ? html`
             <button
               class="premade-prompt"
-              @click=${() => this._runDemo()}
+              @click=${() => { this._draft = DEMO_PROMPT; this._send(); }}
               ?disabled=${this._running}
             >
               <span class="prefix">Try this prompt:</span>
               "${DEMO_PROMPT}"
             </button>
           ` : ''}
-          <div class="input-row">
+          <form class="input-row" @submit=${this._send}>
             <input
               type="text"
               placeholder=${this._running ? 'Generating...' : 'Describe a circuit...'}
               ?disabled=${this._running}
+              .value=${this._draft}
+              @input=${event => { this._draft = event.target.value; }}
             />
-            <button class="send-btn" ?disabled=${this._running}>Send</button>
-          </div>
+            ${this._running
+                ? html`<button class="send-btn stop" type="button" @click=${this._cancel}>Stop</button>`
+                : html`<button class="send-btn" type="submit" ?disabled=${!this._draft.trim()}>Send</button>`}
+          </form>
         </div>
 
-        <div class="powered-by">Elera AI · BYOK-ready mock integration</div>
+        <div class="powered-by" title="Conversation token usage reported by the provider">
+          ${this._settings.model || 'Configure a model'}
+          ${this._usage.requests
+                ? html` · In ${this._formatTokens(this._usage.inputTokens)} (${this._formatTokens(this._usage.cachedInputTokens)} cached) · Out ${this._formatTokens(this._usage.outputTokens)}`
+                : html` · keys stay in this tab`}
+        </div>
       </div>
     `;
     }
@@ -730,38 +814,31 @@ class AiAssistant extends LitElement {
                 return html`<div class="msg-user">${m.text}</div>`;
             case 'bot':
                 return html`<div class="msg-bot">${m.text}</div>`;
+            case 'error':
+                return html`<div class="msg-error">${m.text}</div>`;
             case 'thinking':
                 return html`
           <div class="thinking">
             <div class="dots"><span></span><span></span><span></span></div>
             <span class="label">${m.text || 'Thinking...'}</span>
           </div>`;
-            case 'plan':
-                return html`
-          <div class="plan-block">
-            <div class="plan-title">Components needed</div>
-            ${m.items.map(item => html`
-              <div class="plan-item"><span class="dot"></span>${item}</div>
-            `)}
-          </div>`;
             case 'toolcall':
                 return html`
-          <div class="toolcall">
-            <div class="toolcall-header">
+          <details class="toolcall" ?open=${m.status === 'pending' || m.status === 'running'}>
+            <summary class="toolcall-header" title="Show or hide function call details">
               <span class="fn-icon">${faIcon('bolt')}</span>
               <span class="fn-name">${m.label}()</span>
-              <span class="status ${m.status}">${m.status === 'running' ? 'Running' : 'Done'}</span>
-            </div>
+              <span class="status ${m.status}">${this._statusLabel(m.status)}</span>
+            </summary>
             <div class="toolcall-body">${this._renderToolCallBody(m.args)}</div>
-          </div>`;
-            case 'code':
-                return html`
-          <div class="code-block">
-            <div class="code-header">
-              <span>${faIcon('fileLines')}</span> ${m.language || 'code'}
-            </div>
-            <div class="code-content">${m.content}</div>
-          </div>`;
+            ${m.status === 'pending' ? html`
+              <div class="approval-actions">
+                <button class="approve" @click=${() => this._resolveApproval(m.callId, true)}>Apply change</button>
+                <button @click=${() => this._resolveApproval(m.callId, false)}>Reject</button>
+              </div>
+            ` : ''}
+            ${m.result ? html`<div class="tool-result">${JSON.stringify(m.result, null, 2)}</div>` : ''}
+          </details>`;
             default:
                 return '';
         }

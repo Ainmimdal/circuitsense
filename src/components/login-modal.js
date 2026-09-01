@@ -1,30 +1,14 @@
 import { LitElement, html, css } from 'lit';
 import { faIcon } from '../utils/fa-icons.js';
-
-const AI_SETTINGS_STORAGE_KEY = 'elera_ai_settings';
-
-const DEFAULT_AI_SETTINGS = {
-    provider: 'openai',
-    apiKey: '',
-    baseUrl: '',
-    model: 'gpt-4.1-mini',
-    reasoning: 'balanced',
-    actionMode: 'ask-before-apply',
-    includeCircuitJson: true,
-    includeValidationErrors: true,
-    includeProjectMetadata: false,
-    preferArduinoUno: true,
-    preferMinimalComponents: false,
-    includeCodeByDefault: true,
-};
-
-const PROVIDER_MODELS = {
-    openai: ['gpt-4.1-mini', 'gpt-4.1', 'o4-mini'],
-    openrouter: ['openai/gpt-4.1-mini', 'anthropic/claude-3.7-sonnet', 'google/gemini-2.5-flash'],
-    anthropic: ['claude-3.7-sonnet', 'claude-3.5-haiku'],
-    gemini: ['gemini-2.5-flash', 'gemini-2.5-pro'],
-    custom: ['custom-model'],
-};
+import {
+    AI_PROVIDERS,
+    MAX_AI_TOOL_ROUNDS,
+    MIN_AI_TOOL_ROUNDS,
+    loadAiSettings,
+    providerDefinition,
+    saveAiSettings,
+} from '../ai/config.js';
+import { listProviderModels, testAiConnection } from '../ai/providers.js';
 
 class LoginModal extends LitElement {
     static properties = {
@@ -36,6 +20,11 @@ class LoginModal extends LitElement {
         _email: { state: true },
         _aiSettings: { state: true },
         _testStatus: { state: true },
+        _testMessage: { state: true },
+        _providerModels: { state: true },
+        _modelsStatus: { state: true },
+        _modelsMessage: { state: true },
+        _manualModel: { state: true },
     };
 
     static styles = css`
@@ -96,7 +85,7 @@ class LoginModal extends LitElement {
             width: 32px;
             height: 32px;
             border-radius: 8px;
-            background: #0284c7;
+            background: var(--primary);
             color: #fff;
             display: inline-flex;
             align-items: center;
@@ -228,8 +217,8 @@ class LoginModal extends LitElement {
         input:focus,
         select:focus {
             outline: none;
-            border-color: #0284c7;
-            box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.18);
+            border-color: var(--primary-hover);
+            box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 18%, transparent);
         }
 
         .helper {
@@ -237,6 +226,25 @@ class LoginModal extends LitElement {
             font-size: 11px;
             font-weight: 500;
             line-height: 1.45;
+        }
+
+        .model-row {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 8px;
+        }
+
+        .model-refresh {
+            min-width: 104px;
+            padding-inline: 10px;
+        }
+
+        .model-status.ready {
+            color: #22c55e;
+        }
+
+        .model-status.failed {
+            color: #f59e0b;
         }
 
         .actions {
@@ -274,14 +282,14 @@ class LoginModal extends LitElement {
         }
 
         .btn-primary {
-            background: #0284c7;
+            background: var(--primary);
             color: #fff;
-            border-color: #0284c7;
+            border-color: var(--primary);
         }
 
         .btn-primary:hover {
-            background: #0369a1;
-            border-color: #0369a1;
+            background: var(--primary-hover);
+            border-color: var(--primary-hover);
         }
 
         .btn-danger {
@@ -325,7 +333,7 @@ class LoginModal extends LitElement {
             width: 44px;
             height: 44px;
             border-radius: 10px;
-            background: #0284c7;
+            background: var(--primary);
             color: #fff;
             display: inline-flex;
             align-items: center;
@@ -413,8 +421,29 @@ class LoginModal extends LitElement {
             height: 16px;
             padding: 0;
             margin: 1px 0 0;
-            accent-color: #0284c7;
+            accent-color: var(--primary-hover);
         }
+
+        :host { background: color-mix(in srgb, var(--ink) 72%, transparent); font-family: var(--font-ui, 'Public Sans', sans-serif); }
+        .modal, .tabs, .body, .account-row, .status-row, .check { background: var(--panel); border-color: var(--panel-border); color: var(--text); }
+        .modal, .account-row, .status-row, .check { border-radius: 4px; }
+        .header, .tabs { border-color: var(--panel-border); }
+        h2, .account-name, label, .field { color: var(--text); }
+        .title-icon, .avatar { background: var(--primary); color: var(--text); border-radius: 4px; }
+        .badge { border-color: var(--panel-border); border-radius: 4px; color: var(--text-muted); }
+        .close-btn { width: 34px; height: 34px; padding: 0; border: 1px solid var(--panel-border); border-radius: 4px; color: var(--text-muted); }
+        .close-btn:hover { background: var(--primary-hover); color: var(--text); }
+        .tab { height: 34px; border-radius: 4px 4px 0 0; color: var(--text-muted); }
+        .tab:hover, .tab.active { color: var(--text); background: var(--primary); border-color: var(--panel-border); }
+        input, select { height: 34px; background: var(--panel); border-color: var(--panel-border); border-radius: 4px; color: var(--text); }
+        input:focus, select:focus { border-color: var(--primary-hover); box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 35%, transparent); }
+        .helper, .account-meta, .status-row { color: var(--text-muted); }
+        .btn { height: 34px; border-radius: 4px; border-color: var(--panel-border); background: var(--panel); color: var(--text); }
+        .btn:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
+        .btn-primary { background: var(--primary); border-color: var(--primary); color: var(--text); }
+        .btn-primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
+        .btn:disabled { background: var(--panel-border); border-color: var(--panel-border); color: var(--text-muted); }
+        .check input { accent-color: var(--primary-hover); }
 
         @media (max-width: 640px) {
             .grid,
@@ -429,6 +458,10 @@ class LoginModal extends LitElement {
             .tab {
                 min-width: 96px;
             }
+
+            .model-row {
+                grid-template-columns: 1fr;
+            }
         }
     `;
 
@@ -442,6 +475,14 @@ class LoginModal extends LitElement {
         this._email = '';
         this._aiSettings = this._loadAiSettings();
         this._testStatus = 'idle';
+        this._testMessage = '';
+        this._providerModels = [];
+        this._modelsStatus = 'idle';
+        this._modelsMessage = '';
+        this._manualModel = this._aiSettings.provider === 'custom' && this._aiSettings.model === 'custom-model';
+        this._modelRequestId = 0;
+        this._modelsAbortController = null;
+        this._modelsRefreshTimer = null;
     }
 
     willUpdate(changedProperties) {
@@ -450,6 +491,11 @@ class LoginModal extends LitElement {
             this._syncFieldsFromUser();
             this._aiSettings = this._loadAiSettings();
             this._testStatus = 'idle';
+            this._testMessage = '';
+            this._providerModels = [];
+            this._modelsStatus = 'idle';
+            this._modelsMessage = '';
+            this._manualModel = this._aiSettings.provider === 'custom' && this._aiSettings.model === 'custom-model';
         }
 
         if (changedProperties.has('initialTab') && this.open && this.initialTab) {
@@ -457,19 +503,24 @@ class LoginModal extends LitElement {
         }
     }
 
-    _loadAiSettings() {
-        try {
-            return { ...DEFAULT_AI_SETTINGS, ...JSON.parse(localStorage.getItem(AI_SETTINGS_STORAGE_KEY)) };
-        } catch {
-            return { ...DEFAULT_AI_SETTINGS };
+    updated(changedProperties) {
+        if (changedProperties.has('open') && this.open && this._activeTab === 'keys') {
+            this._scheduleModelRefresh();
         }
     }
 
+    _loadAiSettings() {
+        return loadAiSettings();
+    }
+
     _saveAiSettings() {
-        localStorage.setItem(AI_SETTINGS_STORAGE_KEY, JSON.stringify(this._aiSettings));
+        this._aiSettings = saveAiSettings(this._aiSettings);
         this._testStatus = this._aiSettings.apiKey.trim() ? 'ready' : 'missing';
+        this._testMessage = this._aiSettings.apiKey
+            ? 'Configuration saved. The key remains only for this browser tab.'
+            : 'Add an API key before running Elera AI.';
         this.dispatchEvent(new CustomEvent('ai-settings-updated', {
-            detail: { settings: this._aiSettings },
+            detail: { settings: { ...this._aiSettings, apiKey: '' } },
             bubbles: true,
             composed: true,
         }));
@@ -481,6 +532,9 @@ class LoginModal extends LitElement {
     }
 
     _close() {
+        clearTimeout(this._modelsRefreshTimer);
+        this._modelsRefreshTimer = null;
+        this._cancelModelRequest();
         this.open = false;
         this.dispatchEvent(new CustomEvent('close'));
     }
@@ -491,18 +545,97 @@ class LoginModal extends LitElement {
 
     _setTab(tab) {
         this._activeTab = tab;
+        if (tab === 'keys') this._scheduleModelRefresh();
+    }
+
+    _scheduleModelRefresh(delay = 0) {
+        clearTimeout(this._modelsRefreshTimer);
+        this._modelsRefreshTimer = null;
+        if (!this._aiSettings.apiKey.trim()) return;
+        this._modelsRefreshTimer = setTimeout(() => {
+            this._modelsRefreshTimer = null;
+            if (this.open && this._activeTab === 'keys' && this._modelsStatus === 'idle') {
+                this._refreshModels();
+            }
+        }, delay);
+    }
+
+    _cancelModelRequest() {
+        this._modelRequestId++;
+        this._modelsAbortController?.abort();
+        this._modelsAbortController = null;
+    }
+
+    async _refreshModels() {
+        clearTimeout(this._modelsRefreshTimer);
+        this._modelsRefreshTimer = null;
+        if (!this._aiSettings.apiKey.trim()) {
+            this._modelsStatus = 'missing';
+            this._modelsMessage = 'Add an API key to load models available to your account.';
+            return;
+        }
+        if (this._aiSettings.provider === 'custom' && !this._aiSettings.baseUrl.trim()) {
+            this._modelsStatus = 'missing';
+            this._modelsMessage = 'Add the custom provider base URL to load its models.';
+            return;
+        }
+
+        this._cancelModelRequest();
+        const requestId = this._modelRequestId;
+        const controller = new AbortController();
+        this._modelsAbortController = controller;
+        this._modelsStatus = 'loading';
+        this._modelsMessage = `Loading models from ${providerDefinition(this._aiSettings.provider).label}...`;
+        try {
+            const models = await listProviderModels(this._aiSettings, { signal: controller.signal });
+            if (requestId !== this._modelRequestId) return;
+            this._providerModels = models;
+            this._modelsStatus = 'ready';
+            this._modelsMessage = `${models.length} compatible models loaded from the provider.`;
+            if (models.some(model => model.id === this._aiSettings.model)) this._manualModel = false;
+        } catch (error) {
+            if (error?.name === 'AbortError' || requestId !== this._modelRequestId) return;
+            this._providerModels = [];
+            this._modelsStatus = 'failed';
+            this._modelsMessage = `${error?.message || 'Could not load provider models.'} Showing fallback models.`;
+        } finally {
+            if (requestId === this._modelRequestId) this._modelsAbortController = null;
+        }
+    }
+
+    _chooseModel(value) {
+        if (value === '__manual__') {
+            this._manualModel = true;
+            return;
+        }
+        this._manualModel = false;
+        this._setAiSetting('model', value);
     }
 
     _setAiSetting(key, value) {
         const next = { ...this._aiSettings, [key]: value };
         if (key === 'provider') {
-            next.model = PROVIDER_MODELS[value]?.[0] || 'custom-model';
-            if (value !== 'openrouter' && value !== 'custom') {
+            next.model = providerDefinition(value).models[0];
+            if (!providerDefinition(value).configurableBaseUrl) {
                 next.baseUrl = '';
             }
         }
         this._aiSettings = next;
+        if (key === 'provider') {
+            this._cancelModelRequest();
+            this._providerModels = [];
+            this._modelsStatus = 'idle';
+            this._modelsMessage = '';
+            this._manualModel = value === 'custom';
+            this._scheduleModelRefresh();
+        } else if (key === 'apiKey' || key === 'baseUrl') {
+            this._cancelModelRequest();
+            this._providerModels = [];
+            this._modelsStatus = 'idle';
+            this._modelsMessage = '';
+        }
         this._testStatus = 'idle';
+        this._testMessage = '';
     }
 
     async _testConnection() {
@@ -511,8 +644,15 @@ class LoginModal extends LitElement {
             return;
         }
         this._testStatus = 'testing';
-        await new Promise(resolve => setTimeout(resolve, 450));
-        this._testStatus = 'ready';
+        this._testMessage = `Contacting ${providerDefinition(this._aiSettings.provider).label}...`;
+        try {
+            await testAiConnection(this._aiSettings);
+            this._testStatus = 'ready';
+            this._testMessage = `Connected to ${this._aiSettings.model}.`;
+        } catch (error) {
+            this._testStatus = 'failed';
+            this._testMessage = error?.message || 'Connection failed.';
+        }
     }
 
     _submit(e) {
@@ -567,7 +707,7 @@ class LoginModal extends LitElement {
     }
 
     _providerNeedsBaseUrl() {
-        return this._aiSettings.provider === 'openrouter' || this._aiSettings.provider === 'custom';
+        return Boolean(providerDefinition(this._aiSettings.provider).configurableBaseUrl);
     }
 
     _statusLabel() {
@@ -575,7 +715,7 @@ class LoginModal extends LitElement {
         if (this._testStatus === 'ready') return 'Connected';
         if (this._testStatus === 'missing') return 'API key missing';
         if (this._testStatus === 'failed') return 'Connection failed';
-        return this._aiSettings.apiKey ? 'Saved locally' : 'Not configured';
+        return this._aiSettings.apiKey ? 'Available this tab' : 'Not configured';
     }
 
     _renderTabs() {
@@ -666,7 +806,15 @@ class LoginModal extends LitElement {
     }
 
     _renderKeysTab() {
-        const models = PROVIDER_MODELS[this._aiSettings.provider] || PROVIDER_MODELS.custom;
+        const fallbackModels = providerDefinition(this._aiSettings.provider).models
+            .map(id => ({ id, label: id }));
+        const models = this._modelsStatus === 'ready' ? this._providerModels : fallbackModels;
+        const selectedModel = String(this._aiSettings.model || '').trim();
+        const modelOptions = selectedModel && !models.some(model => model.id === selectedModel)
+            ? [{ id: selectedModel, label: selectedModel }, ...models]
+            : models;
+        const canRefreshModels = Boolean(this._aiSettings.apiKey.trim())
+            && (this._aiSettings.provider !== 'custom' || Boolean(this._aiSettings.baseUrl.trim()));
 
         return html`
             <div class="section">
@@ -677,22 +825,47 @@ class LoginModal extends LitElement {
                             .value=${this._aiSettings.provider}
                             @change=${(e) => this._setAiSetting('provider', e.target.value)}
                         >
-                            <option value="openai">OpenAI</option>
-                            <option value="openrouter">OpenRouter</option>
-                            <option value="anthropic">Anthropic</option>
-                            <option value="gemini">Google Gemini</option>
-                            <option value="custom">Custom OpenAI-compatible</option>
+                            ${Object.values(AI_PROVIDERS).map(provider => html`
+                                <option value=${provider.id}>${provider.label}</option>
+                            `)}
                         </select>
                     </label>
-                    <label>
-                        Default model
-                        <select
-                            .value=${this._aiSettings.model}
-                            @change=${(e) => this._setAiSetting('model', e.target.value)}
-                        >
-                            ${models.map(model => html`<option value=${model}>${model}</option>`)}
-                        </select>
-                    </label>
+                    <div class="field">
+                        <span>Default model</span>
+                        <div class="model-row">
+                            <select
+                                .value=${this._manualModel ? '__manual__' : selectedModel}
+                                @change=${(e) => this._chooseModel(e.target.value)}
+                                ?disabled=${this._modelsStatus === 'loading'}
+                            >
+                                ${modelOptions.map(model => html`
+                                    <option value=${model.id}>${model.label === model.id ? model.id : `${model.label} — ${model.id}`}</option>
+                                `)}
+                                <option value="__manual__">Enter model ID manually...</option>
+                            </select>
+                            <button
+                                class="btn model-refresh"
+                                type="button"
+                                @click=${() => this._refreshModels()}
+                                ?disabled=${!canRefreshModels || this._modelsStatus === 'loading'}
+                                title="Reload models available from this provider"
+                            >
+                                ${faIcon('rotateRight')}
+                                ${this._modelsStatus === 'loading' ? 'Loading' : 'Refresh'}
+                            </button>
+                        </div>
+                        ${this._manualModel ? html`
+                            <input
+                                type="text"
+                                placeholder="Model ID"
+                                .value=${this._aiSettings.model}
+                                @input=${(e) => this._setAiSetting('model', e.target.value)}
+                            />
+                        ` : ''}
+                        <span class="helper model-status ${this._modelsStatus}">
+                            ${this._modelsMessage || 'Fallback models are shown until the provider catalog is loaded.'}
+                        </span>
+                    </div>
                 </div>
 
                 <label>
@@ -703,8 +876,9 @@ class LoginModal extends LitElement {
                         placeholder="Paste key for the selected provider"
                         .value=${this._aiSettings.apiKey}
                         @input=${(e) => this._setAiSetting('apiKey', e.target.value)}
+                        @change=${() => this._scheduleModelRefresh()}
                     />
-                    <span class="helper">Stored in this browser only for the prototype.</span>
+                    <span class="helper">Kept in session storage for this tab only. It is sent directly to the selected provider.</span>
                 </label>
 
                 ${this._providerNeedsBaseUrl() ? html`
@@ -715,6 +889,7 @@ class LoginModal extends LitElement {
                             placeholder=${this._aiSettings.provider === 'openrouter' ? 'https://openrouter.ai/api/v1' : 'http://localhost:11434/v1'}
                             .value=${this._aiSettings.baseUrl}
                             @input=${(e) => this._setAiSetting('baseUrl', e.target.value)}
+                            @change=${() => this._scheduleModelRefresh()}
                         />
                     </label>
                 ` : ''}
@@ -724,7 +899,7 @@ class LoginModal extends LitElement {
                         ${faIcon(this._testStatus === 'ready' ? 'circleCheck' : this._testStatus === 'missing' ? 'circleXmark' : 'shield')}
                         ${this._statusLabel()}
                     </span>
-                    <span>BYOK configuration</span>
+                    <span title=${this._testMessage}>${this._testMessage || 'BYOK configuration'}</span>
                 </div>
 
                 <div class="actions">
@@ -767,6 +942,19 @@ class LoginModal extends LitElement {
                         <option value="suggest-only">Auto-suggest only</option>
                         <option value="auto-apply-safe">Auto-apply safe fixes</option>
                     </select>
+                </label>
+
+                <label>
+                    Maximum AI tool rounds
+                    <input
+                        type="number"
+                        min=${MIN_AI_TOOL_ROUNDS}
+                        max=${MAX_AI_TOOL_ROUNDS}
+                        step="1"
+                        .value=${String(this._aiSettings.maxToolRounds)}
+                        @change=${(e) => this._setAiSetting('maxToolRounds', e.target.value)}
+                    />
+                    <span class="helper">Uses your API key. Higher limits allow more complex builds but may use more tokens. Elera always reserves a separate final summary.</span>
                 </label>
 
                 <div class="check-list">

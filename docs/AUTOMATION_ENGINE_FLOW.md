@@ -70,7 +70,7 @@ flowchart TD
     D6 --> O0["Pack controller clusters as non-overlapping scene supernodes"]
     B5 --> O0
     O0 --> O1["Reject component, board, and cluster overlap"]
-    O1 --> C1["Clean routes"]
+    O1 --> C1["Route existing wires"]
     C1 --> C2["Resolve exact footprint endpoints"]
     C2 --> C3["Escape each header perpendicular to its body"]
     C3 --> C4["Assign distinct fan-out lanes in stable signal/I2C/power/ground order"]
@@ -81,7 +81,7 @@ flowchart TD
     C7 --> C8
     C8 --> C9{"Electrical, physical, and presentation postconditions pass?"}
     C9 -->|"No"| LF
-    C9 -->|"Yes"| LZ["Commit wiring, placement, mounts, and routes as one undo step"]
+    C9 -->|"Yes"| LZ["Commit wiring, placement, and route intent as one undo step"]
 ```
 
 ## Ownership boundary
@@ -89,8 +89,9 @@ flowchart TD
 | Engine | May change | Must not change |
 | --- | --- | --- |
 | Auto Wire | Semantic connections, deterministic helpers, net colors | Positions, rotations, mounts, boards |
-| Auto Layout | Unlocked positions, legal physical realization, then routes | Electrical intent, locked constraints |
-| Clean | Route waypoints and orthogonal mode | Connections, components, positions, mounts, topology |
+| Auto Layout (UI) | Auto Wire output, unlocked positions, legal physical realization, then routes | Locked constraints and unrelated manual intent |
+| Arrange Components (AI stage) | Unlocked positions and legal physical realization | Connections, helpers, pin assignments, route intent, locked constraints |
+| Auto Route / Clean | Route waypoints and orthogonal mode | Connections, components, positions, mounts, topology |
 | Renderer | Pixels and hit targets | Electrical or physical geometry |
 
 ## Recovered regression cause

@@ -148,7 +148,8 @@ function libraryPinIds(component) {
     const catalog = component.autoWirePins;
     if (catalog) {
         pins.push(...(catalog.digital || []), ...(catalog.analog || []), ...(catalog.power || []),
-            ...(catalog.ground || []), ...(catalog.serial || []), catalog.i2c?.sda, catalog.i2c?.scl);
+            ...(catalog.ground || []), ...(catalog.uart?.rx || []), ...(catalog.uart?.tx || []),
+            catalog.i2c?.sda, catalog.i2c?.scl);
     }
     return unique(pins);
 }
@@ -196,7 +197,7 @@ function generatedPhysicalDefinition(id) {
         componentDefinitionId: id,
         placementMode: 'free',
         anchorPinId: pinIds[0] || null,
-        validRotations: [0],
+        validRotations: [0, 90, 180, 270],
         pins: distributePins(pinIds, size.width, size.height),
         routingBounds: { x: 0, y: 0, width: size.width, height: size.height },
     });
@@ -214,6 +215,30 @@ export function getFootprintDefinition(id) {
     if (generatedFootprints.has(id)) return generatedFootprints.get(id);
     if (String(id || '').startsWith('free:')) generatedPhysicalDefinition(String(id).slice(5));
     return generatedFootprints.get(id) || null;
+}
+
+/**
+ * Return the concrete footprint records needed to route a project in an
+ * isolated worker. This includes calibrated/custom free footprints whose
+ * runtime registry is not shared with the worker global scope.
+ */
+export function routingFootprintsForProject(project) {
+    const footprints = new Map();
+    for (const component of project?.components || []) {
+        const definition = getPhysicalComponentDefinition(component.definitionId);
+        const footprintId = component.footprintId || definition?.defaultFootprintId;
+        const footprint = getFootprintDefinition(footprintId);
+        if (footprint) footprints.set(footprint.id, footprint);
+    }
+    return [...footprints.values()];
+}
+
+/** Install worker-provided runtime footprints before resolving route points. */
+export function registerRuntimeRoutingFootprints(footprints = []) {
+    for (const footprint of footprints) {
+        if (!footprint?.id || FOOTPRINTS[footprint.id]) continue;
+        generatedFootprints.set(footprint.id, deepFreeze(footprint));
+    }
 }
 
 export function defaultFootprintForComponent(componentDefinitionId) {

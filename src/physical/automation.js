@@ -1,16 +1,17 @@
 import { getComponentDef } from '../component-library.js';
 import { planAutoWire } from '../core/auto-wire-planner.js';
-import { applyTransform, rotatePoint } from './geometry.js';
-import { createComponentInstance, componentWorldTransform, resolveConnectionWorldPoint } from './model.js';
+import { applyTransform, normalizeDegrees, rotatePoint } from './geometry.js';
+import { createComponentInstance, componentPinRef, componentWorldTransform, resolveConnectionWorldPoint } from './model.js';
 import { defaultFootprintForComponent, getFootprintDefinition, projectFootprintPoint } from './footprints.js';
 import { getSurfaceDefinition } from './breadboard.js';
-import { pinExitDirection } from './routing.js';
+import { pinExitDirection, ROUTING_COMPONENT_MARGIN, ROUTING_WIRE_SEPARATION } from './routing.js';
 
 const SIGNAL_COLORS = Object.freeze(['#22d3ee', '#a78bfa', '#f59e0b', '#10b981', '#f472b6', '#60a5fa']);
 const COMPONENT_GAP = 12;
 const ROW_GAP = 24;
 const CLUSTER_GAP = 42;
 const BOARD_GAP = 26;
+const HELPER_OWNER_GAP = 6;
 
 function stableCompare(a, b) {
     return String(a).localeCompare(String(b), undefined, { numeric: true });
@@ -193,7 +194,7 @@ function helpersFor(project, ownerId) {
         component.properties.provenance.ownerId === ownerId);
 }
 
-function primaryConnection(project, controller, owner) {
+function controllerConnections(project, controller, owner) {
     const candidates = [];
     for (const wire of wiresBetween(project, controller.id, owner.id)) {
         candidates.push({ wire, controllerRef: endpointFor(wire, controller.id), ownerRef: endpointFor(wire, owner.id), helper: null });
@@ -212,8 +213,35 @@ function primaryConnection(project, controller, owner) {
             });
         }
     }
-    return candidates.sort((a, b) => Number(isPowerPin(a.controllerRef.pinId)) - Number(isPowerPin(b.controllerRef.pinId)) ||
-        stableCompare(a.controllerRef.pinId, b.controllerRef.pinId))[0] || null;
+    return candidates;
+}
+
+function primaryConnection(project, controller, owner) {
+    return controllerConnections(project, controller, owner)
+        .sort((a, b) => Number(isPowerPin(a.controllerRef.pinId)) - Number(isPowerPin(b.controllerRef.pinId)) ||
+            stableCompare(a.controllerRef.pinId, b.controllerRef.pinId))[0] || null;
+}
+
+function directLayoutConnection(project, controller, owner) {
+    const connections = controllerConnections(project, controller, owner);
+    const primary = primaryConnection(project, controller, owner);
+    if (!connections.length) return { link: null, direction: 'right' };
+    const directionOrder = ['up', 'down', 'left', 'right'];
+    const counts = new Map(directionOrder.map(direction => [direction, 0]));
+    for (const connection of connections) {
+        const direction = pinExitDirection(project, connection.controllerRef);
+        // Shared supply conductors collapse onto one bus, so they should
+        // influence placement without outweighing every independent signal.
+        const weight = isPowerPin(connection.controllerRef.pinId) ? 0.35 : 1;
+        if (counts.has(direction)) counts.set(direction, counts.get(direction) + weight);
+    }
+    const primaryDirection = primary ? pinExitDirection(project, primary.controllerRef) : null;
+    const direction = directionOrder.sort((a, b) => counts.get(b) - counts.get(a) ||
+        Number(b === primaryDirection) - Number(a === primaryDirection) || stableCompare(a, b))[0];
+    const link = connections.filter(connection => pinExitDirection(project, connection.controllerRef) === direction)
+        .sort((a, b) => Number(isPowerPin(a.controllerRef.pinId)) - Number(isPowerPin(b.controllerRef.pinId)) ||
+            stableCompare(a.controllerRef.pinId, b.controllerRef.pinId))[0] || primary;
+    return { link, direction };
 }
 
 function inferredControllerId(project, component, controllers) {
@@ -279,25 +307,129 @@ function pinOffset(component, pinId) {
     return pin ? rotatePoint(projectFootprintPoint(footprint, pin), component.placement?.rotation || 0) : { x: 0, y: 0 };
 }
 
+function helperRotation(helper, link, direction) {
+    const footprint = getFootprintDefinition(helper.footprintId);
+    const controllerPin = footprint?.pins.find(pin => pin.pinId === link.helperControllerRef.pinId);
+    const ownerPin = footprint?.pins.find(pin => pin.pinId === link.helperOwnerRef.pinId);
+    if (!controllerPin || !ownerPin) return helper.placement?.rotation || 0;
+    const from = projectFootprintPoint(footprint, controllerPin);
+    const to = projectFootprintPoint(footprint, ownerPin);
+    const nativeAngle = Math.atan2(to.y - from.y, to.x - from.x) * 180 / Math.PI;
+    const desiredAngle = { right: 0, down: 90, left: 180, up: 270 }[direction] ?? nativeAngle;
+    const target = normalizeDegrees(desiredAngle - nativeAngle);
+    const rotations = footprint.validRotations?.length ? footprint.validRotations : [0, 90, 180, 270];
+    const angularDistance = value => {
+        const delta = Math.abs(normalizeDegrees(value) - target);
+        return Math.min(delta, 360 - delta);
+    };
+    return [...rotations].sort((a, b) => angularDistance(a) - angularDistance(b) || a - b)[0];
+}
+
+function helperOwnerClearance(helper, link, direction, rotation) {
+    const footprint = getFootprintDefinition(helper.footprintId);
+    const bounds = footprint?.routingBounds;
+    const pin = footprint?.pins.find(item => item.pinId === link.helperOwnerRef.pinId);
+    const vector = {
+        up: { x: 0, y: -1 }, down: { x: 0, y: 1 },
+        left: { x: -1, y: 0 }, right: { x: 1, y: 0 },
+    }[direction];
+    if (!bounds || !pin || !vector) return HELPER_OWNER_GAP;
+    const pinPoint = rotatePoint(projectFootprintPoint(footprint, pin), rotation);
+    const corners = [
+        { x: bounds.x, y: bounds.y },
+        { x: bounds.x + bounds.width, y: bounds.y },
+        { x: bounds.x, y: bounds.y + bounds.height },
+        { x: bounds.x + bounds.width, y: bounds.y + bounds.height },
+    ].map(point => rotatePoint(point, rotation));
+    const forwardExtent = Math.max(0, ...corners.map(point =>
+        (point.x - pinPoint.x) * vector.x + (point.y - pinPoint.y) * vector.y));
+    return forwardExtent + ROUTING_COMPONENT_MARGIN + HELPER_OWNER_GAP;
+}
+
 function placeHelper(project, controller, owner, link, direction) {
     const helper = link?.helper;
     if (!helper || helper.placement?.type !== 'free') return;
     const controllerPoint = resolveConnectionWorldPoint(project, link.controllerRef);
     const ownerPoint = resolveConnectionWorldPoint(project, link.ownerRef);
     if (!controllerPoint || !ownerPoint) return;
-    const vertical = direction === 'up' || direction === 'down';
-    helper.placement.rotation = vertical ? 90 : 0;
-    const helperOffset = pinOffset(helper, link.helperControllerRef.pinId);
+    const rotation = helperRotation(helper, link, direction);
+    helper.placement.rotation = rotation;
     const ownerOffset = pinOffset(helper, link.helperOwnerRef.pinId);
-    if (vertical) {
-        const x = (controllerPoint.x + ownerPoint.x) / 2 - (helperOffset.x + ownerOffset.x) / 2;
-        const y = (controllerPoint.y + ownerPoint.y) / 2 - (helperOffset.y + ownerOffset.y) / 2;
-        setFreePosition(helper, x, y, 90);
-    } else {
-        const x = (controllerPoint.x + ownerPoint.x) / 2 - (helperOffset.x + ownerOffset.x) / 2;
-        const y = (controllerPoint.y + ownerPoint.y) / 2 - (helperOffset.y + ownerOffset.y) / 2;
-        setFreePosition(helper, x, y, 0);
+    const vector = {
+        up: { x: 0, y: -1 }, down: { x: 0, y: 1 },
+        left: { x: -1, y: 0 }, right: { x: 1, y: 0 },
+    }[direction] || { x: 1, y: 0 };
+    // Anchor the owner-facing helper pin a real distance before the owner's
+    // terminal. This prevents the helper body clearance from extending beyond
+    // the destination pin and forcing an out-and-back route.
+    const clearance = helperOwnerClearance(helper, link, direction, rotation);
+    const x = ownerPoint.x - vector.x * clearance - ownerOffset.x;
+    const y = ownerPoint.y - vector.y * clearance - ownerOffset.y;
+    setFreePosition(helper, x, y, rotation);
+}
+
+function keepDirectHelperOutsideController(project, owner, link, direction) {
+    const helper = link?.helper;
+    if (!helper || helper.placement?.type !== 'free' || owner.placement?.type !== 'free') return;
+    const controllerPoint = resolveConnectionWorldPoint(project, link.controllerRef);
+    const helperPoint = resolveConnectionWorldPoint(project, link.helperControllerRef);
+    const vector = {
+        up: { x: 0, y: -1 }, down: { x: 0, y: 1 },
+        left: { x: -1, y: 0 }, right: { x: 1, y: 0 },
+    }[direction];
+    if (!controllerPoint || !helperPoint || !vector) return;
+    const progress = (helperPoint.x - controllerPoint.x) * vector.x +
+        (helperPoint.y - controllerPoint.y) * vector.y;
+    const minimum = ROUTING_COMPONENT_MARGIN + HELPER_OWNER_GAP;
+    if (progress >= minimum) return;
+    const shift = minimum - progress;
+    for (const component of [owner, helper]) {
+        component.placement.position.x += vector.x * shift;
+        component.placement.position.y += vector.y * shift;
     }
+}
+
+function supplyLaneKind(pinId) {
+    const pin = String(pinId || '').toUpperCase();
+    if (/(GND|VSS|DGND|AGND)/.test(pin)) return 'gnd';
+    if (/^(?:3V3|3\.3V)$/.test(pin)) return '3v3';
+    if (/^5V$/.test(pin)) return '5v';
+    if (/^(?:VIN|VCC|VDD|V\+|PWR|POWER)$/.test(pin)) return pin.toLowerCase();
+    return null;
+}
+
+function controllerSideLaneCounts(project, controller) {
+    const lanes = new Map(['up', 'down', 'left', 'right'].map(direction => [direction, new Set()]));
+    for (const wire of project.wires) {
+        const ref = endpointFor(wire, controller.id);
+        if (!ref) continue;
+        const direction = pinExitDirection(project, ref);
+        if (!lanes.has(direction)) continue;
+        const supply = supplyLaneKind(ref.pinId);
+        lanes.get(direction).add(supply ? `supply:${supply}` : `wire:${wire.id}`);
+    }
+    return new Map([...lanes].map(([direction, values]) => [direction, values.size]));
+}
+
+function orientOwnerTowardController(project, owner, link, direction) {
+    if (!link?.ownerRef || owner.placement?.type !== 'free') return;
+    const footprint = getFootprintDefinition(owner.footprintId);
+    const rotations = footprint?.validRotations?.length ? footprint.validRotations : [owner.placement.rotation || 0];
+    const desired = { up: 'down', down: 'up', left: 'right', right: 'left' }[direction];
+    if (!desired) return;
+    const original = owner.placement.rotation || 0;
+    const axis = value => ['up', 'down'].includes(value) ? 'v' : ['left', 'right'].includes(value) ? 'h' : null;
+    const rotationDistance = value => {
+        const delta = Math.abs(normalizeDegrees(value) - normalizeDegrees(original));
+        return Math.min(delta, 360 - delta);
+    };
+    const ranked = rotations.map(rotation => {
+        owner.placement.rotation = rotation;
+        const exit = pinExitDirection(project, link.ownerRef);
+        const penalty = exit === desired ? 0 : axis(exit) === axis(desired) ? 1 : 2;
+        return { rotation, penalty, distance: rotationDistance(rotation) };
+    }).sort((a, b) => a.penalty - b.penalty || a.distance - b.distance || a.rotation - b.rotation);
+    owner.placement.rotation = ranked[0]?.rotation ?? original;
 }
 
 function localSurfacePoint(project, surface, ref) {
@@ -342,10 +474,11 @@ function placeDirectOwners(project, controller, members) {
     const helpers = new Set(members.filter(component => component.properties?.provenance?.kind === 'generated').map(component => component.id));
     const owners = members.filter(component => component.placement?.type === 'free' && !helpers.has(component.id));
     const controllerBounds = componentBounds(project, controller);
+    const laneCounts = controllerSideLaneCounts(project, controller);
+    const sideGap = direction => ROW_GAP + Math.max(0, (laneCounts.get(direction) || 1) - 1) * ROUTING_WIRE_SEPARATION;
     const groups = { up: [], down: [], left: [], right: [] };
     for (const owner of owners) {
-        const link = primaryConnection(project, controller, owner);
-        const direction = link ? pinExitDirection(project, link.controllerRef) : 'right';
+        const { link, direction } = directLayoutConnection(project, controller, owner);
         const target = link ? resolveConnectionWorldPoint(project, link.controllerRef) : null;
         groups[direction || 'right'].push({ owner, link, target });
     }
@@ -355,14 +488,17 @@ function placeDirectOwners(project, controller, members) {
     const placeHorizontalRow = (items, direction) => {
         let edge = Number.NEGATIVE_INFINITY;
         for (const item of items) {
+            orientOwnerTowardController(project, item.owner, item.link, direction);
             const offset = item.link ? pinOffset(item.owner, item.link.ownerRef.pinId) : { x: 0, y: 0 };
             const size = boundsSize(componentBounds(project, item.owner));
             const desiredX = (item.target?.x ?? controllerBounds.left) - offset.x;
             const x = Math.max(desiredX, edge + COMPONENT_GAP);
-            const y = direction === 'up' ? controllerBounds.top - ROW_GAP - size.height : controllerBounds.bottom + ROW_GAP;
+            const gap = sideGap(direction);
+            const y = direction === 'up' ? controllerBounds.top - gap - size.height : controllerBounds.bottom + gap;
             setFreePosition(item.owner, x, y);
-            edge = componentBounds(project, item.owner).right;
             placeHelper(project, controller, item.owner, item.link, direction);
+            keepDirectHelperOutsideController(project, item.owner, item.link, direction);
+            edge = componentBounds(project, item.owner).right;
         }
     };
     placeHorizontalRow(groups.up, 'up');
@@ -371,14 +507,17 @@ function placeDirectOwners(project, controller, members) {
     const placeVerticalColumn = (items, direction) => {
         let edge = Number.NEGATIVE_INFINITY;
         for (const item of items) {
+            orientOwnerTowardController(project, item.owner, item.link, direction);
             const offset = item.link ? pinOffset(item.owner, item.link.ownerRef.pinId) : { x: 0, y: 0 };
             const size = boundsSize(componentBounds(project, item.owner));
             const desiredY = (item.target?.y ?? controllerBounds.top) - offset.y;
             const y = Math.max(desiredY, edge + COMPONENT_GAP);
-            const x = direction === 'left' ? controllerBounds.left - ROW_GAP - size.width : controllerBounds.right + ROW_GAP;
+            const gap = sideGap(direction);
+            const x = direction === 'left' ? controllerBounds.left - gap - size.width : controllerBounds.right + gap;
             setFreePosition(item.owner, x, y);
-            edge = componentBounds(project, item.owner).bottom;
             placeHelper(project, controller, item.owner, item.link, direction);
+            keepDirectHelperOutsideController(project, item.owner, item.link, direction);
+            edge = componentBounds(project, item.owner).bottom;
         }
     };
     placeVerticalColumn(groups.left, 'left');
@@ -418,7 +557,9 @@ function layoutProject(project) {
     const surfaceOwners = surfaceOwnership(project, ownership);
     let cursorX = 28;
     for (const controller of controllers) {
-        setFreePosition(controller, 0, 80, 0);
+        // Layout is expressed in world-space pin exit directions, so retaining
+        // the user's controller rotation produces the same topology on every MCU.
+        setFreePosition(controller, 0, 80);
         const members = project.components.filter(component => !isController(component) && ownership.get(component.id) === controller.id);
         const surfaces = project.surfaces.filter(surface => surfaceOwners.get(surface.id) === controller.id);
         for (const surface of surfaces) placeOwnedSurface(project, controller, surface, ownership);
@@ -432,16 +573,89 @@ function layoutProject(project) {
         const after = clusterBounds(project, componentIds, surfaces);
         cursorX = after.right + CLUSTER_GAP;
     }
+}
+
+function resetAutomaticRouteIntent(project) {
     for (const wire of project.wires) wire.route = { mode: 'auto', waypoints: [] };
 }
 
-/** Arrange the active project using one atomic Auto Wire -> Layout -> Clean transaction. */
+function alignGeneratedGroundBusPinsToLayout(project) {
+    const componentsById = new Map(project.components.map(component => [component.id, component]));
+    const buses = new Map();
+    for (const wire of project.wires) {
+        if (!wire.properties?.generated) continue;
+        const controllerIndex = [wire.from, wire.to].findIndex(ref =>
+            ref?.type === 'component-pin' && isController(componentsById.get(ref.componentId)));
+        if (controllerIndex < 0) continue;
+        const controllerRef = controllerIndex === 0 ? wire.from : wire.to;
+        const componentRef = controllerIndex === 0 ? wire.to : wire.from;
+        const controller = componentsById.get(controllerRef.componentId);
+        const groundPins = getComponentDef(controller?.definitionId)?.autoWirePins?.ground || [];
+        if (!groundPins.includes(controllerRef.pinId) || componentRef?.type !== 'component-pin') continue;
+        const componentPoint = resolveConnectionWorldPoint(project, componentRef);
+        if (!componentPoint) continue;
+        if (!buses.has(controller.id)) buses.set(controller.id, { controller, groundPins, connections: [] });
+        buses.get(controller.id).connections.push({ controllerRef, componentPoint });
+    }
+    for (const { controller, groundPins, connections } of buses.values()) {
+        const bounds = componentBounds(project, controller);
+        const center = { x: (bounds.left + bounds.right) / 2, y: (bounds.top + bounds.bottom) / 2 };
+        const vectors = {
+            up: { x: 0, y: -1 }, down: { x: 0, y: 1 },
+            left: { x: -1, y: 0 }, right: { x: 1, y: 0 },
+        };
+        const candidates = groundPins.map(pinId => ({
+            pinId,
+            point: resolveConnectionWorldPoint(project, componentPinRef(controller.id, pinId)),
+            direction: pinExitDirection(project, componentPinRef(controller.id, pinId)),
+        })).filter(candidate => candidate.point && vectors[candidate.direction]);
+        const directions = [...new Set(candidates.map(candidate => candidate.direction))];
+        const sideGroups = new Map();
+        for (const connection of connections) {
+            const delta = {
+                x: connection.componentPoint.x - center.x,
+                y: connection.componentPoint.y - center.y,
+            };
+            const side = directions.sort((a, b) =>
+                delta.x * vectors[b].x + delta.y * vectors[b].y -
+                (delta.x * vectors[a].x + delta.y * vectors[a].y) || stableCompare(a, b))[0];
+            if (!sideGroups.has(side)) sideGroups.set(side, []);
+            sideGroups.get(side).push(connection);
+        }
+        for (const [side, sideConnections] of sideGroups) {
+            const totalDistance = candidate => sideConnections.reduce((total, connection) =>
+                total + Math.hypot(connection.componentPoint.x - candidate.point.x,
+                    connection.componentPoint.y - candidate.point.y), 0);
+            const sharedPin = candidates.filter(candidate => candidate.direction === side)
+                .sort((a, b) => totalDistance(a) - totalDistance(b) || stableCompare(a.pinId, b.pinId))[0]?.pinId;
+            if (!sharedPin) continue;
+            for (const connection of sideConnections) connection.controllerRef.pinId = sharedPin;
+        }
+    }
+}
+
+/** Arrange component and surface positions without changing semantic connectivity or route intent. */
+export function arrangePhysicalStore(store) {
+    store.transaction('arrange-components', project => layoutProject(project));
+    return { status: 'success' };
+}
+
+/** Route existing wires without changing semantic connectivity or placement. */
+export function routePhysicalStore(store) {
+    const routedWireIds = store.project.wires.map(wire => wire.id);
+    store.transaction('route-wires', project => resetAutomaticRouteIntent(project));
+    return { status: 'success', routedWireIds };
+}
+
+/** Preserve the user-facing convenience pipeline: Auto Wire -> Layout -> Route. */
 export function autoLayoutPhysicalStore(store, { wire = true, componentIds = null } = {}) {
     const plan = wire ? buildAutoWirePlan(store.project, componentIds) : null;
     if (plan && plan.result.status !== 'success') return publicWireResult(plan.result, plan.eligible);
     store.transaction('auto-layout', project => {
         if (plan) applyAutoWireResult(project, plan.result);
         layoutProject(project);
+        if (plan) alignGeneratedGroundBusPinsToLayout(project);
+        resetAutomaticRouteIntent(project);
     });
     return { status: 'success', wireResult: plan ? publicWireResult(plan.result, plan.eligible) : null };
 }

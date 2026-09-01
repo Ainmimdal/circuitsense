@@ -34,8 +34,9 @@ class ValidationBar extends LitElement {
 
     .bar {
       pointer-events: all;
-      background: rgba(18, 18, 31, 0.96);
-      border-top: 1px solid #2a2a4a;
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      border-radius: 4px 4px 0 0;
       max-height: 200px;
       overflow-y: auto;
       transition: max-height 0.25s ease;
@@ -54,16 +55,19 @@ class ValidationBar extends LitElement {
       align-items: center;
       gap: 14px;
       padding: 6px 16px;
-      background: rgba(18, 18, 31, 0.98);
-      border-top: 1px solid #2a2a4a;
+      min-height: 34px;
+      box-sizing: border-box;
+      background: var(--panel);
+      border-top: 1px solid var(--panel-border);
       font-size: 12px;
+      font-family: var(--font-ui, 'Public Sans', sans-serif);
       cursor: pointer;
       user-select: none;
       backdrop-filter: blur(8px);
     }
 
     .summary:hover {
-      background: rgba(30, 30, 50, 0.98);
+      background: var(--primary);
     }
 
     .count {
@@ -82,12 +86,12 @@ class ValidationBar extends LitElement {
 
     .count.error { color: #EF5350; }
     .count.warning { color: #FFA726; }
-    .count.info { color: #42A5F5; }
-    .count.ok { color: #66BB6A; }
+    .count.info { color: var(--text-muted); }
+    .count.ok { color: var(--text); }
 
     .toggle-icon {
       margin-left: auto;
-      color: #666;
+      color: var(--text-muted);
       font-size: 14px;
       transition: transform 0.2s;
     }
@@ -101,7 +105,8 @@ class ValidationBar extends LitElement {
       margin-left: auto;
       margin-right: 8px;
       font-size: 10px;
-      color: #444;
+      color: var(--text-muted);
+      font-family: var(--font-ui, 'Public Sans', sans-serif);
     }
 
     /* Individual issue rows */
@@ -111,13 +116,13 @@ class ValidationBar extends LitElement {
       gap: 10px;
       padding: 7px 16px;
       font-size: 12px;
-      border-bottom: 1px solid rgba(255,255,255,0.04);
+      border-bottom: 1px solid var(--panel-border);
       transition: background 0.15s;
       cursor: pointer;
     }
 
     .issue:hover {
-      background: rgba(255,255,255,0.06);
+      background: var(--primary);
     }
 
     .issue:last-child {
@@ -140,24 +145,31 @@ class ValidationBar extends LitElement {
 
     .issue-severity.error { background: #EF5350; box-shadow: 0 0 6px rgba(239,83,80,0.5); }
     .issue-severity.warning { background: #FFA726; }
-    .issue-severity.info { background: #42A5F5; }
+    .issue-severity.info { background: var(--primary-hover); }
 
     .issue-message {
-      color: #ccc;
+      color: var(--text);
       line-height: 1.5;
       flex: 1;
     }
 
     .issue-component {
       font-size: 10px;
-      color: #666;
+      color: var(--text-muted);
       margin-left: 4px;
     }
 
     /* Scrollbar */
     .bar::-webkit-scrollbar { width: 6px; }
     .bar::-webkit-scrollbar-track { background: transparent; }
-    .bar::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+    .bar::-webkit-scrollbar-thumb { background: var(--panel-border); border-radius: 1px; }
+
+    @media (max-width: 900px) {
+      .bar { max-height: 42vh; }
+      .summary { min-height: 34px; box-sizing: border-box; padding-inline: 12px; gap: 10px; }
+      .issue { min-height: 44px; box-sizing: border-box; padding: 10px 12px; }
+      .save-indicator { display: none; }
+    }
   `;
 
     constructor() {

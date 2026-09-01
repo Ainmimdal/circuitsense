@@ -1,4 +1,7 @@
-import { componentWorldTransform } from './model.js';
+import { componentWorldTransform, resolveConnectionWorldPoint } from './model.js';
+import { normalizeDegrees } from './geometry.js';
+import { pinExitDirection } from './routing.js';
+import { moveWireRouteEndpoints, translateWireRoute } from './wire-edit.js';
 
 function clone(value) {
     return structuredClone(value);
@@ -58,6 +61,88 @@ export function moveFreeComponentCommand(componentId, position) {
                 position: { x: Number(position.x), y: Number(position.y) },
                 rotation: component.placement?.rotation || 0,
             };
+        },
+    };
+}
+
+export function moveSelectionCommand({ componentIds = [], wireIds = [], delta, routes = {} }) {
+    const selectedComponents = new Set(componentIds);
+    const selectedWires = new Set(wireIds);
+    const movement = { x: Number(delta?.x || 0), y: Number(delta?.y || 0) };
+    return {
+        type: 'move-selection',
+        componentIds: [...selectedComponents],
+        wireIds: [...selectedWires],
+        apply(project) {
+            const transforms = new Map();
+            for (const componentId of selectedComponents) {
+                const component = project.components.find(item => item.id === componentId);
+                if (!component) continue;
+                transforms.set(componentId, componentWorldTransform(project, component));
+            }
+            for (const [componentId, transform] of transforms) {
+                const component = project.components.find(item => item.id === componentId);
+                component.placement = {
+                    type: 'free',
+                    position: { x: transform.x + movement.x, y: transform.y + movement.y },
+                    rotation: transform.rotation || 0,
+                };
+            }
+
+            const endpointMoves = ref => ref?.type === 'component-pin' && selectedComponents.has(ref.componentId);
+            for (const wire of project.wires) {
+                const fromMoved = endpointMoves(wire.from);
+                const toMoved = endpointMoves(wire.to);
+                const routeSelected = selectedWires.has(wire.id);
+                if (!fromMoved && !toMoved && !routeSelected) continue;
+                const previous = routes[wire.id];
+                if (!Array.isArray(previous) || previous.length < 2) {
+                    wire.route = { mode: 'auto', waypoints: [] };
+                    continue;
+                }
+                const nextFrom = resolveConnectionWorldPoint(project, wire.from);
+                const nextTo = resolveConnectionWorldPoint(project, wire.to);
+                const preserved = routeSelected
+                    ? translateWireRoute(previous, { delta: movement, from: nextFrom, to: nextTo })
+                    : moveWireRouteEndpoints(previous, {
+                        from: nextFrom,
+                        to: nextTo,
+                        fromDirection: pinExitDirection(project, wire.from),
+                        toDirection: pinExitDirection(project, wire.to),
+                    });
+                wire.route = { mode: 'manual', waypoints: preserved.slice(1, -1), preservedFromMove: true };
+            }
+        },
+    };
+}
+
+export function deleteSelectionCommand({ componentIds = [], wireIds = [] }) {
+    const selectedComponents = new Set(componentIds);
+    const selectedWires = new Set(wireIds);
+    return {
+        type: 'delete-selection',
+        wireIds: [],
+        apply(project) {
+            project.components = project.components.filter(component => !selectedComponents.has(component.id));
+            project.wires = project.wires.filter(wire => !selectedWires.has(wire.id) &&
+                ![wire.from, wire.to].some(ref => ref?.type === 'component-pin' && selectedComponents.has(ref.componentId)));
+        },
+    };
+}
+
+export function rotateFreeComponentCommand(componentId, delta = 90) {
+    return {
+        type: 'rotate-component',
+        componentId,
+        apply(project) {
+            const component = project.components.find(item => item.id === componentId);
+            if (!component) throw new Error(`Unknown component ${componentId}.`);
+            if (component.placement?.type !== 'free') throw new Error('Mounted components must use a legal breadboard rotation.');
+            component.placement.rotation = normalizeDegrees((component.placement.rotation || 0) + Number(delta || 0));
+            for (const wire of project.wires.filter(item => [item.from, item.to].some(ref =>
+                ref?.type === 'component-pin' && ref.componentId === componentId))) {
+                wire.route = { mode: 'auto', waypoints: [] };
+            }
         },
     };
 }

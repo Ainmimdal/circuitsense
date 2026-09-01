@@ -1,6 +1,6 @@
 # Elera Project Status
 
-Snapshot date: 2026-08-30  
+Snapshot date: 2026-09-01
 Phase: semantic physical editor / reusable package vertical slice implemented; automation integration in progress  
 Base revision: `main` / `origin/main` at `05c4c0e`
 
@@ -10,16 +10,28 @@ This is the current status source of truth. Engine behavior is governed by [ENGI
 
 | Check | Status |
 | --- | --- |
-| Node test suite | 117 tests passing |
+| Node test suite | 137 of 140 tests passing. The three current failures predate this feature pass: one dense supply-bus routing expectation in `test/physical-automation.test.js` and two wire-editor expectation drifts in `test/physical-wire-edit.test.js`; all 12 AI-agent regressions pass. |
 | Production build | Passing with Vite |
 | Diff whitespace check | Passing |
 | Lint/type check | No lint or type-check scripts are currently configured |
-| Browser acceptance | Corrected 300-mil DIP8 package, E/F trench alignment, LED, semantic wire, active validation and Auto Wire/Auto Layout controls render verified; add/move/delete outcomes are covered at command/controller level because the browser harness cannot reliably deliver pointer events into the nested Konva shadow canvas |
-| Bundle | Builds successfully; main JavaScript chunk is approximately 939 kB and triggers Vite's 500 kB warning |
+| Browser acceptance | Corrected 300-mil DIP8 package, E/F trench alignment, LED, semantic wire, active validation and Auto Wire/Auto Layout controls render verified. The real AI panel, provider badge, prompt and settings entry point also render without browser console errors; add/move/delete outcomes are covered at command/controller level because the browser harness cannot reliably deliver pointer events into the nested Konva shadow canvas. |
+| Bundle | Builds successfully; main JavaScript chunk is approximately 1,041 kB and triggers Vite's 500 kB warning |
 
 The feature work is present in the working tree but has not been committed. The tree also contains pre-existing report/template deletions and report-directory reorganization that are outside the automation rebuild. Do not reset, restore or include those changes indiscriminately.
 
 ## Implemented
+
+### Provider-neutral AI circuit agent
+
+- The former scripted AI mock is replaced by a real multi-turn tool-calling loop over the active semantic physical store.
+- DeepSeek, Google Gemini, OpenAI, OpenRouter and custom OpenAI-compatible endpoints share one provider boundary with editable model IDs and live connection testing.
+- The agent can search the actual parts catalog, inspect the circuit and controller pin budget, batch compatible-pin queries, place/delete components, validate exact-pin connections, invoke separate Auto Wire/Arrange/Route operations, validate, undo, and clear with confirmation.
+- Controller capabilities and constraints are derived from the existing `autoWirePins` inventory, so AI queries, exact-pin validation, footprints and deterministic Auto Wire share one pin source.
+- Tool arguments are validated, mutations remain inside store transactions, provider/tool failures return structured results, repeated calls and runaway tool rounds are bounded, and requests can be cancelled. Component discovery is batched instead of embedding the full catalog in every system prompt; BYOK users can configure a 5-50 tool-round budget and receive a final tool-free progress summary when it is reached.
+- Current-chat memory is canonical and provider-neutral. OpenAI Responses and Gemini Interactions use server-side continuation IDs; stateless providers receive an eight-turn transcript with deterministic older-turn summaries. Stable instructions precede changing project context for prompt-cache reuse, OpenRouter receives a sticky session ID, and the AI panel reports input/cached-input/output token totals.
+- Ask-before-apply, explain-first, suggest-only and auto-apply-safe action modes are enforced by the runtime rather than prompt text alone.
+- Provider preferences persist locally while API keys remain in tab-scoped session storage. Production deployment still requires a server-side secret relay and quota controls.
+- Architecture, provider requirements and extension boundaries are recorded in `docs/AI_AGENT.md`; focused regression coverage is in `test/ai-agent.test.js`.
 
 ### Semantic physical editor vertical slice
 
@@ -58,7 +70,7 @@ The feature work is present in the working tree but has not been committed. The 
 
 - **Auto Wire** assigns compatible Arduino pins, chooses the nearest compatible header, shares supply nets, inserts deterministic helpers and preserves existing breadboard mounts without moving components.
 - **Auto Wire** supports simultaneous controllers with stable per-component ownership, independent pin/I2C budgets and isolated supply domains. A failed scoped assignment leaves the previous project unchanged.
-- **Auto Layout** owns placement. Each controller receives an independent cluster; direct components use the restored header-aligned layout, while only actually occupied breadboards become rigid scene clusters. Generated helpers stay with their owner, clusters do not overlap, repeated calls are idempotent, and wiring plus placement commit as one undo step.
+- **Auto Layout** preserves its user-facing Auto Wire → arrange → route convenience pipeline in one history transaction. Its physical arrangement stage remains independently callable for AI-selected topology and never changes semantic wires, exact pin assignments, helpers, or route intent.
 - **Clean** owns waypoint optimization only. It uses obstacle-aware orthogonal routing, header fanout and a special short body-clear router for same-board jumpers.
 - Signal nets receive stable distinct colors; power is red and ground is black.
 - Breadboard power/ground realization uses rail feeders and unique local branch holes instead of independent source wires for every component.
@@ -78,7 +90,7 @@ The feature work is present in the working tree but has not been committed. The 
 | Command | Owns | Must preserve |
 | --- | --- | --- |
 | Auto Wire | Logical pin/net assignment and required helper generation | All component/board positions and existing valid mounted footprints |
-| Auto Layout | Complete unlocked component and board placement, followed by routing | Locked placements and electrical intent |
+| Auto Layout | Auto Wire, complete unlocked component/board placement, and routing | Locked placements and unrelated manual intent |
 | Clean | Route waypoints only | Components, nets, pin assignments, holes, colors and board topology |
 | Validation | Read-only findings | Every circuit and editor state layer |
 

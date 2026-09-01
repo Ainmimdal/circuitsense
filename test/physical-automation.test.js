@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { PhysicalCircuitStore } from '../src/physical/circuit-store.js';
-import { autoLayoutPhysicalStore, autoWirePhysicalStore } from '../src/physical/automation.js';
+import { arrangePhysicalStore, autoLayoutPhysicalStore, autoWirePhysicalStore } from '../src/physical/automation.js';
 import { addComponentCommand } from '../src/physical/commands.js';
 import { createHalfBreadboardSurface, getSurfaceDefinition } from '../src/physical/breadboard.js';
 import {
@@ -33,18 +33,30 @@ test('Auto Wire changes the active physical project and creates semantic connect
     assert.ok(store.project.wires.every(wire => wire.from?.type && wire.to?.type));
 });
 
-test('Auto Layout operates on the same project, keeps mounted bindings, and positions Arduino freely', () => {
+test('user-facing Auto Layout keeps the full Auto Wire, arrange, and route workflow', () => {
     const store = new PhysicalCircuitStore({ load: false });
     const arduino = addArduino(store);
     const chip = store.project.components.find(component => component.footprintId === 'dip8-300mil');
     const bindings = structuredClone(chip.placement.bindings);
     const result = autoLayoutPhysicalStore(store);
     assert.equal(result.status, 'success');
+    assert.equal(result.wireResult.status, 'success');
     assert.deepEqual(store.project.components.find(component => component.id === chip.id).placement.bindings, bindings);
+    assert.ok(store.project.components.some(component => component.properties?.provenance?.kind === 'generated'));
+    assert.ok(store.project.wires.some(wire => [wire.from, wire.to].some(ref => ref.componentId === arduino.id)));
     const positionedArduino = store.project.components.find(component => component.id === arduino.id);
     assert.equal(positionedArduino.placement.type, 'free');
     assert.ok(positionedArduino.placement.position.x > store.project.surfaces[0].transform.x);
     assert.ok(store.project.wires.every(wire => wire.route?.mode === 'auto'));
+});
+
+test('physical-only arrangement preserves semantic wires and route intent', () => {
+    const store = new PhysicalCircuitStore({ load: false });
+    addArduino(store);
+    const wires = structuredClone(store.project.wires);
+    const result = arrangePhysicalStore(store);
+    assert.equal(result.status, 'success');
+    assert.deepEqual(store.project.wires, wires);
 });
 
 function segmentIntersectsRect(segment, rect) {
@@ -84,7 +96,7 @@ function crowdedParallelOverlap(a, b, clearance = 1.8) {
         Math.max(Math.min(a.a.x, a.b.x), Math.min(b.a.x, b.b.x)));
 }
 
-test('physical Auto Layout follows Uno header affinity and routes adjacent pins in body-clear distinct lanes', () => {
+test('physical-only arrangement follows Uno header affinity and routes derived paths in body-clear distinct lanes', () => {
     const surface = createHalfBreadboardSurface();
     const footprint = defaultFootprintForComponent('arduino-uno');
     const uno = createComponentInstance({
@@ -99,7 +111,7 @@ test('physical Auto Layout follows Uno header affinity and routes adjacent pins 
     });
     const store = new PhysicalCircuitStore({ load: false });
     store.importProject(project);
-    autoLayoutPhysicalStore(store, { wire: false });
+    arrangePhysicalStore(store);
 
     const laidOutSurface = store.project.surfaces[0];
     const laidOutUno = store.project.components[0];
@@ -158,9 +170,24 @@ test('dense direct ground jumpers stay separate and local instead of escaping ar
         ],
     });
     const routes = routeAllWires(project);
+    const powerIds = ['pir-power', 'dht-power', 'ir-power'];
     const groundIds = ['pir-ground', 'dht-ground', 'ir-ground', 'rtc-ground'];
     const routeLength = points => routeSegments(points)
         .reduce((total, segment) => total + Math.abs(segment.a.x - segment.b.x) + Math.abs(segment.a.y - segment.b.y), 0);
+
+    const powerCorridorYs = powerIds.map(id => {
+        const segments = routeSegments(routes.get(id));
+        assert.ok(segments[0].b.y > segments[0].a.y,
+            `${id} must preserve its downward header escape even when its destination is above the Uno`);
+        assert.ok(Math.abs(segments[1].a.y - segments[1].b.y) < 1e-6,
+            `${id} must turn at the supply bus instead of creating a backtracking stub`);
+        const corridor = segments.find(segment =>
+            Math.abs(segment.a.y - segment.b.y) < 1e-6 && Math.abs(segment.a.x - segment.b.x) > 5);
+        assert.ok(corridor, `${id} must have an outbound horizontal corridor`);
+        return corridor.a.y;
+    });
+    assert.equal(new Set(powerCorridorYs.map(value => value.toFixed(6))).size, 1,
+        'shared 5V conductors may reuse one long horizontal bus corridor');
 
     for (const id of groundIds) {
         const points = routes.get(id);
@@ -199,7 +226,7 @@ test('unused breadboard does not replace old-Elera direct layout and multiple co
     });
     const store = new PhysicalCircuitStore({ load: false });
     store.importProject(project);
-    autoLayoutPhysicalStore(store, { wire: false });
+    arrangePhysicalStore(store);
 
     const laidOut = Object.fromEntries(store.project.components.map(component => [component.id, component]));
     const unoBounds = componentRoutingObstacles(store.project, { margin: 0 }).find(item => item.id === uno.id);
@@ -214,16 +241,19 @@ test('unused breadboard does not replace old-Elera direct layout and multiple co
         'an unused breadboard is not a reason to replace the direct layout branch');
 });
 
-test('Auto Layout with Auto Wire commits one history step', () => {
+test('user-facing Auto Layout composes Auto Wire, arrangement, and routing in one history step', () => {
     const store = new PhysicalCircuitStore({ load: false });
     addArduino(store);
     const before = store.historyIndex;
     const result = autoLayoutPhysicalStore(store);
     assert.equal(result.status, 'success');
+    assert.equal(result.wireResult.status, 'success');
     assert.equal(store.historyIndex, before + 1);
+    assert.ok(store.project.components.some(component => component.properties?.provenance?.kind === 'generated'));
+    assert.ok(store.project.wires.every(wire => wire.route?.mode === 'auto'));
 });
 
-test('direct Auto Layout assigns each ground wire to the nearest final controller header', () => {
+test('direct Auto Layout assigns bottom components to one bottom-header ground bus', () => {
     calibrateFreeComponentFootprint('arduino-uno', [
         { pinId: '2', x: 10, y: 0 },
         { pinId: 'A0', x: 34, y: 39 },
@@ -260,20 +290,17 @@ test('direct Auto Layout assigns each ground wire to the nearest final controlle
     const result = autoLayoutPhysicalStore(store);
     assert.equal(result.status, 'success');
 
+    const controllerGroundPins = [];
     for (const component of [sound, rtc]) {
         const groundWire = store.project.wires.find(wire => [wire.from, wire.to].some(ref =>
             ref.componentId === component.id && ref.pinId === 'GND'));
         const controllerRef = [groundWire.from, groundWire.to].find(ref => ref.componentId === uno.id);
-        const componentRef = [groundWire.from, groundWire.to].find(ref => ref.componentId === component.id);
-        const componentPoint = resolveConnectionWorldPoint(store.project, componentRef);
-        const nearestGround = ['GND.1', 'GND.2', 'GND.3'].map(pinId => ({
-            pinId,
-            point: resolveConnectionWorldPoint(store.project, componentPinRef(uno.id, pinId)),
-        })).sort((a, b) => Math.hypot(componentPoint.x - a.point.x, componentPoint.y - a.point.y) -
-            Math.hypot(componentPoint.x - b.point.x, componentPoint.y - b.point.y) ||
-            a.pinId.localeCompare(b.pinId, undefined, { numeric: true }))[0].pinId;
-        assert.equal(controllerRef.pinId, nearestGround, `${component.id} should use its nearest final GND header`);
+        controllerGroundPins.push(controllerRef.pinId);
+        assert.equal(pinExitDirection(store.project, controllerRef), 'down',
+            `${component.id} must use a ground pin on the bottom controller header`);
     }
+    assert.equal(new Set(controllerGroundPins).size, 1,
+        'all generated ground branches must enter one physical GND bus source');
 });
 
 test('Clean preserves fanout lanes for two ultrasonic sensors on opposite sides of one Uno', () => {

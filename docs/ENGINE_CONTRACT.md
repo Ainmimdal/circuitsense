@@ -1,8 +1,8 @@
 # Elera Automation Engine Contract
 
 Status: normative design contract  
-Contract version: 1.0  
-Last reconciled with the implementation: 2026-07-16
+Contract version: 1.1
+Last reconciled with the implementation: 2026-09-01
 
 This document defines the rules and ownership boundaries for Auto Wire, Auto Layout, Clean and Validation. It supersedes descriptive comments inside individual engine files when those comments conflict with this contract.
 
@@ -36,10 +36,10 @@ A lower priority must never be traded for a higher-priority violation. For examp
 
 | Layer | Authoritative data | Persisted | May be changed by |
 | --- | --- | --- | --- |
-| Logical circuit | Components, component pins, logical connections/nets, generated-helper provenance | Yes | Manual editing, Auto Wire, the wiring phase of Auto Layout |
+| Logical circuit | Components, component pins, logical connections/nets, generated-helper provenance | Yes | Manual editing, validated AI `connect_pins`, Auto Wire, the Auto Wire stage of user-facing Auto Layout |
 | User constraints | Locks and explicitly retained board mount constraints | Yes | Manual placement and lock controls |
 | Physical realization | Board resources, rigid placements, contacts, terminal/rail assignments and conductors in `physicalPlan` | Derived; only explicit constraints persist | Auto Layout, or Auto Wire rebuilding around unchanged mounts |
-| Route geometry | Conductor waypoints and orthogonal mode | No | Clean and the final routing phase of Auto Layout |
+| Route geometry | Conductor waypoints and orthogonal mode | No | Clean, route-only operations, and the routing stage of user-facing Auto Layout |
 | View state | Pan, zoom, selection, hover and tooltips | No | Editor UI only |
 
 The DOM, SVG bounding boxes and registered Wokwi pin elements are rendering adapters. They are not the source of logical connectivity or breadboard topology. Pure planners in `src/core` must be runnable without a browser.
@@ -51,8 +51,9 @@ Logical endpoints must never be rewritten into breadboard-hole endpoints. A phys
 | Command | Logical connections | Helper components | Component/board position | Hole and rail assignment | Waypoints | Failure behavior |
 | --- | --- | --- | --- | --- | --- | --- |
 | Auto Wire | May assign or replace in-scope generated connections | May insert deterministic required helpers | Must not move anything | Must preserve every existing valid mount; may rebuild conductors around those fixed mounts | Invalidated when connectivity changes; Clean owns optimization | No destructive partial rewrite of an endpoint that could not be reassigned |
-| Auto Layout | Runs Auto Wire as its logical prerequisite | May insert deterministic required helpers | May move unlocked items and board resources | May repack unlocked placements; locked placements are hard constraints | Routes the completed scene | No mutation when capacity or legality cannot be proven; offer verified alternatives |
-| Clean | Must not change | Must not change | Must not change | Must not change | May replace only route geometry | Keep the previous path for an unresolved conductor and report it |
+| Auto Layout (UI composition) | Runs Auto Wire as its logical prerequisite | May insert deterministic required helpers | May move unlocked items and board resources | May repack unlocked placements; locked placements are hard constraints | Routes the completed scene | No mutation when capacity or legality cannot be proven; offer verified alternatives |
+| Arrange Components | Must not change | Must not change | May move unlocked items and board resources | May repack unlocked placements; locked placements are hard constraints | Must preserve persisted route intent; derived display routes may refresh | Preserve the original semantic circuit if placement fails |
+| Auto Route / Clean | Must not change | Must not change | Must not change | Must not change | May replace only route geometry | Keep the previous path for an unresolved conductor and report it |
 | Validation | Read-only | Read-only | Read-only | Read-only | Read-only | Always return structured findings; never repair by mutation |
 
 There is exactly one placement owner per command. Auto Wire cannot run a second layout algorithm. Clean cannot improve placement. Validation cannot fix the issue it reports.
@@ -62,8 +63,11 @@ There is exactly one placement owner per command. Auto Wire cannot run a second 
 ```mermaid
 flowchart LR
     A["Snapshot source state"] --> B["Normalize schema"]
-    B --> C["Plan logical wiring"]
-    C --> D{"Placement requested or mounts exist?"}
+    B --> C{"Command owns semantic wiring?"}
+    C -- Yes --> C1["Plan and validate logical wiring"]
+    C -- No --> C2["Fingerprint and preserve logical wiring"]
+    C1 --> D{"Placement requested or mounts exist?"}
+    C2 --> D
     D -- No --> H["Check command postconditions"]
     D -- Yes --> E["Prove board feasibility and place rigid footprints"]
     E --> F["Synthesize contacts, strips, rails and conductors"]
@@ -80,11 +84,12 @@ The service layer adapts editor state into planner input and commits output. It 
 
 - **CORE-01 — Logical/physical separation.** Logical nets contain component-pin endpoints only. Breadboard holes exist only in physical contacts and conductors.
 - **CORE-02 — Determinism.** Equal normalized input and equal constraints produce equal pin assignments, placements, conductor identities, colors and routes. Ties use stable IDs, pin names and hole IDs.
-- **CORE-03 — Atomicity.** Auto Wire and Auto Layout commit a coherent result or preserve the last valid state. One toolbar command produces one undo step.
+- **CORE-03 — Atomicity.** Auto Wire, validated pin connections, and Auto Layout commit a coherent result or preserve the last valid state. One toolbar command produces one undo step.
 - **CORE-04 — Rigid geometry.** A footprint may translate and use an allowed rotation with one uniform 2.54 mm pitch-derived scale. It may never stretch pins independently.
 - **CORE-05 — Constraint preservation.** Locked items never move. Auto Wire treats all existing valid breadboard mounts as fixed even when they are not persisted as user locks.
 - **CORE-06 — Bounded planning.** Planning must terminate without waiting indefinitely for DOM registration. Unsupported or unresolved parts produce diagnostics instead of blocking readiness.
 - **CORE-07 — Stable diagnostics.** Engine diagnostics use stable codes and structured context. The UI translates them into student-facing messages.
+- **CORE-08 — Authoritative pin capabilities.** Controller capability queries, exact-pin connection validation, physical footprints and Auto Wire derive controller pins from the component definition's `autoWirePins` inventory. AI-specific duplicate pin catalogs are forbidden.
 
 ## Auto Wire rules
 
@@ -109,6 +114,7 @@ Pin exhaustion is not permission to delete a previously valid connection. It ret
 - **AL-03 — Direct scene.** In a non-breadboard circuit, classify components by their primary Arduino connection, keep series helpers with their owner, distribute rows without overlap and retain locked positions.
 - **AL-04 — Mounted order.** Place locked parts first, then the most constrained/largest-pin-count footprints, then use signal-header affinity and stable component IDs as tie breakers.
 - **AL-05 — Multiple-controller clusters.** Auto Layout builds one cluster per controller ownership group, lays out each cluster using its own direct or breadboard branch, then packs clusters without overlap. Explicit cross-controller nets are preserved and routed between clusters; they do not merge ownership or supply domains.
+- **AL-06 — Physical-stage topology preservation.** The independently callable Arrange Components stage changes placement only. It never invokes Auto Wire, creates or removes wires, changes endpoints or pin assignments, inserts helpers, or changes persisted route intent. The user-facing Auto Layout command may compose Auto Wire before this stage.
 
 ### Breadboard electrical model
 
@@ -147,6 +153,7 @@ After hard constraints pass, placement is compared lexicographically:
 - **CL-05 — Breadboard-local routing.** A conductor whose endpoints are holes on the same board stays inside that board, tries a direct segment first, avoids mounted bodies and then chooses the shortest candidate with the fewest points.
 - **CL-06 — Global route cost.** Among valid routes, minimize Manhattan length plus bend cost and a strong near-overlap penalty. Stable net and endpoint order makes the result deterministic.
 - **CL-07 — Failure isolation.** Failure to resolve one conductor's pins preserves its previous path, routes other conductors and reports the failed conductor ID.
+- **CL-08 — Existing nets only.** Route-only operations consume the current semantic wires and may change route intent/derived paths only. They cannot create, delete, merge, split, or retarget a net.
 
 Routing order is signal, I2C, power, then ground. This lets visually important signal lanes claim simple corridors first while rail-based supply wiring remains local.
 
@@ -159,6 +166,7 @@ Routing order is signal, I2C, power, then ground. This lets visually important s
 - **VAL-05 — Breadboard checks.** Detect missing/useful board guidance, insufficient capacity, unknown holes, occupied holes, placement overlap, incompatible or illegal footprints, disconnected mounted contacts and power-to-ground shorts.
 - **VAL-06 — Bus awareness.** Shared protocols and supply domains may legally have multiple endpoints. Duplicate-pin validation distinguishes a bus from accidentally assigning unrelated point-to-point signals to one Arduino pin.
 - **VAL-07 — Postcondition gate.** A newly planned physical result cannot be committed with a new error-level short, overlap, illegal footprint, invalid hole or disconnected required endpoint.
+- **VAL-08 — Exact controller-pin compatibility.** An exact-pin mutation derives the ordinary endpoint's required role from component metadata, checks the selected controller pin's capabilities/constraints, rejects hard incompatibilities transactionally, and returns non-fatal pin concerns as warnings.
 
 Current validation finding IDs are:
 
@@ -197,6 +205,7 @@ The rows between the markers are parsed by `test/engine-contract.test.js`. Rule 
 | `CORE-03` | Planning is atomic and one command is one history action | `src/services/auto-wire-engine.js`, `src/store.js` | `test/rebuild-integration.test.js`, `test/breadboard-planner.test.js` |
 | `CORE-04` | Footprints use rigid 2.54 mm geometry | `src/core/component-geometry.js` | `test/component-geometry.test.js`, `test/breadboard-model.test.js` |
 | `CORE-06` | Planning does not wait for DOM registration | `src/circuit-app.js`, `src/core/component-geometry.js` | `test/component-geometry.test.js`, `test/rebuild-integration.test.js` |
+| `CORE-08` | Controller pin capabilities have one component-metadata source | `src/component-library.js`, `src/core/pin-capabilities.js` | `test/ai-agent.test.js` |
 | `AW-02` | Pin roles select compatible active-MCU headers | `src/core/auto-wire-planner.js` | `test/auto-wire-planner.test.js` |
 | `AW-03` | Signals choose the nearest compatible header | `src/core/auto-wire-planner.js` | `test/auto-wire-planner.test.js` |
 | `AW-04` | Supply domains are shared | `src/core/auto-wire-planner.js`, `src/core/circuit-model.js` | `test/auto-wire-planner.test.js`, `test/circuit-model.test.js` |
@@ -208,6 +217,7 @@ The rows between the markers are parsed by `test/engine-contract.test.js`. Rule 
 | `AL-02` | Breadboard placement follows active header affinity | `src/services/auto-wire-engine.js` | `test/breadboard-layout.test.js` |
 | `AL-04` | Constrained footprints are placed before flexible ones | `src/core/breadboard-planner.js` | `test/breadboard-planner.test.js` |
 | `AL-05` | Multiple controllers use independently laid-out non-overlapping clusters | `src/physical/automation.js` | `test/physical-automation.test.js` |
+| `AL-06` | The physical-only arrangement stage preserves semantic wires and route intent | `src/physical/automation.js`, `src/ai/tools.js` | `test/physical-automation.test.js`, `test/ai-agent.test.js` |
 | `BB-01` | Board registry models terminal and rail topology | `src/core/board-registry.js`, `src/breadboard-model.js` | `test/board-registry.test.js`, `test/breadboard-model.test.js` |
 | `BB-02` | Leads and jumper endpoints have exclusive holes | `src/core/breadboard-planner.js`, `src/services/breadboard-service.js` | `test/breadboard-layout.test.js`, `test/breadboard-planner.test.js` |
 | `BB-04` | Same-strip connectivity suppresses drawn jumpers | `src/core/breadboard-planner.js` | `test/breadboard-planner.test.js` |
@@ -219,8 +229,10 @@ The rows between the markers are parsed by `test/engine-contract.test.js`. Rule 
 | `CL-02` | Non-board pins escape before turning | `src/services/routing-engine.js` | `test/breadboard-layout.test.js` |
 | `CL-03` | Header wires fan into distinct lanes | `src/services/routing-engine.js` | `test/breadboard-layout.test.js` |
 | `CL-05` | Same-board jumpers use short body-clear local routes | `src/services/routing-engine.js` | `test/breadboard-layout.test.js` |
+| `CL-08` | Route-only operations preserve existing semantic nets | `src/ai/tools.js`, `src/physical/routing.js` | `test/ai-agent.test.js`, `test/physical-interaction.test.js` |
 | `VAL-01` | Validation distinguishes logical and physical views | `src/services/validation-engine.js` | `test/project-schema.test.js`, `test/breadboard-layout.test.js` |
 | `VAL-05` | Breadboard legality produces validation findings | `src/services/validation-engine.js` | `test/breadboard-layout.test.js`, `test/breadboard-planner.test.js` |
+| `VAL-08` | Exact controller-pin mutations enforce metadata capabilities transactionally | `src/core/pin-capabilities.js`, `src/ai/tools.js` | `test/ai-agent.test.js` |
 | `INT-01` | Selection and registration cannot move parts | `src/components/placed-component.js`, `src/store.js` | `test/breadboard-layout.test.js` |
 | `INT-03` | Mounted edits rebuild atomically or roll back | `src/components/placed-component.js`, `src/services/breadboard-service.js` | `test/rebuild-integration.test.js`, `test/breadboard-layout.test.js` |
 <!-- engine-contract:end -->

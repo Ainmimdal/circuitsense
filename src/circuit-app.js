@@ -22,224 +22,229 @@ class CircuitApp extends LitElement {
         _settingsInitialTab: { state: true },
         _manualWireMode: { state: true },
         _manualWireSnap: { state: true },
+        _libraryOpen: { state: true },
     };
 
     static styles = css `
-    :host {
-      display: flex;
-      flex-direction: column;
-      width: 100vw;
-      height: 100vh;
-    }
-
-    .header {
-      min-height: 52px;
-      background: #18181b;
-      border-bottom: 1px solid #27272a;
-      display: flex;
-      align-items: center;
-      padding: 0 12px 0 16px;
-      flex-shrink: 0;
-      gap: 12px;
-      overflow: hidden;
-    }
-
-    .logo {
-      font-size: 18px;
-      font-weight: 700;
-      color: #43a5ca;
-      letter-spacing: 0;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex: 0 0 auto;
-      text-transform: lowercase;
-    }
-
-    .logo-mark {
-      width: 28px;
-      height: 28px;
-      display: block;
-      flex: 0 0 auto;
-    }
-
-    .subtitle {
-      font-size: 11px;
-      color: #71717a;
-      border-left: 1px solid #3f3f46;
-      padding-left: 12px;
-      white-space: nowrap;
-      flex: 0 1 auto;
-    }
-
-    .spacer {
-      flex: 1;
-    }
-
-    .toolbar {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      min-width: 0;
-      overflow-x: auto;
-      scrollbar-width: none;
-      padding-bottom: 1px;
-    }
-
-    .toolbar::-webkit-scrollbar {
-      display: none;
-    }
-
-    .toolbar-btn {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      min-width: 34px;
-      height: 34px;
-      padding: 0 10px;
-      border-radius: 6px;
-      border: 1px solid #3f3f46;
-      background: #27272a;
-      color: #a1a1aa;
-      font-size: 11px;
-      font-weight: 500;
-      font-family: inherit;
-      cursor: pointer;
-      transition: all 0.1s ease;
-      white-space: nowrap;
-      justify-content: center;
-    }
-
-    .toolbar-btn:hover {
-      background: #3f3f46;
-      color: #fafafa;
-      border-color: #52525b;
-    }
-
-    .toolbar-btn.active {
-      background: #0284c7;
-      color: #ffffff;
-      border-color: #0284c7;
-    }
-
-    .toolbar-btn.ai-active {
-      background: #6366f1;
-      color: #ffffff;
-      border-color: #6366f1;
-    }
-
-    .grid-size-select {
-      height: 34px;
-      padding: 0 8px;
-      border-radius: 6px;
-      border: 1px solid #3f3f46;
-      background: #27272a;
-      color: #a1a1aa;
-      font-size: 11px;
-      font-family: inherit;
-      cursor: pointer;
-    }
-
-    .grid-size-select:hover {
-      border-color: #52525b;
-    }
-
-    .toolbar-btn .icon {
-      font-size: 14px;
-      line-height: 1;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .toolbar-divider {
-      width: 1px;
-      height: 20px;
-      background: #3f3f46;
-      flex: 0 0 auto;
-    }
-
-    .toolbar-btn.danger:hover {
-      background: #ef4444;
-      color: #ffffff;
-      border-color: #ef4444;
-    }
-
-    .main {
-      display: flex;
-      flex: 1;
-      overflow: hidden;
-    }
-
-    component-sidebar {
-      width: 260px;
-      flex-shrink: 0;
-    }
-
-    .canvas-wrapper {
-      flex: 1;
-      position: relative;
-      overflow: hidden;
-      transition: margin-right 0.2s ease;
-    }
-
-    .canvas-wrapper.ai-open {
-      margin-right: 380px;
-    }
-
-    circuit-canvas {
-      width: 100%;
-      height: 100%;
-    }
-
-    validation-bar {
-      /* positioned absolute inside canvas-wrapper */
-    }
-
-    @media (max-width: 1380px) {
-      .subtitle {
-        display: none;
-      }
-    }
-
-    @media (max-width: 1050px) {
-      .toolbar-btn {
-        width: 34px;
-        padding: 0;
-        gap: 0;
-        font-size: 0;
+      :host {
+        display: flex;
+        flex-direction: column;
+        width: 100vw;
+        height: 100vh;
+        color: var(--text);
+        background: var(--ink);
       }
 
-      .toolbar-btn .icon {
-        font-size: 15px;
-      }
-
-      .grid-size-select {
-        width: 78px;
-        font-size: 10px;
-      }
-    }
-
-    @media (max-width: 900px) {
       .header {
-        padding-left: 10px;
-        gap: 8px;
+        min-height: 56px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 0 12px 0 15px;
+        flex: 0 0 auto;
+        overflow: visible;
+        background: var(--panel);
+        border-bottom: 1px solid var(--panel-border);
+        box-shadow: inset 0 -3px 0 var(--ink);
       }
 
+      .brand-lockup { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
       .logo {
-        font-size: 16px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--text);
+        font-size: 18px;
+        font-weight: 700;
+        letter-spacing: -.5px;
+      }
+      .logo-mark { width: 27px; height: 27px; display: block; filter: grayscale(1) contrast(.85) brightness(1.35); }
+      .subtitle {
+        max-width: 150px;
+        padding-left: 10px;
+        border-left: 1px solid var(--panel-border);
+        color: var(--text-muted);
+        font-size: 10px;
+        line-height: 1.2;
+      }
+      .spacer { flex: 1 1 auto; min-width: 12px; }
+
+      .toolbar { display: flex; align-items: center; gap: 6px; min-width: 0; flex: 0 1 auto; }
+      .tool-cluster, .mode-group, .account-cluster { display: flex; align-items: center; gap: 4px; }
+      .tool-cluster {
+        padding-right: 6px;
+        border-right: 1px solid var(--panel-border);
       }
 
-      .logo-mark {
-        width: 24px;
-        height: 24px;
+      .account-cluster {
+        flex: 0 0 auto;
+        padding-left: 10px;
+        border-left: 1px solid var(--panel-border);
       }
 
-      component-sidebar {
-        width: 220px;
+      .toolbar-btn, .grid-size-select, .mode-overflow summary, .action-overflow summary, .library-rail {
+        min-width: 34px;
+        height: 34px;
+        box-sizing: border-box;
+        border: 1px solid var(--panel-border);
+        border-radius: 4px;
+        color: var(--text);
+        background: var(--panel);
+        font: 600 10px/1 var(--font-ui, 'Public Sans', sans-serif);
+        cursor: pointer;
       }
-    }
-  `;
+      .toolbar-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 0 14px;
+        white-space: nowrap;
+        border-radius: 4px;
+      }
+      .toolbar-btn.icon-only { width: 34px; min-width: 34px; padding: 0; }
+      .toolbar-btn:hover, .grid-size-select:hover, .mode-overflow summary:hover, .action-overflow summary:hover {
+        color: var(--text);
+        border-color: var(--primary-hover);
+        background: var(--primary);
+      }
+      .toolbar-btn .icon { display: inline-flex; align-items: center; justify-content: center; font-size: 16px; }
+      .btn-action { background: transparent; border-color: var(--panel-border); color: var(--text); }
+      .btn-action:hover { background: var(--primary); border-color: var(--primary-hover); color: var(--text); }
+      .btn-action:active { transform: translateY(1px); }
+      .btn-toggle { background: transparent; border-color: var(--panel-border); color: var(--text-muted); }
+      .btn-toggle:hover { background: var(--primary); border-color: var(--primary-hover); color: var(--text); }
+      .btn-toggle.active {
+        color: var(--accent-boards);
+        border-color: var(--accent-boards);
+        border-bottom: 2px solid var(--accent-boards);
+        background: var(--panel);
+      }
+      .btn-toggle.active:hover {
+        color: var(--accent-boards);
+        border-color: var(--accent-boards);
+        border-bottom-color: var(--accent-boards);
+        background: var(--panel);
+      }
+      .toolbar-btn.ai-active { color: var(--text); border-color: var(--primary-hover); background: var(--primary); }
+      .toolbar-btn.ai-active:hover { background: var(--primary-hover); }
+      .toolbar-btn.danger:hover { color: var(--accent-ics); border-color: var(--accent-ics); background: transparent; }
+      .grid-size-select { padding: 0 10px; font-family: var(--font-ui, 'Public Sans', sans-serif); }
+      .mode-overflow, .action-overflow { display: none; position: relative; }
+      .mode-overflow summary, .action-overflow summary { display: flex; align-items: center; gap: 7px; padding: 0 14px; list-style: none; }
+      .mode-overflow summary::-webkit-details-marker, .action-overflow summary::-webkit-details-marker { display: none; }
+      .mode-overflow[open] summary, .action-overflow[open] summary { color: var(--text); border-color: var(--panel-border); }
+      .mode-popover {
+        position: absolute;
+        z-index: 500;
+        top: 39px;
+        right: 0;
+        width: 196px;
+        padding: 8px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px;
+        background: var(--panel);
+        border: 1px solid var(--panel-border);
+        border-radius: 4px;
+        box-shadow: 0 12px 32px color-mix(in srgb, var(--ink) 75%, transparent);
+      }
+      .mode-popover .toolbar-btn { width: 100%; }
+      .mode-popover .grid-size-select { grid-column: 1 / -1; width: 100%; }
+      .action-popover { grid-template-columns: 1fr; }
+      .action-popover .toolbar-btn { width: 100%; justify-content: flex-start; font-size: 10px; padding-inline: 14px; }
+
+      .avatar {
+        width: 34px;
+        height: 34px;
+        display: inline-grid;
+        place-items: center;
+        padding: 0;
+        color: var(--text);
+        background: transparent;
+        border: 1px solid var(--panel-border);
+        border-radius: 4px;
+        font: 700 10px/1 var(--font-ui, 'Public Sans', sans-serif);
+        cursor: pointer;
+      }
+      .avatar:hover { background: var(--primary); border-color: var(--primary-hover); }
+
+      .main { position: relative; display: flex; flex: 1; min-height: 0; overflow: hidden; }
+      .sidebar-shell { width: 276px; flex: 0 0 276px; min-width: 0; z-index: 40; }
+      component-sidebar { width: 100%; height: 100%; }
+      .canvas-wrapper { position: relative; flex: 1; min-width: 0; overflow: hidden; transition: margin-right .2s ease; }
+      .canvas-wrapper.ai-open { margin-right: 380px; }
+      circuit-canvas { width: 100%; height: 100%; }
+      .library-rail, .sidebar-scrim { display: none; }
+
+      @media (max-width: 1540px) {
+        .subtitle { display: none; }
+        .tool-cluster.secondary { display: none; }
+        .mode-group { display: none; }
+        .mode-overflow, .action-overflow { display: block; }
+      }
+
+      @media (max-width: 1180px) {
+        .tool-cluster.circuit-actions,
+        .tool-cluster.workspace { display: none; }
+      }
+
+      @media (max-width: 900px) {
+        .header { min-height: 52px; padding: 0 8px; gap: 8px; }
+        .logo span { display: none; }
+        .logo-mark { width: 25px; height: 25px; }
+        .toolbar { flex: 0 1 auto; }
+        .tool-cluster.history .toolbar-btn:not(.icon-only) { display: none; }
+        .account-cluster .projects-btn { display: none; }
+        .canvas-wrapper.ai-open { margin-right: 0; }
+        .sidebar-shell {
+          position: absolute;
+          inset: 0 auto 0 0;
+          width: min(310px, 86vw);
+          z-index: 420;
+          transform: translateX(-102%);
+          transition: transform .2s ease;
+          box-shadow: 18px 0 40px color-mix(in srgb, var(--ink) 72%, transparent);
+        }
+        .sidebar-shell.open { transform: translateX(0); }
+        .sidebar-scrim {
+          display: block;
+          position: absolute;
+          inset: 0;
+          z-index: 410;
+          border: 0;
+          background: color-mix(in srgb, var(--ink) 62%, transparent);
+          opacity: 0;
+          pointer-events: none;
+          transition: opacity .2s ease;
+        }
+        .sidebar-scrim.open { opacity: 1; pointer-events: auto; }
+        .library-rail {
+          display: inline-flex;
+          position: absolute;
+          z-index: 80;
+          top: 12px;
+          left: 10px;
+          width: 34px;
+          height: 34px;
+          align-items: center;
+          justify-content: center;
+          background: var(--panel);
+          color: var(--text);
+          border-color: var(--panel-border);
+          border-radius: 4px;
+        }
+      }
+
+      @media (pointer: coarse) {
+        .toolbar-btn, .mode-overflow summary, .action-overflow summary { height: 34px; }
+        .mode-popover { top: 41px; }
+      }
+
+      @media (max-width: 650px) {
+        .action-overflow { display: block; }
+      }
+    `;
 
     constructor() {
         super();
@@ -254,6 +259,8 @@ class CircuitApp extends LitElement {
         this._settingsInitialTab = 'account';
         this._manualWireMode = physicalCircuitStore.manualWireMode;
         this._manualWireSnap = physicalCircuitStore.manualWireSnap;
+        this._libraryOpen = false;
+        this._aiSettingsHandler = () => this._openLogin('keys');
         this._storeHandler = () => {
             this._antiOverlap = store.antiOverlap;
             this._fanOut = store.fanOut;
@@ -267,6 +274,7 @@ class CircuitApp extends LitElement {
     connectedCallback() {
         super.connectedCallback();
         store.addEventListener('change', this._storeHandler);
+        window.addEventListener('elera-open-ai-settings', this._aiSettingsHandler);
         
         this._keydownHandler = (e) => {
             if (store.wiringState) return;
@@ -288,6 +296,7 @@ class CircuitApp extends LitElement {
     disconnectedCallback() {
         super.disconnectedCallback();
         store.removeEventListener('change', this._storeHandler);
+        window.removeEventListener('elera-open-ai-settings', this._aiSettingsHandler);
         window.removeEventListener('keydown', this._keydownHandler);
     }
 
@@ -328,6 +337,7 @@ class CircuitApp extends LitElement {
         physicalCircuitStore.transaction('clean-wire-routes', project => {
             for (const wire of project.wires) wire.route = { mode: 'auto', waypoints: [] };
         });
+        await physicalCircuitStore.whenRoutesSettled();
     }
     _resetWires() {
         physicalCircuitStore.transaction('reset-wire-routes', project => {
@@ -341,6 +351,7 @@ class CircuitApp extends LitElement {
         try {
             const result = autoLayoutPhysicalStore(physicalCircuitStore);
             if (result.status !== 'success') alert(`Auto Layout could not finish: ${result.errors?.[0] || 'check the circuit components'}`);
+            else await physicalCircuitStore.whenRoutesSettled();
         } catch (error) {
             console.error('[CircuitSense] Auto layout failed:', error);
         } finally {
@@ -348,7 +359,7 @@ class CircuitApp extends LitElement {
         }
     }
 
-    _autoWireAll() {
+    async _autoWireAll() {
         const result = autoWirePhysicalStore(physicalCircuitStore);
         if (result.total === 0) {
             alert('No components to auto-wire. Add components with pins first.');
@@ -360,6 +371,7 @@ class CircuitApp extends LitElement {
                 : `Auto Wire could not finish: ${result.errors?.[0] || 'check the circuit'}`);
             return;
         }
+        await physicalCircuitStore.whenRoutesSettled();
         const msg = [
             `Auto-wired ${result.success} connections across ${result.total} components without moving them.`,
             result.errors.length > 0 ? `${result.errors.length} errors.` : '',
@@ -454,137 +466,117 @@ class CircuitApp extends LitElement {
         this._builderOpen = false;
     }
 
-    render() {
-        return html `
-      <div class="header">
-        <div class="logo">
-          <img class="logo-mark" src=${ELERA_LOGO_URL} alt="" />
-          <span>elera</span>
-        </div>
-        <div class="subtitle">Intelligent Arduino Circuit Builder</div>
-        <div class="spacer"></div>
-        <div class="toolbar">
-          <button class="toolbar-btn" @click=${this._undoAction} title="Undo (Ctrl+Z)">
-            <span class="icon">${faIcon('undo')}</span>
+    _toggleLibrary() {
+        this._libraryOpen = !this._libraryOpen;
+    }
+
+    _closeLibrary() {
+        this._libraryOpen = false;
+    }
+
+    _runOverflowAction(event, action) {
+        event.currentTarget.closest('details')?.removeAttribute('open');
+        action.call(this);
+    }
+
+    _renderModeControls() {
+        return html`
+          <button class="toolbar-btn btn-toggle ${this._antiOverlap ? 'active' : ''}" aria-pressed=${this._antiOverlap}
+            @click=${this._toggleAntiOverlap} title="Prevent component overlap">
+            <span class="icon">${faIcon('overlap')}</span>Overlap
           </button>
-          <button class="toolbar-btn" @click=${this._redoAction} title="Redo (Ctrl+Y)">
-            <span class="icon">${faIcon('redo')}</span>
+          <button class="toolbar-btn btn-toggle ${this._fanOut ? 'active' : ''}" aria-pressed=${this._fanOut}
+            @click=${this._toggleFanOut} title="Spread wires from header rows">
+            <span class="icon">${faIcon('fan')}</span>Fan
           </button>
-          <div class="toolbar-divider"></div>
-          <button class="toolbar-btn" @click=${this._saveProject} title="Save project locally">
-            <span class="icon">${faIcon('save')}</span>
-            Save
+          <button class="toolbar-btn btn-toggle ${this._sharpCorners ? 'active' : ''}" aria-pressed=${this._sharpCorners}
+            @click=${this._toggleSharpCorners} title="Use sharp wire corners">
+            <span class="icon">${faIcon('ortho')}</span>Sharp
           </button>
-          <button class="toolbar-btn" @click=${this._exportProject} title="Export Project to File">
-            <span class="icon">${faIcon('download')}</span>
-            Export
-          </button>
-          <button class="toolbar-btn" @click=${this._importProject} title="Import Project from File">
-            <span class="icon">${faIcon('folderOpen')}</span>
-            Import
-          </button>
-          <div class="toolbar-divider"></div>
-          <button class="toolbar-btn" @click=${this._cleanupWires} title="Auto-route wires around components">
-            <span class="icon">${faIcon('wrench')}</span>
-            Clean
-          </button>
-          <button class="toolbar-btn" @click=${this._resetWires} title="Reset all wires to default routing">
-            <span class="icon">${faIcon('rotateLeft')}</span>
-          </button>
-          <button class="toolbar-btn" @click=${this._autoWireAll} title="Auto-wire all components to Arduino">
-            <span class="icon">${faIcon('bolt')}</span>
-            Auto Wire
-          </button>
-          <button class="toolbar-btn" @click=${this._autoLayoutAll} title="Auto-layout and wire all components">
-            <span class="icon">${faIcon('wand')}</span>
-            Auto Layout
-          </button>
-          <div class="toolbar-divider"></div>
-          <button
-            class="toolbar-btn ${this._antiOverlap ? 'active' : ''}"
-            @click=${this._toggleAntiOverlap}
-            title="Toggle anti-overlap: components won't stack on each other"
-          >
-            <span class="icon">${faIcon(this._antiOverlap ? 'lock' : 'unlock')}</span>
-            Overlap
-          </button>
-          <button
-            class="toolbar-btn ${this._fanOut ? 'active' : ''}"
-            @click=${this._toggleFanOut}
-            title="Toggle wire fan-out: wires spread cleanly from header rows"
-          >
-            <span class="icon">${faIcon('shareNodes')}</span>
-            Fan
-          </button>
-          <button
-            class="toolbar-btn ${this._sharpCorners ? 'active' : ''}"
-            @click=${this._toggleSharpCorners}
-            title="Toggle sharp wire corners (no rounding)"
-          >
-            <span class="icon">${faIcon('ruler')}</span>
-            Sharp
-          </button>
-          <button
-            class="toolbar-btn ${this._manualWireMode === 'orthogonal' ? 'active' : ''}"
-            @click=${this._toggleManualWireMode}
-            title="Manual wire mode: ${this._manualWireMode === 'orthogonal' ? 'Orthogonal' : 'Freestyle'}"
-          >
-            <span class="icon">${faIcon(this._manualWireMode === 'orthogonal' ? 'ruler' : 'shuffle')}</span>
+          <button class="toolbar-btn btn-toggle ${this._manualWireMode === 'orthogonal' ? 'active' : ''}"
+            aria-pressed=${this._manualWireMode === 'orthogonal'} @click=${this._toggleManualWireMode}
+            title="Manual wire mode: ${this._manualWireMode === 'orthogonal' ? 'Orthogonal' : 'Freestyle'}">
+            <span class="icon">${faIcon(this._manualWireMode === 'orthogonal' ? 'ortho' : 'free')}</span>
             ${this._manualWireMode === 'orthogonal' ? 'Ortho' : 'Free'}
           </button>
-          <button
-            class="toolbar-btn ${this._manualWireSnap ? 'active' : ''}"
-            @click=${this._toggleManualWireSnap}
-            title="Toggle manual wire grid snapping"
-          >
-            <span class="icon">${faIcon('thumbtack')}</span>
-            Snap
+          <button class="toolbar-btn btn-toggle ${this._manualWireSnap ? 'active' : ''}" aria-pressed=${this._manualWireSnap}
+            @click=${this._toggleManualWireSnap} title="Snap manual routes to pin axes and pitch">
+            <span class="icon">${faIcon('snap')}</span>Snap
           </button>
-          <div class="toolbar-divider"></div>
-          <select class="grid-size-select"
-            @change=${(e) => this._setGridSize(parseInt(e.target.value))}
-            .value="${this._gridSize}"
-            title="Grid snap size"
-          >
-            <option value="10">Grid 10px</option>
-            <option value="20">Grid 20px</option>
-            <option value="50">Grid 50px</option>
+          <select class="grid-size-select" @change=${event => this._setGridSize(parseInt(event.target.value))}
+            .value="${this._gridSize}" title="Placement grid interval">
+            <option value="10">GRID 10</option>
+            <option value="20">GRID 20</option>
+            <option value="50">GRID 50</option>
           </select>
-          <div class="toolbar-divider"></div>
-          <button class="toolbar-btn danger" @click=${this._clearProject} title="Clear all">
-            <span class="icon">${faIcon('trash')}</span>
-          </button>
-          <div class="toolbar-divider"></div>
-          <button
-            class="toolbar-btn ${this._aiOpen ? 'ai-active' : ''}"
-            @click=${this._toggleAi}
-            title="Toggle AI Assistant"
-          >
-            <span class="icon">${faIcon('wand')}</span>
-            AI
-          </button>
-          <div class="toolbar-divider"></div>
-          <button class="toolbar-btn" @click=${this._openProjects} title="My Projects">
-            <span class="icon">${faIcon('folder')}</span>
-            Projects
-          </button>
-          <button
-            class="toolbar-btn ${this._mockUser ? 'active' : ''}"
-            @click=${this._openLogin}
-            title=${this._mockUser ? this._mockUser.name : 'Sign in'}
-          >
-            <span class="icon">${faIcon(this._mockUser ? 'user' : 'rightToBracket')}</span>
-            ${this._mockUser ? this._mockUser.name.split(/\s+/)[0] : 'Login'}
+        `;
+    }
+
+    render() {
+        return html `
+      <header class="header">
+        <div class="brand-lockup">
+          <div class="logo"><img class="logo-mark" src=${ELERA_LOGO_URL} alt="" /><span>elera</span></div>
+          <div class="subtitle">Arduino circuit design assistant</div>
+        </div>
+        <nav class="toolbar" aria-label="Editor tools">
+          <div class="tool-cluster history" aria-label="History and project actions">
+            <button class="toolbar-btn btn-action icon-only" @click=${this._undoAction} title="Undo (Ctrl+Z)" aria-label="Undo"><span class="icon">${faIcon('undo')}</span></button>
+            <button class="toolbar-btn btn-action icon-only" @click=${this._redoAction} title="Redo (Ctrl+Y)" aria-label="Redo"><span class="icon">${faIcon('redo')}</span></button>
+            <button class="toolbar-btn btn-action" @click=${this._saveProject} title="Save project"><span class="icon">${faIcon('save')}</span>Save</button>
+          </div>
+          <div class="tool-cluster secondary" aria-label="File actions">
+            <button class="toolbar-btn btn-action" @click=${this._exportProject} title="Export project"><span class="icon">${faIcon('download')}</span>Export</button>
+            <button class="toolbar-btn btn-action" @click=${this._importProject} title="Import project"><span class="icon">${faIcon('folderOpen')}</span>Import</button>
+          </div>
+          <div class="tool-cluster circuit-actions" aria-label="Circuit actions">
+            <button class="toolbar-btn btn-action" @click=${this._cleanupWires} title="Clean wire routes"><span class="icon">${faIcon('wrench')}</span>Clean</button>
+            <button class="toolbar-btn btn-action" @click=${this._resetWires} title="Return all wires to automatic routing"><span class="icon">${faIcon('rotateLeft')}</span>Reset wires</button>
+            <button class="toolbar-btn btn-action" @click=${this._autoWireAll} title="Auto Wire"><span class="icon">${faIcon('bolt')}</span>Auto Wire</button>
+            <button class="toolbar-btn btn-action" @click=${this._autoLayoutAll} title="Auto Layout"><span class="icon">${faIcon('wand')}</span>Auto Layout</button>
+          </div>
+          <div class="mode-group" aria-label="Persistent editor modes">${this._renderModeControls()}</div>
+          <details class="mode-overflow">
+            <summary>${faIcon('gear')} Modes</summary>
+            <div class="mode-popover">${this._renderModeControls()}</div>
+          </details>
+          <details class="action-overflow">
+            <summary>${faIcon('gear')} More</summary>
+            <div class="mode-popover action-popover">
+              <button class="toolbar-btn btn-action" @click=${event => this._runOverflowAction(event, this._cleanupWires)}>${faIcon('wrench')} Clean wire routes</button>
+              <button class="toolbar-btn btn-action" @click=${event => this._runOverflowAction(event, this._autoWireAll)}>${faIcon('bolt')} Auto Wire</button>
+              <button class="toolbar-btn btn-action" @click=${event => this._runOverflowAction(event, this._autoLayoutAll)}>${faIcon('wand')} Auto Layout</button>
+              <button class="toolbar-btn btn-action" @click=${event => this._runOverflowAction(event, this._exportProject)}>${faIcon('download')} Export project</button>
+              <button class="toolbar-btn btn-action" @click=${event => this._runOverflowAction(event, this._importProject)}>${faIcon('folderOpen')} Import project</button>
+              <button class="toolbar-btn btn-action" @click=${event => this._runOverflowAction(event, this._resetWires)}>${faIcon('rotateLeft')} Reset wires</button>
+              <button class="toolbar-btn btn-action" @click=${event => this._runOverflowAction(event, this._toggleAi)}>${faIcon('wand')} AI assistant</button>
+              <button class="toolbar-btn btn-action" @click=${event => this._runOverflowAction(event, this._openProjects)}>${faIcon('folder')} Projects</button>
+              <button class="toolbar-btn btn-action danger" @click=${event => this._runOverflowAction(event, this._clearProject)}>${faIcon('trash')} Clear circuit</button>
+            </div>
+          </details>
+          <div class="tool-cluster workspace" aria-label="Workspace actions">
+            <button class="toolbar-btn btn-action danger icon-only" @click=${this._clearProject} title="Delete all components" aria-label="Delete all components"><span class="icon">${faIcon('trash')}</span></button>
+            <button class="toolbar-btn btn-action ${this._aiOpen ? 'ai-active' : ''}" @click=${this._toggleAi} title="AI assistant"><span class="icon">${faIcon('wand')}</span>AI</button>
+          </div>
+        </nav>
+        <div class="spacer"></div>
+        <div class="account-cluster" aria-label="Account controls">
+          <button class="toolbar-btn btn-action projects-btn" @click=${this._openProjects} title="Projects"><span class="icon">${faIcon('folder')}</span>Projects</button>
+          <button class="avatar" @click=${this._openLogin} title=${this._mockUser ? this._mockUser.name : 'Account'} aria-label=${this._mockUser ? `Account: ${this._mockUser.name}` : 'Open account'}>
+            ${this._mockUser
+              ? this._mockUser.name.split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase()
+              : faIcon('user')}
           </button>
         </div>
-      </div>
-      <div class="main">
-        <component-sidebar @open-component-builder=${this._openBuilder}></component-sidebar>
-        <div class="canvas-wrapper ${this._aiOpen ? 'ai-open' : ''}">
-          <circuit-canvas></circuit-canvas>
-          <validation-bar></validation-bar>
+      </header>
+      <main class="main">
+        <button class="library-rail" @click=${this._toggleLibrary} title="Open component library" aria-label="Open component library">${faIcon('plug')}</button>
+        <button class="sidebar-scrim ${this._libraryOpen ? 'open' : ''}" @click=${this._closeLibrary} aria-label="Close component library"></button>
+        <div class="sidebar-shell ${this._libraryOpen ? 'open' : ''}">
+          <component-sidebar @open-component-builder=${this._openBuilder} @component-chosen=${this._closeLibrary}></component-sidebar>
         </div>
-      </div>
+        <div class="canvas-wrapper ${this._aiOpen ? 'ai-open' : ''}"><circuit-canvas></circuit-canvas><validation-bar></validation-bar></div>
+      </main>
       <ai-assistant @open-ai-settings=${this._openAiSettings}></ai-assistant>
       <projects-modal></projects-modal>
       <login-modal

@@ -5,8 +5,8 @@ import { PhysicalCircuitStore } from '../src/physical/circuit-store.js';
 import { InteractionController } from '../src/editor/interaction-controller.js';
 import { BreadboardSnapSolver } from '../src/physical/placement.js';
 import { holeWorldPosition } from '../src/physical/breadboard.js';
-import { addComponentCommand, deleteComponentCommand, deleteSurfaceCommand, moveSurfaceCommand } from '../src/physical/commands.js';
-import { createComponentInstance, resolveConnectionWorldPoint } from '../src/physical/model.js';
+import { addComponentCommand, deleteComponentCommand, deleteSurfaceCommand, moveSelectionCommand, moveSurfaceCommand } from '../src/physical/commands.js';
+import { componentWorldTransform, createComponentInstance, resolveConnectionWorldPoint } from '../src/physical/model.js';
 import { defaultFootprintForComponent } from '../src/physical/footprints.js';
 
 test('command history moves a surface atomically and undo restores mounted geometry', () => {
@@ -127,4 +127,53 @@ test('deleting a breadboard detaches mounted parts and removes only board-hole w
     assert.ok(Math.abs(after.y - before.y) < 1e-9);
     assert.equal(store.project.wires.some(wire => wire.id === 'surface-wire'), false);
     assert.equal(store.project.wires.some(wire => wire.id === 'wire-1'), true);
+});
+
+test('a multi-selection moves components and its wire route in one undoable command', () => {
+    const store = new PhysicalCircuitStore({ load: false, routingWorker: null });
+    const componentIds = store.project.components.map(component => component.id);
+    const beforeComponents = Object.fromEntries(store.project.components.map(component =>
+        [component.id, componentWorldTransform(store.project, component)]));
+    const beforeRoute = structuredClone(store.routes.get('wire-1'));
+    const routes = Object.fromEntries([...store.routes].map(([wireId, points]) => [wireId, structuredClone(points)]));
+
+    store.execute(moveSelectionCommand({
+        componentIds,
+        wireIds: ['wire-1'],
+        delta: { x: 12, y: -5 },
+        routes,
+    }));
+
+    for (const component of store.project.components) {
+        const transform = componentWorldTransform(store.project, component);
+        assert.equal(component.placement.type, 'free', 'mounted items detach together during a free group move');
+        assert.ok(Math.abs(transform.x - beforeComponents[component.id].x - 12) < 1e-9);
+        assert.ok(Math.abs(transform.y - beforeComponents[component.id].y + 5) < 1e-9);
+    }
+    const afterRoute = store.routes.get('wire-1');
+    assert.ok(Math.abs(afterRoute[0].x - beforeRoute[0].x - 12) < 1e-9);
+    assert.ok(Math.abs(afterRoute[0].y - beforeRoute[0].y + 5) < 1e-9);
+    assert.ok(Math.abs(afterRoute.at(-1).x - beforeRoute.at(-1).x - 12) < 1e-9);
+    assert.ok(Math.abs(afterRoute.at(-1).y - beforeRoute.at(-1).y + 5) < 1e-9);
+
+    assert.equal(store.undo(), true);
+    for (const component of store.project.components) {
+        assert.deepEqual(componentWorldTransform(store.project, component), beforeComponents[component.id]);
+    }
+});
+
+test('moving only a selected wire translates its body while its pin endpoints stay anchored', () => {
+    const store = new PhysicalCircuitStore({ load: false, routingWorker: null });
+    const before = structuredClone(store.routes.get('wire-1'));
+    store.execute(moveSelectionCommand({
+        wireIds: ['wire-1'],
+        delta: { x: 9, y: 7 },
+        routes: { 'wire-1': before },
+    }));
+    const after = store.routes.get('wire-1');
+    assert.deepEqual(after[0], before[0], 'source pin remains connected');
+    assert.deepEqual(after.at(-1), before.at(-1), 'target pin remains connected');
+    assert.ok(after.some(point => before.every(previous =>
+        Math.hypot(point.x - previous.x, point.y - previous.y) > 1e-6)), 'translated wire body gains movable geometry');
+    assert.ok(after.length > before.length, 'anchored connector legs join the moved body back to both pins');
 });

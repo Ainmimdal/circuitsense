@@ -26,15 +26,15 @@ class EleraBreadboard extends LitElement {
                 <linearGradient id="trench" x2="0" y2="1"><stop stop-color="#c9cac7"/><stop offset=".5" stop-color="#eeeeea"/><stop offset="1" stop-color="#bfc1be"/></linearGradient>
             </defs>
             <rect class="face" x="4" y="4" width="322" height="206" rx="10"/>
-            <line class="rail" x1="20" y1=${railY.TN - BREADBOARD.pitch} x2="310" y2=${railY.TN - BREADBOARD.pitch} stroke="#1976d2"/>
+            <line class="rail" x1="20" y1=${railY.TN - BREADBOARD.pitch} x2="310" y2=${railY.TN - BREADBOARD.pitch} stroke="var(--accent-breadboards)"/>
             <line class="rail" x1="20" y1=${railY.TP + BREADBOARD.pitch} x2="310" y2=${railY.TP + BREADBOARD.pitch} stroke="#e53935"/>
             <line class="rail" x1="20" y1=${railY.BP - BREADBOARD.pitch} x2="310" y2=${railY.BP - BREADBOARD.pitch} stroke="#e53935"/>
-            <line class="rail" x1="20" y1=${railY.BN + BREADBOARD.pitch} x2="310" y2=${railY.BN + BREADBOARD.pitch} stroke="#1976d2"/>
+            <line class="rail" x1="20" y1=${railY.BN + BREADBOARD.pitch} x2="310" y2=${railY.BN + BREADBOARD.pitch} stroke="var(--accent-breadboards)"/>
             <rect class="trench" x="10" y="107" width="310" height="10" rx="3"/>
             ${['A','B','C','D','E','F','G','H','I','J'].map(row => svg`<text class="row-label" x="10" y=${breadboardHoles.find(h => h.name === `${row}1`).y + 2}>${row}</text>`)}
             ${Array.from({length: 30}, (_, i) => (i + 1) % 5 === 0 ? svg`<text x=${20 + i * 10} y="54">${i + 1}</text><text x=${20 + i * 10} y="168">${i + 1}</text>` : '')}
-            <text x="12" y=${railY.TN + 2} fill="#1976d2">&#8722;</text><text x="12" y=${railY.TP + 2} fill="#e53935">+</text>
-            <text x="12" y=${railY.BP + 2} fill="#e53935">+</text><text x="12" y=${railY.BN + 2} fill="#1976d2">&#8722;</text>
+            <text x="12" y=${railY.TN + 2} fill="var(--accent-breadboards)">&#8722;</text><text x="12" y=${railY.TP + 2} fill="#e53935">+</text>
+            <text x="12" y=${railY.BP + 2} fill="#e53935">+</text><text x="12" y=${railY.BN + 2} fill="var(--accent-breadboards)">&#8722;</text>
             ${[...terminals, ...rails].map(hole => svg`<circle class="hole" data-pin=${hole.name} data-group=${hole.group} cx=${hole.x} cy=${hole.y} r="2.5"/>`)}
         </svg>`;
     }

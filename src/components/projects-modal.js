@@ -104,11 +104,11 @@ class ProjectsModal extends LitElement {
 
         input:focus {
             outline: none;
-            border-color: #0284c7;
+            border-color: var(--primary-hover);
         }
 
         button.btn-primary {
-            background: #0284c7;
+            background: var(--primary);
             color: white;
             border: none;
             border-radius: 6px;
@@ -119,7 +119,7 @@ class ProjectsModal extends LitElement {
         }
 
         button.btn-primary:hover {
-            background: #0369a1;
+            background: var(--primary-hover);
         }
         
         button.btn-primary:disabled {
@@ -201,6 +201,23 @@ class ProjectsModal extends LitElement {
             padding: 20px 0;
             font-size: 14px;
         }
+
+        :host { background: color-mix(in srgb, var(--ink) 72%, transparent); font-family: var(--font-ui, 'Public Sans', sans-serif); }
+        .modal { background: var(--panel); border-color: var(--panel-border); border-radius: 4px; color: var(--text); }
+        .header { border-color: var(--panel-border); }
+        .header h2, .project-name { color: var(--text); }
+        .close-btn { width: 34px; height: 34px; padding: 0; border: 1px solid var(--panel-border); border-radius: 4px; color: var(--text-muted); }
+        .close-btn:hover { color: var(--text); background: var(--primary-hover); }
+        input { height: 34px; box-sizing: border-box; background: var(--panel); border-color: var(--panel-border); border-radius: 4px; color: var(--text); }
+        input:focus { border-color: var(--primary-hover); outline: none; }
+        button.btn-primary, button.btn-action, button.btn-danger { height: 34px; box-sizing: border-box; border-radius: 4px; padding: 0 14px; }
+        button.btn-primary { background: var(--primary); border: 1px solid var(--primary); color: var(--text); }
+        button.btn-primary:hover { background: var(--primary-hover); }
+        button.btn-primary:disabled { background: var(--panel-border); color: var(--text-muted); }
+        .project-item { background: var(--panel); border-color: var(--panel-border); border-radius: 4px; }
+        .project-date, .empty-state { color: var(--text-muted); }
+        button.btn-action { background: var(--primary); border: 1px solid var(--panel-border); color: var(--text); }
+        button.btn-action:hover { background: var(--primary-hover); }
     `;
 
     constructor() {

@@ -1,6 +1,8 @@
 import { createHalfBreadboardSurface } from './breadboard.js';
+import { routingFootprintsForProject } from './footprints.js';
 import { createPhysicalProject, normalizePersistedProject, resolveConnectionWorldPoint } from './model.js';
 import { pinExitDirection, routeAllWires, routeWire } from './routing.js';
+import { createRoutingWorkerClient } from './routing-worker-client.js';
 import { moveWireRouteEndpoints } from './wire-edit.js';
 
 const STORAGE_KEY = 'elera_physical_project_v5_empty_workspace';
@@ -43,12 +45,16 @@ function defaultProject() {
 }
 
 export class PhysicalCircuitStore extends EventTarget {
-    constructor({ load = true } = {}) {
+    constructor({ load = true, routingWorker = undefined } = {}) {
         super();
         this.manualWireMode = 'orthogonal';
         this.manualWireSnap = true;
         this.project = load ? this.#load() : defaultProject();
         this.routes = routeAllWires(this.project);
+        this.routingWorker = routingWorker === undefined ? createRoutingWorkerClient() : routingWorker;
+        this.routingInProgress = false;
+        this.routingRevision = 0;
+        this.routingPromise = Promise.resolve(this.routes);
         this.history = [structuredClone(this.project)];
         this.historyIndex = 0;
         this.nextComponentId = this.#nextSuffix('part');
@@ -75,21 +81,40 @@ export class PhysicalCircuitStore extends EventTarget {
     }
 
     #changed({ persist = true, rerouteWireIds = null } = {}) {
+        if (rerouteWireIds && this.routingWorker && this.routingInProgress) {
+            if (persist) this.save();
+            this.dispatchEvent(new CustomEvent('change', {
+                detail: { project: this.project, routingPending: true },
+            }));
+            this.#queueWorkerRouting();
+            return;
+        }
         if (rerouteWireIds) {
             const affected = new Set(rerouteWireIds);
             const nextRoutes = new Map();
             for (const wire of this.project.wires) {
                 if (!affected.has(wire.id) && this.routes.has(wire.id)) nextRoutes.set(wire.id, this.routes.get(wire.id));
             }
-            const usedRoutes = [...nextRoutes.values()];
+            const wiresById = new Map(this.project.wires.map(wire => [wire.id, wire]));
+            const usedRoutes = [...nextRoutes].map(([wireId, points]) => ({ points, wire: wiresById.get(wireId) }));
             for (const wire of this.project.wires) {
                 if (!affected.has(wire.id) && nextRoutes.has(wire.id)) continue;
                 const points = routeWire(this.project, wire, { existingRoutes: usedRoutes });
                 if (!points) continue;
                 nextRoutes.set(wire.id, points);
-                usedRoutes.push(points);
+                usedRoutes.push({ points, wire });
             }
             this.routes = nextRoutes;
+            this.routingRevision++;
+            this.routingInProgress = false;
+            this.routingPromise = Promise.resolve(this.routes);
+        } else if (this.routingWorker) {
+            if (persist) this.save();
+            this.dispatchEvent(new CustomEvent('change', {
+                detail: { project: this.project, routingPending: true },
+            }));
+            this.#queueWorkerRouting();
+            return;
         } else {
             this.routes = routeAllWires(this.project);
         }
@@ -97,11 +122,52 @@ export class PhysicalCircuitStore extends EventTarget {
         this.dispatchEvent(new CustomEvent('change', { detail: { project: this.project } }));
     }
 
+    #queueWorkerRouting() {
+        const revision = ++this.routingRevision;
+        const project = structuredClone(this.project);
+        const footprints = structuredClone(routingFootprintsForProject(this.project));
+        this.routingInProgress = true;
+        this.dispatchEvent(new CustomEvent('routing-change', { detail: { active: true, revision } }));
+        this.routingPromise = this.routingWorker.route(project, footprints)
+            .then(routes => {
+                if (revision !== this.routingRevision) return this.routes;
+                this.routes = routes;
+                this.dispatchEvent(new CustomEvent('change', {
+                    detail: { project: this.project, routesOnly: true },
+                }));
+                return this.routes;
+            })
+            .catch(error => {
+                if (revision !== this.routingRevision) return this.routes;
+                console.warn('[Elera] Worker routing failed; retrying on the main thread.', error);
+                this.routes = routeAllWires(this.project);
+                this.dispatchEvent(new CustomEvent('change', {
+                    detail: { project: this.project, routesOnly: true },
+                }));
+                return this.routes;
+            })
+            .finally(() => {
+                if (revision !== this.routingRevision) return;
+                this.routingInProgress = false;
+                this.dispatchEvent(new CustomEvent('routing-change', { detail: { active: false, revision } }));
+            });
+        return this.routingPromise;
+    }
+
     execute(command) {
         const next = structuredClone(this.project);
         command.apply(next);
         let rerouteWireIds = command.wireIds ? new Set(command.wireIds) : null;
-        if (['move-component', 'mount-component'].includes(command.type) && command.componentId) {
+        if (command.type === 'move-selection' && command.componentIds) {
+            rerouteWireIds ||= new Set();
+            const movedIds = new Set(command.componentIds);
+            for (const wire of next.wires) {
+                if ([wire.from, wire.to].some(ref => ref?.type === 'component-pin' && movedIds.has(ref.componentId))) {
+                    rerouteWireIds.add(wire.id);
+                }
+            }
+        }
+        if (['move-component', 'mount-component', 'rotate-component'].includes(command.type) && command.componentId) {
             rerouteWireIds = new Set(next.wires.filter(wire => [wire.from, wire.to].some(ref =>
                 ref?.type === 'component-pin' && ref.componentId === command.componentId)).map(wire => wire.id));
         }
@@ -192,9 +258,14 @@ export class PhysicalCircuitStore extends EventTarget {
     }
 
     recomputeRoutes() {
+        if (this.routingWorker) return this.#queueWorkerRouting();
         this.routes = routeAllWires(this.project);
         this.dispatchEvent(new CustomEvent('change', { detail: { project: this.project, routesOnly: true } }));
         return this.routes;
+    }
+
+    whenRoutesSettled() {
+        return this.routingPromise;
     }
 
     setManualRoute(wireId, waypoints) {

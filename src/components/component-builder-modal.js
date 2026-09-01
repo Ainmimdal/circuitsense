@@ -111,8 +111,8 @@ class ComponentBuilderModal extends LitElement {
         }
 
         .btn.primary {
-            border-color: #0284c7;
-            background: #0284c7;
+            border-color: var(--primary);
+            background: var(--primary);
             color: #fff;
         }
 
@@ -140,8 +140,8 @@ class ComponentBuilderModal extends LitElement {
         }
 
         .step.active {
-            color: #e0f2fe;
-            background: rgba(14, 165, 233, 0.12);
+            color: var(--text);
+            background: var(--primary);
         }
 
         .body {
@@ -235,7 +235,7 @@ class ComponentBuilderModal extends LitElement {
         }
 
         .pin-marker.selected {
-            box-shadow: 0 0 0 5px rgba(14, 165, 233, 0.34);
+            box-shadow: 0 0 0 5px color-mix(in srgb, var(--primary-hover) 34%, transparent);
         }
 
         .pin-marker.power {
@@ -295,9 +295,9 @@ class ComponentBuilderModal extends LitElement {
 
         .pin-row.selected {
             padding: 8px;
-            border: 1px solid rgba(14, 165, 233, 0.5);
+            border: 1px solid var(--primary-hover);
             border-radius: 8px;
-            background: rgba(14, 165, 233, 0.08);
+            background: color-mix(in srgb, var(--primary) 8%, transparent);
         }
 
         .pin-row label {
@@ -360,6 +360,26 @@ class ComponentBuilderModal extends LitElement {
             color: #fca5a5;
             font-size: 12px;
         }
+
+        :host { background: color-mix(in srgb, var(--ink) 72%, transparent); font-family: var(--font-ui, 'Public Sans', sans-serif); }
+        .modal, .header, .footer, .steps, .panel, .upload-zone { background: var(--panel); border-color: var(--panel-border); color: var(--text); }
+        .modal, .panel, .upload-zone { border-radius: 4px; }
+        .title, .panel-title { color: var(--text); }
+        .close-btn, .btn, .pin-row button { height: 34px; box-sizing: border-box; padding: 0 14px; border-radius: 4px; border-color: var(--panel-border); background: var(--panel); color: var(--text); }
+        .close-btn { width: 34px; padding: 0; }
+        .btn:hover, .close-btn:hover, .pin-row button:hover { background: var(--primary-hover); color: var(--text); }
+        .btn.primary { border-color: var(--primary); background: var(--primary); color: var(--text); }
+        .btn.primary:hover { background: var(--primary-hover); }
+        .step { color: var(--text-muted); border-color: var(--panel-border); }
+        .step.active { color: var(--text); background: var(--primary); }
+        .preview-shell { border-color: var(--panel-border); border-radius: 4px; background-color: var(--ink); background-image: radial-gradient(circle, var(--panel-border) 1px, transparent 1px); }
+        .pin-marker.selected { box-shadow: 0 0 0 5px color-mix(in srgb, var(--primary-hover) 52%, transparent); }
+        label, .meta, .pin-hint, .upload-zone { color: var(--text-muted); }
+        input, textarea, select { border-color: var(--panel-border); border-radius: 4px; background: var(--panel); color: var(--text); }
+        input:not([type="file"]), select { height: 34px; }
+        input:focus, textarea:focus, select:focus { outline: none; border-color: var(--primary-hover); }
+        .pin-row.selected { border-color: var(--primary-hover); border-radius: 4px; background: color-mix(in srgb, var(--primary) 28%, transparent); }
+        .placement-actions .btn { height: 34px; }
 
         @media (max-width: 760px) {
             .layout {

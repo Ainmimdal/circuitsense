@@ -76,10 +76,10 @@ export class EleraFullBreadboard extends LitElement {
                 />
 
                 ${railSegments.map(segment => svg`
-                    <line class="rail" x1=${segment.x1} y1=${railY.TN - board.pitch} x2=${segment.x2} y2=${railY.TN - board.pitch} stroke="#1976d2" />
+                    <line class="rail" x1=${segment.x1} y1=${railY.TN - board.pitch} x2=${segment.x2} y2=${railY.TN - board.pitch} stroke="var(--accent-breadboards)" />
                     <line class="rail" x1=${segment.x1} y1=${railY.TP + board.pitch} x2=${segment.x2} y2=${railY.TP + board.pitch} stroke="#e53935" />
                     <line class="rail" x1=${segment.x1} y1=${railY.BP - board.pitch} x2=${segment.x2} y2=${railY.BP - board.pitch} stroke="#e53935" />
-                    <line class="rail" x1=${segment.x1} y1=${railY.BN + board.pitch} x2=${segment.x2} y2=${railY.BN + board.pitch} stroke="#1976d2" />
+                    <line class="rail" x1=${segment.x1} y1=${railY.BN + board.pitch} x2=${segment.x2} y2=${railY.BN + board.pitch} stroke="var(--accent-breadboards)" />
                 `)}
 
                 <line class="rail-break" x1="325" y1="8" x2="325" y2="52" />
@@ -106,14 +106,14 @@ export class EleraFullBreadboard extends LitElement {
                     return svg`<text x=${x} y="54">${column}</text><text x=${x} y="168">${column}</text>`;
                 })}
 
-                <text x="7" y=${railY.TN + 2} fill="#1976d2">−</text>
+                <text x="7" y=${railY.TN + 2} fill="var(--accent-breadboards)">−</text>
                 <text x="7" y=${railY.TP + 2} fill="#e53935">+</text>
                 <text x="7" y=${railY.BP + 2} fill="#e53935">+</text>
-                <text x="7" y=${railY.BN + 2} fill="#1976d2">−</text>
-                <text x="643" y=${railY.TN + 2} fill="#1976d2">−</text>
+                <text x="7" y=${railY.BN + 2} fill="var(--accent-breadboards)">−</text>
+                <text x="643" y=${railY.TN + 2} fill="var(--accent-breadboards)">−</text>
                 <text x="643" y=${railY.TP + 2} fill="#e53935">+</text>
                 <text x="643" y=${railY.BP + 2} fill="#e53935">+</text>
-                <text x="643" y=${railY.BN + 2} fill="#1976d2">−</text>
+                <text x="643" y=${railY.BN + 2} fill="var(--accent-breadboards)">−</text>
                 <text class="brand" x="325" y="113">ELERA 830</text>
 
                 ${[...terminals, ...rails].map(hole => svg`

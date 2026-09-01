@@ -47,3 +47,10 @@ Output: `Elera_FYP1_Report_v4.docx`
 - [Self-healing engine flow](docs/SELF_HEALING_ENGINE.md) - contract-synchronized engine rules and flowcharts, recovery boundaries and orthodox breadboard routing rules.
 - [Circuit core rebuild specification](REBUILD_SPEC.md) - schema v2 and physical-realization design baseline.
 - [Physical editor architecture](docs/PHYSICAL_EDITOR_ARCHITECTURE.md) - millimetre geometry, semantic placement/connectivity, Konva rendering, current limitations and migration plan.
+- [AI agent architecture](docs/AI_AGENT.md) - provider-neutral BYOK transport, tool loop, safety modes, supported providers and extension points.
+
+## AI assistant (BYOK)
+
+Open **AI → Settings → AI Keys**, choose DeepSeek, Gemini, OpenAI, OpenRouter, or a custom OpenAI-compatible endpoint, enter a model and API key, and run **Test**. API keys are kept in session storage for the current browser tab; other AI preferences are saved locally.
+
+The assistant uses Elera's real component library and controller-pin metadata to choose exact pins, validate connections, and invoke separate Auto Wire, Arrange Components, Route Wires, history, and validation tools. The normal editor Auto Layout button retains its combined Auto Wire → arrange → route behavior. DeepSeek and Gemini keys are both supported, but each key must be used with its matching provider endpoint.
