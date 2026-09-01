@@ -483,7 +483,7 @@ function scoreCandidate(project, name) {
     const area = width * height;
     const score = unresolved * 1_000_000_000 + overlaps * 100_000_000 + crossings * 20_000 +
         crowdedLength * 300 + backtracks * 15_000 + detour * 12 + bends * 180 +
-        aspectPenalty * 4_000 + area * 0.025 + length;
+        aspectPenalty * 4_000 + area * 0.15 + length;
     return {
         name, score, unresolved, overlaps, crossings, crowdedLength, backtracks,
         detour, bends, length, width, height, aspectRatio, area,
@@ -508,19 +508,19 @@ function internalProject(project, includedIds) {
 function candidateSpecs(memberCount) {
     const wrap = memberCount <= 4 ? 4 : memberCount <= 8 ? 3 : 2;
     return [
-        { name: 'port-flow-compact', rotationMode: 'canonical', controllerGap: 12, itemGap: 10, bandGap: 10, wrap, topStart: 0.5, orderMode: 'normal' },
-        { name: 'port-flow-balanced', rotationMode: 'canonical', controllerGap: 18, itemGap: 14, bandGap: 14, wrap: Math.min(3, wrap), topStart: 0.45, orderMode: 'normal' },
-        { name: 'port-flow-airy', rotationMode: 'canonical', controllerGap: 24, itemGap: 18, bandGap: 18, wrap: Math.min(3, wrap), topStart: 0.6, orderMode: 'normal' },
-        { name: 'port-flow-wrapped', rotationMode: 'canonical', controllerGap: 16, itemGap: 12, bandGap: 12, wrap: 2, topStart: 0.4, orderMode: 'signals-first' },
-        { name: 'port-flow-preserve', rotationMode: 'preserve', controllerGap: 18, itemGap: 14, bandGap: 14, wrap: Math.min(3, wrap), topStart: 0.5, orderMode: 'normal' },
+        { name: 'port-flow-compact', rotationMode: 'canonical', controllerGap: 8, itemGap: 7, bandGap: 8, wrap, topStart: 0.5, orderMode: 'normal' },
+        { name: 'port-flow-balanced', rotationMode: 'canonical', controllerGap: 11, itemGap: 9, bandGap: 10, wrap: Math.min(3, wrap), topStart: 0.45, orderMode: 'normal' },
+        { name: 'port-flow-airy', rotationMode: 'canonical', controllerGap: 15, itemGap: 12, bandGap: 12, wrap: Math.min(3, wrap), topStart: 0.6, orderMode: 'normal' },
+        { name: 'port-flow-wrapped', rotationMode: 'canonical', controllerGap: 9, itemGap: 8, bandGap: 9, wrap: 2, topStart: 0.4, orderMode: 'signals-first' },
+        { name: 'port-flow-preserve', rotationMode: 'preserve', controllerGap: 11, itemGap: 9, bandGap: 10, wrap: Math.min(3, wrap), topStart: 0.5, orderMode: 'normal' },
     ];
 }
 
 function retrySpecs() {
     return [
-        { name: 'retry-wide-reversed', rotationMode: 'canonical', controllerGap: 28, itemGap: 20, bandGap: 18, wrap: 3, topStart: 0.25, orderMode: 'reverse' },
-        { name: 'retry-two-lane', rotationMode: 'canonical', controllerGap: 22, itemGap: 16, bandGap: 20, wrap: 2, topStart: 0.7, orderMode: 'normal' },
-        { name: 'retry-signals-first', rotationMode: 'preserve', controllerGap: 26, itemGap: 18, bandGap: 18, wrap: 2, topStart: 0.35, orderMode: 'signals-first' },
+        { name: 'retry-wide-reversed', rotationMode: 'canonical', controllerGap: 17, itemGap: 13, bandGap: 13, wrap: 3, topStart: 0.25, orderMode: 'reverse' },
+        { name: 'retry-two-lane', rotationMode: 'canonical', controllerGap: 14, itemGap: 11, bandGap: 14, wrap: 2, topStart: 0.7, orderMode: 'normal' },
+        { name: 'retry-signals-first', rotationMode: 'preserve', controllerGap: 16, itemGap: 12, bandGap: 13, wrap: 2, topStart: 0.35, orderMode: 'signals-first' },
     ];
 }
 
