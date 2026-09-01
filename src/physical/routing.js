@@ -359,6 +359,22 @@ function pathClear(points, obstacles) {
     return routeSegments(points).every(segment => segmentClear(segment.a, segment.b, obstacles));
 }
 
+function pathClearForContext(points, context) {
+    const segments = routeSegments(points);
+    const sourceId = context.wire.from?.type === 'component-pin' ? context.wire.from.componentId : null;
+    const targetId = context.wire.to?.type === 'component-pin' ? context.wire.to.componentId : null;
+    return segments.every((segment, index) => context.obstacles.every(obstacle => {
+        if (!rectIntersectsSegment(obstacle, segment)) return true;
+        if (index === 0 && obstacle.id === sourceId) {
+            return !context.fromDirection || followsExitDirection(segment.a, segment.b, context.fromDirection);
+        }
+        if (index === segments.length - 1 && obstacle.id === targetId) {
+            return !context.toDirection || followsExitDirection(segment.b, segment.a, context.toDirection);
+        }
+        return false;
+    }));
+}
+
 function pathCost(points, usedSegments, busKey = null, preferredBusLane = null) {
     let cost = Math.max(0, points.length - 2) * TURN_PENALTY;
     const reservedBusLane = preferredBusLane || (busKey
@@ -658,7 +674,10 @@ function collapseEndpointHairpin(points, context, endpoint) {
         const oldLength = routeLength([a, b, c, d]);
         if (replacement.length < 2 || !followsExitDirection(replacement[0], replacement[1], direction) ||
             routeLength(replacement) >= oldLength - 1e-6 || !pathClear(replacement, obstacles)) break;
-        ordered = cleanAutomaticPoints([replacement[0], ...replacement.slice(1, -1), ...ordered.slice(3)]);
+        const nextOrdered = cleanAutomaticPoints([replacement[0], ...replacement.slice(1, -1), ...ordered.slice(3)]);
+        const nextRoute = source ? nextOrdered : [...nextOrdered].reverse();
+        if (!pathClearForContext(nextRoute, context)) break;
+        ordered = nextOrdered;
     }
     return source ? ordered : ordered.reverse();
 }
@@ -691,7 +710,8 @@ function collapseCollinearBacktracks(points, context) {
             if (!pathClear(cleanPoints([a, c]), obstacles)) continue;
             const candidate = cleanAutomaticPoints([...result.slice(0, index + 1), ...result.slice(index + 2)]);
             if (!routeFollowsEndpointDirections(candidate, context) ||
-                routeLength(candidate) >= routeLength(result) - 1e-6) continue;
+                routeLength(candidate) >= routeLength(result) - 1e-6 ||
+                !pathClearForContext(candidate, context)) continue;
             result = candidate;
             changed = true;
             break;
@@ -724,7 +744,8 @@ function collapseClearHairpins(points, context) {
                     ...result.slice(0, index + 1), ...replacement.slice(1, -1), ...result.slice(index + 3),
                 ]))
                 .filter(candidate => routeFollowsEndpointDirections(candidate, context) &&
-                    routeLength(candidate) < routeLength(result) - 1e-6)
+                    routeLength(candidate) < routeLength(result) - 1e-6 &&
+                    pathClearForContext(candidate, context))
                 .sort((left, right) => routeLength(left) - routeLength(right) || left.length - right.length);
             if (!candidates.length) continue;
             result = candidates[0];
@@ -737,10 +758,14 @@ function collapseClearHairpins(points, context) {
 
 function finalizeAutomaticRoute(points, context) {
     const clean = cleanAutomaticPoints(points);
-    const endpoints = collapseEndpointHairpin(collapseEndpointHairpin(clean, context, 'source'), context, 'target');
-    const withoutSpikes = collapseCollinearBacktracks(endpoints, context);
-    const withoutHairpins = collapseClearHairpins(withoutSpikes, context);
-    return cleanAutomaticPoints(collapseCollinearBacktracks(withoutHairpins, context));
+    const endpointCandidate = collapseEndpointHairpin(collapseEndpointHairpin(clean, context, 'source'), context, 'target');
+    const endpoints = pathClearForContext(endpointCandidate, context) ? endpointCandidate : clean;
+    const spikeCandidate = collapseCollinearBacktracks(endpoints, context);
+    const withoutSpikes = pathClearForContext(spikeCandidate, context) ? spikeCandidate : endpoints;
+    const hairpinCandidate = collapseClearHairpins(withoutSpikes, context);
+    const withoutHairpins = pathClearForContext(hairpinCandidate, context) ? hairpinCandidate : withoutSpikes;
+    const finalCandidate = cleanAutomaticPoints(collapseCollinearBacktracks(withoutHairpins, context));
+    return pathClearForContext(finalCandidate, context) ? finalCandidate : withoutHairpins;
 }
 
 function routedContext(context, usedRoutes) {

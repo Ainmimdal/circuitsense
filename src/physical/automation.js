@@ -4,6 +4,7 @@ import { applyTransform, normalizeDegrees, rotatePoint } from './geometry.js';
 import { createComponentInstance, componentPinRef, componentWorldTransform, resolveConnectionWorldPoint } from './model.js';
 import { defaultFootprintForComponent, getFootprintDefinition, projectFootprintPoint } from './footprints.js';
 import { getSurfaceDefinition } from './breadboard.js';
+import { layoutDirectClusterV2 } from './direct-layout-v2.js';
 import { pinExitDirection, ROUTING_COMPONENT_MARGIN, ROUTING_WIRE_SEPARATION } from './routing.js';
 
 const SIGNAL_COLORS = Object.freeze(['#22d3ee', '#a78bfa', '#f59e0b', '#10b981', '#f472b6', '#60a5fa']);
@@ -552,9 +553,10 @@ function translateCluster(project, componentIds, surfaces, dx, dy) {
 
 function layoutProject(project) {
     const controllers = project.components.filter(isController).sort((a, b) => stableCompare(a.id, b.id));
-    if (!controllers.length) return;
+    if (!controllers.length) return { clusters: [] };
     const ownership = buildOwnership(project, controllers);
     const surfaceOwners = surfaceOwnership(project, ownership);
+    const reports = [];
     let cursorX = 28;
     for (const controller of controllers) {
         // Layout is expressed in world-space pin exit directions, so retaining
@@ -564,6 +566,11 @@ function layoutProject(project) {
         const surfaces = project.surfaces.filter(surface => surfaceOwners.get(surface.id) === controller.id);
         for (const surface of surfaces) placeOwnedSurface(project, controller, surface, ownership);
         placeDirectOwners(project, controller, members);
+        const directReport = surfaces.length ? null : layoutDirectClusterV2(
+            project,
+            controller.id,
+            members.map(component => component.id),
+        );
 
         const componentIds = new Set([controller.id, ...members.map(component => component.id)]);
         const before = clusterBounds(project, componentIds, surfaces);
@@ -572,7 +579,9 @@ function layoutProject(project) {
         translateCluster(project, componentIds, surfaces, dx, dy);
         const after = clusterBounds(project, componentIds, surfaces);
         cursorX = after.right + CLUSTER_GAP;
+        reports.push({ controllerId: controller.id, mode: surfaces.length ? 'breadboard' : 'direct-v2', ...directReport });
     }
+    return { clusters: reports };
 }
 
 function resetAutomaticRouteIntent(project) {
@@ -636,8 +645,9 @@ function alignGeneratedGroundBusPinsToLayout(project) {
 
 /** Arrange component and surface positions without changing semantic connectivity or route intent. */
 export function arrangePhysicalStore(store) {
-    store.transaction('arrange-components', project => layoutProject(project));
-    return { status: 'success' };
+    let layout = null;
+    store.transaction('arrange-components', project => { layout = layoutProject(project); });
+    return { status: 'success', layout };
 }
 
 /** Route existing wires without changing semantic connectivity or placement. */
@@ -651,11 +661,12 @@ export function routePhysicalStore(store) {
 export function autoLayoutPhysicalStore(store, { wire = true, componentIds = null } = {}) {
     const plan = wire ? buildAutoWirePlan(store.project, componentIds) : null;
     if (plan && plan.result.status !== 'success') return publicWireResult(plan.result, plan.eligible);
+    let layout = null;
     store.transaction('auto-layout', project => {
         if (plan) applyAutoWireResult(project, plan.result);
-        layoutProject(project);
+        layout = layoutProject(project);
         if (plan) alignGeneratedGroundBusPinsToLayout(project);
         resetAutomaticRouteIntent(project);
     });
-    return { status: 'success', wireResult: plan ? publicWireResult(plan.result, plan.eligible) : null };
+    return { status: 'success', wireResult: plan ? publicWireResult(plan.result, plan.eligible) : null, layout };
 }
