@@ -1,11 +1,15 @@
 import { getComponentDef } from '../component-library.js';
 import { planAutoWire } from '../core/auto-wire-planner.js';
+import { loadEditorPreferences } from '../core/editor-preferences.js';
 import { applyTransform, normalizeDegrees, rotatePoint } from './geometry.js';
 import { createComponentInstance, componentPinRef, componentWorldTransform, resolveConnectionWorldPoint } from './model.js';
 import { defaultFootprintForComponent, getFootprintDefinition, projectFootprintPoint } from './footprints.js';
-import { getSurfaceDefinition } from './breadboard.js';
+import { getSurfaceDefinition, holeWorldPosition } from './breadboard.js';
+import { BreadboardSnapSolver } from './placement.js';
 import { layoutDirectClusterV2 } from './direct-layout-v2.js';
 import { pinExitDirection, ROUTING_COMPONENT_MARGIN, ROUTING_WIRE_SEPARATION } from './routing.js';
+import { realizeAutoWireConnections } from './breadboard-auto-wire.js';
+import { validatePhysicalProject } from './validation.js';
 
 const SIGNAL_COLORS = Object.freeze(['#22d3ee', '#a78bfa', '#f59e0b', '#10b981', '#f472b6', '#60a5fa']);
 const COMPONENT_GAP = 12;
@@ -19,13 +23,26 @@ function stableCompare(a, b) {
 }
 
 function componentConnections(project) {
-    return project.wires
+    const intent = Array.isArray(project.properties?.netlistIntent) ? project.properties.netlistIntent : [];
+    const source = [
+        ...intent,
+        ...project.wires.filter(wire => !wire.properties?.generated &&
+            wire.from?.type === 'component-pin' && wire.to?.type === 'component-pin'),
+    ];
+    const seen = new Set();
+    return source
         .filter(wire => wire.from?.type === 'component-pin' && wire.to?.type === 'component-pin')
+        .filter(wire => {
+            const key = `${wire.from.componentId}:${wire.from.pinId}>${wire.to.componentId}:${wire.to.pinId}`;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        })
         .map(wire => ({
             id: wire.id,
-            from: { componentId: wire.from.componentId, pinId: wire.from.pinId },
-            to: { componentId: wire.to.componentId, pinId: wire.to.pinId },
-            generated: Boolean(wire.properties?.generated),
+            from: componentPinRef(wire.from.componentId, wire.from.pinId),
+            to: componentPinRef(wire.to.componentId, wire.to.pinId),
+            generated: Boolean(wire.generated || wire.properties?.generated),
         }));
 }
 
@@ -40,6 +57,7 @@ function plannerComponents(project) {
             y: transform.y,
             rotation: component.placement?.rotation || 0,
             provenance: component.properties?.provenance,
+            properties: { ...(component.properties || {}) },
         };
     });
 }
@@ -60,7 +78,7 @@ function colorForConnection(connection, index) {
     return SIGNAL_COLORS[index % SIGNAL_COLORS.length];
 }
 
-function buildAutoWirePlan(project, componentIds = null) {
+function buildAutoWirePlan(project, componentIds = null, preferences = loadEditorPreferences()) {
     const eligible = project.components.filter(component => {
         const definition = getComponentDef(component.definitionId);
         return (!componentIds || componentIds.includes(component.id)) && definition?.autoWire && !definition.isBoard;
@@ -69,6 +87,7 @@ function buildAutoWirePlan(project, componentIds = null) {
         components: plannerComponents(project),
         connections: componentConnections(project),
         componentIds,
+        addLedResistors: preferences.autoWireLedResistors,
         pinPositionFor: (componentId, pinId) => pinPositionFor(project, componentId, pinId),
     });
     return { result, eligible };
@@ -84,6 +103,7 @@ function applyAutoWireResult(project, result) {
         if (!planned) continue;
         component.properties ||= {};
         if (planned.controllerId) component.properties.controllerId = planned.controllerId;
+        if (planned.properties) Object.assign(component.properties, planned.properties);
     }
 
     for (const planned of result.components) {
@@ -97,23 +117,35 @@ function applyAutoWireResult(project, result) {
             x: Number(planned.x || 0),
             y: Number(planned.y || 0),
             properties: {
+                ...(planned.properties || {}),
                 controllerId: planned.controllerId,
                 provenance: planned.provenance || { kind: 'generated', controllerId: planned.controllerId },
             },
         }));
     }
 
-    const surfaceWires = project.wires.filter(wire =>
-        wire.from?.type === 'surface-hole' || wire.to?.type === 'surface-hole');
-    const plannedWires = result.connections.map((connection, index) => ({
-        id: connection.id,
-        from: { type: 'component-pin', componentId: connection.from.componentId, pinId: connection.from.pinId },
-        to: { type: 'component-pin', componentId: connection.to.componentId, pinId: connection.to.pinId },
-        route: { mode: 'auto', waypoints: [] },
-        color: colorForConnection(connection, index),
-        properties: { generated: Boolean(connection.generated) },
-    }));
-    project.wires = [...surfaceWires, ...plannedWires];
+    const realization = realizeAutoWireConnections(project, result.connections, colorForConnection);
+    if (realization.status !== 'success') return realization;
+    project.properties ||= {};
+    project.properties.netlistIntent = realization.intent;
+    project.wires = [...realization.preservedWires, ...realization.wires];
+    return realization;
+}
+
+function preparedAutoWireProject(project, result) {
+    const prepared = structuredClone(project);
+    const realization = applyAutoWireResult(prepared, result);
+    if (realization.status === 'success') {
+        const previousErrors = new Set(validatePhysicalProject(project).errors.map(item => item.id));
+        const postconditionIds = /^(?:occupied:|invalid-placement:|invalid-wire-hole:|incomplete-net:|breadboard-net-conflict:)/;
+        const introduced = validatePhysicalProject(prepared).errors
+            .filter(item => postconditionIds.test(item.id) && !previousErrors.has(item.id));
+        if (introduced.length) {
+            return { prepared, realization: { status: 'failure', wires: [], preservedWires: project.wires,
+                intent: [], diagnostics: introduced.map(item => ({ code: 'breadboard-postcondition-failed', issueId: item.id })) } };
+        }
+    }
+    return { prepared, realization };
 }
 
 function publicWireResult(result, eligible) {
@@ -126,10 +158,15 @@ function publicWireResult(result, eligible) {
 }
 
 /** Apply metadata-driven Auto Wire to the active physical project without moving anything. */
-export function autoWirePhysicalStore(store, { componentIds = null } = {}) {
-    const { result, eligible } = buildAutoWirePlan(store.project, componentIds);
+export function autoWirePhysicalStore(store, { componentIds = null, preferences = loadEditorPreferences() } = {}) {
+    const { result, eligible } = buildAutoWirePlan(store.project, componentIds, preferences);
     if (result.status !== 'success') return publicWireResult(result, eligible);
-    store.transaction('auto-wire', project => applyAutoWireResult(project, result));
+    const { prepared, realization } = preparedAutoWireProject(store.project, result);
+    if (realization.status !== 'success') {
+        return { ...publicWireResult(result, eligible), status: 'failure', success: 0,
+            diagnostics: realization.diagnostics, errors: realization.diagnostics.map(item => item.code) };
+    }
+    store.transaction('auto-wire', project => Object.assign(project, prepared));
     return publicWireResult(result, eligible);
 }
 
@@ -187,7 +224,10 @@ function otherEndpoint(wire, componentId) {
 }
 
 function wiresBetween(project, firstId, secondId) {
-    return project.wires.filter(wire => endpointFor(wire, firstId) && endpointFor(wire, secondId));
+    // Layout follows stable logical terminals. A breadboard-aware realization
+    // deliberately replaces a mounted component pin with a free socket in its
+    // strip, so the routed wire collection alone cannot recover ownership.
+    return componentConnections(project).filter(wire => endpointFor(wire, firstId) && endpointFor(wire, secondId));
 }
 
 function helpersFor(project, ownerId) {
@@ -250,12 +290,12 @@ function inferredControllerId(project, component, controllers) {
     const stored = component.properties?.controllerId || component.properties?.provenance?.controllerId;
     if (valid.has(stored)) return stored;
     const candidates = new Set();
-    for (const wire of project.wires) {
+    for (const wire of componentConnections(project)) {
         const other = otherEndpoint(wire, component.id);
         if (other?.type === 'component-pin' && valid.has(other.componentId)) candidates.add(other.componentId);
     }
     for (const helper of helpersFor(project, component.id)) {
-        for (const wire of project.wires) {
+        for (const wire of componentConnections(project)) {
             const other = otherEndpoint(wire, helper.id);
             if (other?.type === 'component-pin' && valid.has(other.componentId)) candidates.add(other.componentId);
         }
@@ -443,7 +483,118 @@ function localSurfacePoint(project, surface, ref) {
     return definition.getHole(component.placement.bindings?.[ref.pinId]);
 }
 
-function placeOwnedSurface(project, controller, surface, ownership) {
+/** Prefer incoming wire -> helper -> owner -> outgoing wire without folding back. */
+function seriesChainPlacementPenalty(project, owner, link, helperInputPoint) {
+    const junctionPoint = resolveConnectionWorldPoint(project, link.ownerRef);
+    const outerOwnerPoint = componentConnections(project)
+        .map(wire => endpointFor(wire, owner.id))
+        .filter(ref => ref && ref.pinId !== link.ownerRef.pinId)
+        .sort((a, b) => stableCompare(a.pinId, b.pinId))
+        .map(ref => resolveConnectionWorldPoint(project, ref))
+        .find(Boolean);
+    if (!junctionPoint || !outerOwnerPoint || !helperInputPoint) return 0;
+
+    const chain = {
+        x: junctionPoint.x - outerOwnerPoint.x,
+        y: junctionPoint.y - outerOwnerPoint.y,
+    };
+    const chainLength = Math.hypot(chain.x, chain.y);
+    if (chainLength < .01) return 0;
+    const input = {
+        x: helperInputPoint.x - junctionPoint.x,
+        y: helperInputPoint.y - junctionPoint.y,
+    };
+    const forward = (input.x * chain.x + input.y * chain.y) / chainLength;
+    const lateral = Math.abs(input.x * chain.y - input.y * chain.x) / chainLength;
+    return (forward <= 0 ? 160 + Math.abs(forward) * 8 : 0) + lateral * 4;
+}
+
+function mountGeneratedHelperBesideOwner(project, controller, surface, owner, link) {
+    const helper = link?.helper;
+    if (!helper || helper.properties?.provenance?.kind !== 'generated' || helper.placement?.type !== 'free') return false;
+    if (!link.helperOwnerRef?.pinId || !link.helperControllerRef?.pinId) return false;
+    const definition = getSurfaceDefinition(surface);
+    const ownerHoleId = owner.placement?.bindings?.[link.ownerRef?.pinId];
+    const targetGroup = definition?.getHole(ownerHoleId)?.electricalGroup;
+    if (!definition || !targetGroup) return false;
+
+    // Old generated endpoints are only one possible realization of the same
+    // netlist intent. Do not let those temporary reservations prevent Layout
+    // from finding the final package mount; manual endpoints remain occupied.
+    const planningProject = {
+        ...project,
+        wires: project.wires.filter(wire => !wire.properties?.generated),
+    };
+    const solver = new BreadboardSnapSolver({ acquisitionRadius: .05 });
+    const occupiedBodies = project.components
+        .filter(component => component.id !== helper.id && component.placement?.type === 'surface' &&
+            component.placement.surfaceId === surface.id)
+        .map(component => componentBounds(project, component));
+    const ownerPoint = holeWorldPosition(surface, ownerHoleId);
+    const controllerPoint = resolveConnectionWorldPoint(project, link.controllerRef);
+    // A physical mount would be unroutable when the off-board source terminal
+    // has no calibrated position. Keep the helper free rather than creating a
+    // breadboard island with no legal geometric endpoint.
+    if (!controllerPoint) return false;
+    const candidates = new Map();
+
+    for (const anchorHole of definition.holes) {
+        if (anchorHole.zone !== 'terminal' || !anchorHole.canOccupy) continue;
+        // Ask the generic solver for each legal orientation. Filtering by the
+        // owner strip after a single solve would otherwise hide the reversed
+        // horizontal candidate needed for a monotonic series chain.
+        for (const preferredRotation of [0, 180, 90, 270]) {
+            const candidate = solver.solve({
+                project: planningProject,
+                component: helper,
+                pointerWorld: holeWorldPosition(surface, anchorHole.id),
+                surfaceId: surface.id,
+                preferredRotation,
+                preferredFootprintId: 'axial-4',
+            });
+            if (!candidate) continue;
+            const ownerFacingHole = definition.getHole(candidate.bindings?.[link.helperOwnerRef.pinId]);
+            if (ownerFacingHole?.electricalGroup !== targetGroup) continue;
+            const key = `${candidate.footprintId}:${candidate.rotation}:${JSON.stringify(candidate.bindings)}`;
+            if (candidates.has(key)) continue;
+            const placed = {
+                ...helper,
+                footprintId: candidate.footprintId,
+                placement: {
+                    type: 'surface', surfaceId: surface.id, rotation: candidate.rotation,
+                    bindings: structuredClone(candidate.bindings),
+                },
+            };
+            const body = componentBounds(planningProject, placed);
+            if (occupiedBodies.some(bounds => rectanglesOverlap(body, bounds, .4))) continue;
+            const helperOwnerPoint = holeWorldPosition(surface, ownerFacingHole.id);
+            const inputPoint = holeWorldPosition(surface, candidate.bindings[link.helperControllerRef.pinId]);
+            const ownerDistance = ownerPoint && helperOwnerPoint
+                ? Math.hypot(ownerPoint.x - helperOwnerPoint.x, ownerPoint.y - helperOwnerPoint.y) : 0;
+            const controllerDistance = controllerPoint && inputPoint
+                ? Math.hypot(controllerPoint.x - inputPoint.x, controllerPoint.y - inputPoint.y) : 0;
+            const candidateFootprint = getFootprintDefinition(candidate.footprintId);
+            const uprightFallbackPenalty = candidateFootprint?.visualVariant === 'upright' ? 100 : 0;
+            const spanPenalty = candidateFootprint?.visualVariant === 'compact'
+                ? Math.abs(Number(candidateFootprint.leadSpan || 4) - 4) * 20 : 0;
+            const chainPenalty = seriesChainPlacementPenalty(project, owner, link, inputPoint);
+            candidates.set(key, { candidate,
+                score: ownerDistance + controllerDistance * .02 + candidate.score + uprightFallbackPenalty + spanPenalty + chainPenalty });
+        }
+    }
+
+    const selected = [...candidates.values()].sort((left, right) => left.score - right.score ||
+        stableCompare(left.candidate.anchorHoleId, right.candidate.anchorHoleId))[0]?.candidate;
+    if (!selected || !solver.validateCandidate(planningProject, helper, selected)) return false;
+    helper.footprintId = selected.footprintId;
+    helper.placement = {
+        type: 'surface', surfaceId: surface.id, rotation: selected.rotation,
+        bindings: structuredClone(selected.bindings),
+    };
+    return true;
+}
+
+function placeOwnedSurface(project, controller, surface, ownership, { mountGeneratedHelpers = false } = {}) {
     const definition = getSurfaceDefinition(surface);
     if (!definition) return;
     const mountedOwners = project.components.filter(component => component.placement?.type === 'surface' &&
@@ -468,7 +619,10 @@ function placeOwnedSurface(project, controller, surface, ownership) {
         ? controllerBounds.top - BOARD_GAP - definition.height
         : controllerBounds.bottom + BOARD_GAP;
     surface.transform = { x, y, rotation: 0 };
-    for (const { owner, link } of links) placeHelper(project, controller, owner, link, direction);
+    for (const { owner, link } of links) {
+        const mounted = mountGeneratedHelpers && mountGeneratedHelperBesideOwner(project, controller, surface, owner, link);
+        if (!mounted) placeHelper(project, controller, owner, link, direction);
+    }
 }
 
 function placeDirectOwners(project, controller, members) {
@@ -525,6 +679,36 @@ function placeDirectOwners(project, controller, members) {
     placeVerticalColumn(groups.right, 'right');
 }
 
+function rectanglesOverlap(a, b, margin = 0) {
+    return a.left < b.right + margin && a.right > b.left - margin &&
+        a.top < b.bottom + margin && a.bottom > b.top - margin;
+}
+
+/** Keep direct-wired/free components outside the physical breadboard body. */
+function separateFreeComponentsFromSurfaces(project, members, surfaces) {
+    if (!surfaces.length) return;
+    const boardBounds = surfaces.map(surface => {
+        const definition = getSurfaceDefinition(surface);
+        return definition && {
+            left: surface.transform.x,
+            top: surface.transform.y,
+            right: surface.transform.x + definition.width,
+            bottom: surface.transform.y + definition.height,
+        };
+    }).filter(Boolean);
+    const candidates = members.filter(component => component.placement?.type === 'free')
+        .sort((a, b) => stableCompare(a.id, b.id));
+    let rightCursor = Math.max(...boardBounds.map(bounds => bounds.right)) + COMPONENT_GAP;
+    for (const component of candidates) {
+        let bounds = componentBounds(project, component);
+        if (!boardBounds.some(board => rectanglesOverlap(bounds, board, COMPONENT_GAP))) continue;
+        const dx = rightCursor - bounds.left;
+        component.placement.position.x += dx;
+        bounds = componentBounds(project, component);
+        rightCursor = bounds.right + COMPONENT_GAP;
+    }
+}
+
 function clusterBounds(project, componentIds, surfaces) {
     const bounds = [];
     for (const component of project.components.filter(item => componentIds.has(item.id))) bounds.push(componentBounds(project, component));
@@ -551,7 +735,7 @@ function translateCluster(project, componentIds, surfaces, dx, dy) {
     }
 }
 
-function layoutProject(project) {
+function layoutProject(project, { mountGeneratedHelpers = false } = {}) {
     const controllers = project.components.filter(isController).sort((a, b) => stableCompare(a.id, b.id));
     if (!controllers.length) return { clusters: [] };
     const ownership = buildOwnership(project, controllers);
@@ -564,8 +748,9 @@ function layoutProject(project) {
         setFreePosition(controller, 0, 80);
         const members = project.components.filter(component => !isController(component) && ownership.get(component.id) === controller.id);
         const surfaces = project.surfaces.filter(surface => surfaceOwners.get(surface.id) === controller.id);
-        for (const surface of surfaces) placeOwnedSurface(project, controller, surface, ownership);
+        for (const surface of surfaces) placeOwnedSurface(project, controller, surface, ownership, { mountGeneratedHelpers });
         placeDirectOwners(project, controller, members);
+        separateFreeComponentsFromSurfaces(project, members, surfaces);
         const directReport = surfaces.length ? null : layoutDirectClusterV2(
             project,
             controller.id,
@@ -638,7 +823,19 @@ function alignGeneratedGroundBusPinsToLayout(project) {
             const sharedPin = candidates.filter(candidate => candidate.direction === side)
                 .sort((a, b) => totalDistance(a) - totalDistance(b) || stableCompare(a.pinId, b.pinId))[0]?.pinId;
             if (!sharedPin) continue;
-            for (const connection of sideConnections) connection.controllerRef.pinId = sharedPin;
+            for (const connection of sideConnections) {
+                const previousPin = connection.controllerRef.pinId;
+                connection.controllerRef.pinId = sharedPin;
+                // Header-bus alignment is a physical pin assignment decision,
+                // so keep the stable logical intent in sync with that choice.
+                for (const intent of project.properties?.netlistIntent || []) {
+                    for (const ref of [intent.from, intent.to]) {
+                        if (ref?.type === 'component-pin' && ref.componentId === controller.id && ref.pinId === previousPin) {
+                            ref.pinId = sharedPin;
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -661,12 +858,42 @@ export function routePhysicalStore(store) {
 export function autoLayoutPhysicalStore(store, { wire = true, componentIds = null } = {}) {
     const plan = wire ? buildAutoWirePlan(store.project, componentIds) : null;
     if (plan && plan.result.status !== 'success') return publicWireResult(plan.result, plan.eligible);
-    let layout = null;
-    store.transaction('auto-layout', project => {
-        if (plan) applyAutoWireResult(project, plan.result);
-        layout = layoutProject(project);
-        if (plan) alignGeneratedGroundBusPinsToLayout(project);
-        resetAutomaticRouteIntent(project);
-    });
+    const prepared = plan ? preparedAutoWireProject(store.project, plan.result) : null;
+    if (prepared && prepared.realization.status !== 'success') {
+        return { ...publicWireResult(plan.result, plan.eligible), status: 'failure', success: 0,
+            diagnostics: prepared.realization.diagnostics,
+            errors: prepared.realization.diagnostics.map(item => item.code) };
+    }
+    const candidate = prepared ? prepared.prepared : structuredClone(store.project);
+    const layout = layoutProject(candidate, { mountGeneratedHelpers: Boolean(plan) });
+    if (plan) {
+        // Mounting a generated series helper changes physical connectivity. Run
+        // realization again so same-strip copper replaces the now-redundant
+        // helper-to-owner jumper and only the remaining jumper is reserved.
+        const finalRealization = realizeAutoWireConnections(candidate, plan.result.connections, colorForConnection);
+        if (finalRealization.status !== 'success') {
+            return { ...publicWireResult(plan.result, plan.eligible), status: 'failure', success: 0,
+                diagnostics: finalRealization.diagnostics,
+                errors: finalRealization.diagnostics.map(item => item.code) };
+        }
+        candidate.properties ||= {};
+        candidate.properties.netlistIntent = finalRealization.intent;
+        candidate.wires = [...finalRealization.preservedWires, ...finalRealization.wires];
+        alignGeneratedGroundBusPinsToLayout(candidate);
+
+        const previousErrors = new Set(validatePhysicalProject(store.project).errors.map(item => item.id));
+        const postconditionIds = /^(?:occupied:|invalid-placement:|invalid-wire-hole:|incomplete-net:|breadboard-net-conflict:)/;
+        const introduced = validatePhysicalProject(candidate).errors
+            .filter(item => postconditionIds.test(item.id) && !previousErrors.has(item.id));
+        if (introduced.length) {
+            const diagnostics = introduced.map(item => ({
+                code: 'breadboard-postcondition-failed', issueId: item.id,
+            }));
+            return { ...publicWireResult(plan.result, plan.eligible), status: 'failure', success: 0,
+                diagnostics, errors: diagnostics.map(item => item.code) };
+        }
+    }
+    resetAutomaticRouteIntent(candidate);
+    store.transaction('auto-layout', project => Object.assign(project, candidate));
     return { status: 'success', wireResult: plan ? publicWireResult(plan.result, plan.eligible) : null, layout };
 }

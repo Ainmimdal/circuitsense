@@ -1,0 +1,513 @@
+{
+  "format": "elera-fritzing-part-v1",
+  "id": "fritzing-esp32-38-pin-wide",
+  "name": "ESP32-38PinWide",
+  "description": "Generic 38-Pin ESP32 with wide format (only access to one side of pins on a breadboard) based on Stephen Lilley's HiLetgo ESP-WROOM-32 ESP32 ESP-32S Development Board.",
+  "category": "board",
+  "sourcePart": "part.ESP32-38PinWide.fzp",
+  "library": {
+    "source": "fritzing",
+    "family": "esp32",
+    "variant": "Generic",
+    "tags": [
+      "HiLetgo",
+      "NodeMCU",
+      "ESP32",
+      "wifi",
+      "module"
+    ]
+  },
+  "artwork": {
+    "svgUrl": "/converted-parts/fritzing-esp32-38-pin-wide/breadboard.svg",
+    "sourceSize": {
+      "width": 416.69289,
+      "height": 838.77407
+    },
+    "physicalSizeMm": {
+      "width": 28,
+      "height": 56.403758
+    }
+  },
+  "pins": [
+    {
+      "id": "3.3",
+      "label": "3.3",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 26.954283,
+        "y": 63.918173
+      },
+      "fritzingConnectorId": "connector0"
+    },
+    {
+      "id": "EN",
+      "label": "EN",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 26.954283,
+        "y": 101.714473
+      },
+      "fritzingConnectorId": "connector1"
+    },
+    {
+      "id": "GPIO36",
+      "label": "GPIO36",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 26.954283,
+        "y": 139.510673
+      },
+      "fritzingConnectorId": "connector2"
+    },
+    {
+      "id": "GPIO39",
+      "label": "GPIO39",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 26.954283,
+        "y": 177.307273
+      },
+      "fritzingConnectorId": "connector3"
+    },
+    {
+      "id": "GPIO34",
+      "label": "GPIO34",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 26.954283,
+        "y": 215.103273
+      },
+      "fritzingConnectorId": "connector4"
+    },
+    {
+      "id": "GPIO35",
+      "label": "GPIO35",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 26.954283,
+        "y": 252.899273
+      },
+      "fritzingConnectorId": "connector5"
+    },
+    {
+      "id": "GPIO32",
+      "label": "GPIO32",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 26.954283,
+        "y": 290.695273
+      },
+      "fritzingConnectorId": "connector6"
+    },
+    {
+      "id": "GPIO33",
+      "label": "GPIO33",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 26.954283,
+        "y": 328.492273
+      },
+      "fritzingConnectorId": "connector7"
+    },
+    {
+      "id": "GPIO25",
+      "label": "GPIO25",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 26.954283,
+        "y": 366.288273
+      },
+      "fritzingConnectorId": "connector8"
+    },
+    {
+      "id": "GPIO26",
+      "label": "GPIO26",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 26.954283,
+        "y": 404.084273
+      },
+      "fritzingConnectorId": "connector9"
+    },
+    {
+      "id": "GPIO27",
+      "label": "GPIO27",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 26.954283,
+        "y": 441.881273
+      },
+      "fritzingConnectorId": "connector10"
+    },
+    {
+      "id": "GPIO14",
+      "label": "GPIO14",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 26.954283,
+        "y": 479.677273
+      },
+      "fritzingConnectorId": "connector11"
+    },
+    {
+      "id": "GPIO12",
+      "label": "GPIO12",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 26.954283,
+        "y": 517.473273
+      },
+      "fritzingConnectorId": "connector12"
+    },
+    {
+      "id": "GND",
+      "label": "GND",
+      "connector": "male",
+      "electricalRole": "GND",
+      "autoWireRequirement": "GND",
+      "capabilities": [
+        "ground"
+      ],
+      "artwork": {
+        "x": 26.954283,
+        "y": 555.269273
+      },
+      "fritzingConnectorId": "connector13"
+    },
+    {
+      "id": "GPIO13",
+      "label": "GPIO13",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 26.954283,
+        "y": 593.066273
+      },
+      "fritzingConnectorId": "connector14"
+    },
+    {
+      "id": "GPIO9",
+      "label": "GPIO9",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 26.954283,
+        "y": 630.862273
+      },
+      "fritzingConnectorId": "connector15"
+    },
+    {
+      "id": "GPIO10",
+      "label": "GPIO10",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 26.954283,
+        "y": 668.658273
+      },
+      "fritzingConnectorId": "connector16"
+    },
+    {
+      "id": "GPIO11",
+      "label": "GPIO11",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 26.954283,
+        "y": 706.454273
+      },
+      "fritzingConnectorId": "connector17"
+    },
+    {
+      "id": "VIN",
+      "label": "VIN",
+      "connector": "male",
+      "electricalRole": "VCC",
+      "autoWireRequirement": "VCC",
+      "capabilities": [
+        "power"
+      ],
+      "artwork": {
+        "x": 26.954283,
+        "y": 744.251273
+      },
+      "fritzingConnectorId": "connector18"
+    },
+    {
+      "id": "GPIO6",
+      "label": "GPIO6",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 392.468587,
+        "y": 744.528628
+      },
+      "fritzingConnectorId": "connector19"
+    },
+    {
+      "id": "GPIO7",
+      "label": "GPIO7",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 392.468587,
+        "y": 706.731628
+      },
+      "fritzingConnectorId": "connector20"
+    },
+    {
+      "id": "GPIO8",
+      "label": "GPIO8",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 392.468587,
+        "y": 668.935628
+      },
+      "fritzingConnectorId": "connector21"
+    },
+    {
+      "id": "GPIO15",
+      "label": "GPIO15",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 392.468587,
+        "y": 631.139628
+      },
+      "fritzingConnectorId": "connector22"
+    },
+    {
+      "id": "GPIO2",
+      "label": "GPIO2",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 392.468587,
+        "y": 593.343628
+      },
+      "fritzingConnectorId": "connector23"
+    },
+    {
+      "id": "GPIO0",
+      "label": "GPIO0",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 392.468587,
+        "y": 555.546628
+      },
+      "fritzingConnectorId": "connector24"
+    },
+    {
+      "id": "GPIO4",
+      "label": "GPIO4",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 392.468587,
+        "y": 517.750628
+      },
+      "fritzingConnectorId": "connector25"
+    },
+    {
+      "id": "GPIO16",
+      "label": "GPIO16",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 392.468587,
+        "y": 479.954628
+      },
+      "fritzingConnectorId": "connector26"
+    },
+    {
+      "id": "GPIO17",
+      "label": "GPIO17",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 392.468587,
+        "y": 442.158628
+      },
+      "fritzingConnectorId": "connector27"
+    },
+    {
+      "id": "GPIO5",
+      "label": "GPIO5",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 392.468587,
+        "y": 404.361628
+      },
+      "fritzingConnectorId": "connector28"
+    },
+    {
+      "id": "GPIO18",
+      "label": "GPIO18",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 392.468587,
+        "y": 366.565628
+      },
+      "fritzingConnectorId": "connector29"
+    },
+    {
+      "id": "GPIO19",
+      "label": "GPIO19",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 392.468587,
+        "y": 328.769628
+      },
+      "fritzingConnectorId": "connector30"
+    },
+    {
+      "id": "GND.2",
+      "label": "GND",
+      "connector": "male",
+      "electricalRole": "GND",
+      "autoWireRequirement": "GND",
+      "capabilities": [
+        "ground"
+      ],
+      "artwork": {
+        "x": 392.468587,
+        "y": 290.972628
+      },
+      "fritzingConnectorId": "connector31"
+    },
+    {
+      "id": "GPIO21",
+      "label": "GPIO21",
+      "connector": "male",
+      "electricalRole": "I2C_SDA",
+      "autoWireRequirement": "I2C_SDA",
+      "capabilities": [
+        "i2c-sda"
+      ],
+      "artwork": {
+        "x": 392.468587,
+        "y": 253.176628
+      },
+      "fritzingConnectorId": "connector32"
+    },
+    {
+      "id": "GPIO3",
+      "label": "GPIO3",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 392.468587,
+        "y": 215.380628
+      },
+      "fritzingConnectorId": "connector33"
+    },
+    {
+      "id": "GPIO1",
+      "label": "GPIO1",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 392.468587,
+        "y": 177.584628
+      },
+      "fritzingConnectorId": "connector34"
+    },
+    {
+      "id": "GPIO22",
+      "label": "GPIO22",
+      "connector": "male",
+      "electricalRole": "I2C_SCL",
+      "autoWireRequirement": "I2C_SCL",
+      "capabilities": [
+        "i2c-scl"
+      ],
+      "artwork": {
+        "x": 392.468587,
+        "y": 139.788028
+      },
+      "fritzingConnectorId": "connector35"
+    },
+    {
+      "id": "GPIO23",
+      "label": "GPIO23",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 392.468587,
+        "y": 101.991828
+      },
+      "fritzingConnectorId": "connector36"
+    },
+    {
+      "id": "GND.3",
+      "label": "GND",
+      "connector": "male",
+      "electricalRole": "GND",
+      "autoWireRequirement": "GND",
+      "capabilities": [
+        "ground"
+      ],
+      "artwork": {
+        "x": 392.468587,
+        "y": 64.195528
+      },
+      "fritzingConnectorId": "connector37"
+    }
+  ],
+  "packages": [],
+  "propertyDefinitions": [],
+  "connectorType": "male",
+  "currentDraw_mA": 0,
+  "breadboardRequired": false,
+  "pinless": false
+}

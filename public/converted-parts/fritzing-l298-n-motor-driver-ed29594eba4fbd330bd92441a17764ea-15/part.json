@@ -1,0 +1,261 @@
+{
+  "format": "elera-fritzing-part-v1",
+  "id": "fritzing-l298-n-motor-driver-ed29594eba4fbd330bd92441a17764ea-15",
+  "name": "L298N DC motor driver",
+  "description": "2x DC motor driver with 78M05 positive voltage regulator (7..35 V) L298N: max 46 V, 2 A Set 5 V Enable jumper to enable 5 V regultor (needed for the L298N) and +5 V output at screw terminal or supply external +5 V at screw terminal Set ENA and/or ENB to +5 V to enable motor permanently or supply ENA and/or ENB with PWM signal IN1 and IN2 set rotation directory for motor A (OUT1/OUT2) IN2 and IN3 set rotation directory for motor A (OUT1/OUT2)",
+  "category": "actuator",
+  "sourcePart": "part.L298N motor driver_ed29594eba4fbd330bd92441a17764ea_15.fzp",
+  "library": {
+    "source": "fritzing",
+    "family": "motor",
+    "variant": "variant 1",
+    "taxonomy": "discreteParts.switches.pushbutton",
+    "tags": [
+      "motor",
+      "module",
+      "L298N",
+      "driver"
+    ]
+  },
+  "artwork": {
+    "svgUrl": "/converted-parts/fritzing-l298-n-motor-driver-ed29594eba4fbd330bd92441a17764ea-15/breadboard.svg",
+    "sourceSize": {
+      "width": 42.818348,
+      "height": 42.368198
+    },
+    "physicalSizeMm": {
+      "width": 42.818348,
+      "height": 42.368198
+    }
+  },
+  "pins": [
+    {
+      "id": "OUT1",
+      "label": "OUT1",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 0.379674,
+        "y": 26.128198
+      },
+      "fritzingConnectorId": "connector0"
+    },
+    {
+      "id": "OUT2",
+      "label": "OUT2",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 0.379674,
+        "y": 30.875589
+      },
+      "fritzingConnectorId": "connector1"
+    },
+    {
+      "id": "OUT3",
+      "label": "OUT3",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 42.465778,
+        "y": 29.944194
+      },
+      "fritzingConnectorId": "connector2"
+    },
+    {
+      "id": "OUT4",
+      "label": "OUT4",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 42.465778,
+        "y": 25.196803
+      },
+      "fritzingConnectorId": "connector4"
+    },
+    {
+      "id": "12V",
+      "label": "12V",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 8.883267,
+        "y": 42.015625
+      },
+      "fritzingConnectorId": "connector5"
+    },
+    {
+      "id": "GND",
+      "label": "GND",
+      "connector": "male",
+      "electricalRole": "GND",
+      "autoWireRequirement": "GND",
+      "capabilities": [
+        "ground"
+      ],
+      "artwork": {
+        "x": 13.630661,
+        "y": 42.015625
+      },
+      "fritzingConnectorId": "connector6"
+    },
+    {
+      "id": "5V",
+      "label": "5V",
+      "connector": "male",
+      "electricalRole": "VCC",
+      "autoWireRequirement": "VCC",
+      "capabilities": [
+        "power"
+      ],
+      "artwork": {
+        "x": 18.378055,
+        "y": 42.015625
+      },
+      "fritzingConnectorId": "connector7"
+    },
+    {
+      "id": "5VEN",
+      "label": "5VEN",
+      "connector": "male",
+      "electricalRole": "VCC",
+      "autoWireRequirement": "VCC",
+      "capabilities": [
+        "power"
+      ],
+      "artwork": {
+        "x": 15.149008,
+        "y": 30.292487
+      },
+      "fritzingConnectorId": "connector8"
+    },
+    {
+      "id": "5V.2",
+      "label": "5V",
+      "connector": "male",
+      "electricalRole": "VCC",
+      "autoWireRequirement": "VCC",
+      "capabilities": [
+        "power"
+      ],
+      "artwork": {
+        "x": 23.664443,
+        "y": 36.878408
+      },
+      "fritzingConnectorId": "connector9"
+    },
+    {
+      "id": "5V.3",
+      "label": "5V",
+      "connector": "male",
+      "electricalRole": "VCC",
+      "autoWireRequirement": "VCC",
+      "capabilities": [
+        "power"
+      ],
+      "artwork": {
+        "x": 36.364453,
+        "y": 36.878408
+      },
+      "fritzingConnectorId": "connector10"
+    },
+    {
+      "id": "ENA",
+      "label": "ENA",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 23.664462,
+        "y": 39.418416
+      },
+      "fritzingConnectorId": "connector11"
+    },
+    {
+      "id": "ENB",
+      "label": "ENB",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 36.364453,
+        "y": 39.418416
+      },
+      "fritzingConnectorId": "connector12"
+    },
+    {
+      "id": "IN1",
+      "label": "IN1",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 26.204452,
+        "y": 39.418416
+      },
+      "fritzingConnectorId": "connector13"
+    },
+    {
+      "id": "IN2",
+      "label": "IN2",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 28.744456,
+        "y": 39.418416
+      },
+      "fritzingConnectorId": "connector14"
+    },
+    {
+      "id": "IN3",
+      "label": "IN3",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 31.284465,
+        "y": 39.418416
+      },
+      "fritzingConnectorId": "connector15"
+    },
+    {
+      "id": "IN4",
+      "label": "IN4",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 33.824452,
+        "y": 39.418416
+      },
+      "fritzingConnectorId": "connector16"
+    },
+    {
+      "id": "5VEN.2",
+      "label": "5VEN",
+      "connector": "male",
+      "electricalRole": "VCC",
+      "autoWireRequirement": "VCC",
+      "capabilities": [
+        "power"
+      ],
+      "artwork": {
+        "x": 12.609007,
+        "y": 30.292487
+      },
+      "fritzingConnectorId": "connector17"
+    }
+  ],
+  "packages": [],
+  "propertyDefinitions": [],
+  "connectorType": "male",
+  "currentDraw_mA": 0,
+  "breadboardRequired": false,
+  "pinless": false
+}

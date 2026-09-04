@@ -1,0 +1,173 @@
+{
+  "format": "elera-fritzing-part-v1",
+  "id": "fritzing-mdd10-a-improved-1",
+  "name": "MDD10A",
+  "description": "Imported Fritzing part: MDD10A",
+  "category": "actuator",
+  "sourcePart": "part.MDD10A-improved_1.fzp",
+  "library": {
+    "source": "fritzing",
+    "family": "mdd10-a",
+    "variant": "variant 1",
+    "tags": [
+      "contrib",
+      "Cytron MDD10A motor driver board",
+      "motor driver",
+      "fritzing user"
+    ]
+  },
+  "artwork": {
+    "svgUrl": "/converted-parts/fritzing-mdd10-a-improved-1/breadboard.svg",
+    "sourceSize": {
+      "width": 3326.7718,
+      "height": 2440.9381
+    },
+    "physicalSizeMm": {
+      "width": 84.499978,
+      "height": 61.999807
+    }
+  },
+  "pins": [
+    {
+      "id": "M1B-1",
+      "label": "M1B-1",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 309.00009,
+        "y": 648.15009
+      },
+      "fritzingConnectorId": "connector0"
+    },
+    {
+      "id": "M1A1",
+      "label": "M1A1",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 309.00009,
+        "y": 841.15778
+      },
+      "fritzingConnectorId": "connector1"
+    },
+    {
+      "id": "BAT+",
+      "label": "Bat+",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 309.00009,
+        "y": 1033.8621
+      },
+      "fritzingConnectorId": "connector2"
+    },
+    {
+      "id": "BAT-",
+      "label": "Bat-",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 309.00009,
+        "y": 1226.8694
+      },
+      "fritzingConnectorId": "connector3"
+    },
+    {
+      "id": "M2A-1",
+      "label": "M2A-1",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 309.00009,
+        "y": 1420.2399
+      },
+      "fritzingConnectorId": "connector4"
+    },
+    {
+      "id": "M2B-1",
+      "label": "M2B-1",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 309.00009,
+        "y": 1613.2476
+      },
+      "fritzingConnectorId": "connector5"
+    },
+    {
+      "id": "GND",
+      "label": "GND",
+      "connector": "male",
+      "electricalRole": "GND",
+      "autoWireRequirement": "GND",
+      "capabilities": [
+        "ground"
+      ],
+      "artwork": {
+        "x": 3223.090303,
+        "y": 1445.180351
+      },
+      "fritzingConnectorId": "connector6"
+    },
+    {
+      "id": "PWM2",
+      "label": "PWM2",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 3223.059303,
+        "y": 1345.594751
+      },
+      "fritzingConnectorId": "connector7"
+    },
+    {
+      "id": "DIR2",
+      "label": "DIR2",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 3223.059303,
+        "y": 1245.594151
+      },
+      "fritzingConnectorId": "connector8"
+    },
+    {
+      "id": "PWM1",
+      "label": "PWM1",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 3223.059303,
+        "y": 1145.594051
+      },
+      "fritzingConnectorId": "connector9"
+    },
+    {
+      "id": "DIR1",
+      "label": "DIR1",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 3223.169403,
+        "y": 1041.832251
+      },
+      "fritzingConnectorId": "connector10"
+    }
+  ],
+  "packages": [],
+  "propertyDefinitions": [],
+  "connectorType": "male",
+  "currentDraw_mA": 0,
+  "breadboardRequired": false,
+  "pinless": false
+}

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { boardRegistry } from '../src/core/board-registry.js';
+import { BREADBOARD_PITCH, boardRegistry } from '../src/core/board-registry.js';
 
 test('board registry models half and full breadboard capacity and connectivity', () => {
     const half = boardRegistry['breadboard-half-400'];
@@ -20,4 +20,10 @@ test('power rail rows use the same 2.54 mm pitch as terminal holes', () => {
         assert.equal(board.getHole('TP1').y - board.getHole('TN1').y, board.pitch, board.id);
         assert.equal(board.getHole('BN1').y - board.getHole('BP1').y, board.pitch, board.id);
     }
+});
+
+test('legacy board projection preserves the canonical 7.62 mm DIP trench', () => {
+    const board = boardRegistry['breadboard-half-400'];
+    assert.ok(Math.abs(board.getHole('F1').y - board.getHole('E1').y - 3 * BREADBOARD_PITCH) < 1e-9);
+    assert.equal(board.physicalHeightMm, 56.896);
 });

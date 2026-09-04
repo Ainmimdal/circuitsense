@@ -9,7 +9,11 @@ import {
     componentPinRef, createComponentInstance, createPhysicalProject, resolveConnectionWorldPoint, surfaceHoleRef,
 } from '../src/physical/model.js';
 import { calibrateFreeComponentFootprint, defaultFootprintForComponent } from '../src/physical/footprints.js';
-import { componentRoutingObstacles, pinExitDirection, routeAllWires, routeSegments } from '../src/physical/routing.js';
+import { layoutDirectClusterV2 } from '../src/physical/direct-layout-v2.js';
+import { validatePhysicalProject } from '../src/physical/validation.js';
+import {
+    componentRoutingObstacles, pinExitDirection, routeAllWires, routeSegments, ROUTING_WIRE_SEPARATION,
+} from '../src/physical/routing.js';
 
 function addArduino(store) {
     const footprint = defaultFootprintForComponent('arduino-uno');
@@ -28,9 +32,115 @@ test('Auto Wire changes the active physical project and creates semantic connect
     assert.equal(result.total, 1);
     assert.ok(result.success >= 3, 'LED signal resistor, return, and generated link should be planned');
     assert.ok(store.project.components.some(component => component.properties?.provenance?.kind === 'generated'));
+    assert.equal(store.project.components.find(component => component.id === 'generated-resistor:part-2')?.properties.value, 330);
     assert.ok(store.project.wires.some(wire =>
         wire.from?.componentId === 'arduino-visible' || wire.to?.componentId === 'arduino-visible'));
     assert.ok(store.project.wires.every(wire => wire.from?.type && wire.to?.type));
+});
+
+test('Auto Wire may omit an LED resistor by preference while validation keeps the safety warning', () => {
+    const store = new PhysicalCircuitStore({ load: false });
+    addArduino(store);
+    const result = autoWirePhysicalStore(store, { preferences: { autoWireLedResistors: false } });
+    assert.equal(result.status, 'success');
+    assert.equal(store.project.components.some(component => component.definitionId === 'resistor'), false);
+    assert.ok(validatePhysicalProject(store.project).warnings.some(issue => issue.id === 'led-no-resistor:part-2'));
+});
+
+test('Auto Wire preserves mounting and realizes mounted nets through unique free breadboard holes', () => {
+    const surface = createHalfBreadboardSurface();
+    const uno = createComponentInstance({ id: 'uno-breadboard-aware', definitionId: 'arduino-uno',
+        footprintId: defaultFootprintForComponent('arduino-uno').id, x: 140, y: 20 });
+    const led = createComponentInstance({ id: 'mounted-led', definitionId: 'led',
+        footprintId: defaultFootprintForComponent('led').id, x: 0, y: 0 });
+    led.placement = { type: 'surface', surfaceId: surface.id, rotation: 0, bindings: { C: 'C10', A: 'C11' } };
+    const store = new PhysicalCircuitStore({ load: false, routingWorker: null });
+    store.importProject(createPhysicalProject({ surfaces: [surface], components: [uno, led] }));
+    const placement = structuredClone(led.placement);
+
+    assert.equal(autoWirePhysicalStore(store).status, 'success');
+    assert.deepEqual(store.project.components.find(item => item.id === led.id).placement, placement,
+        'Auto Wire must not change the user-selected mount');
+    const mountedWireEnds = store.project.wires.flatMap(wire => [wire.from, wire.to])
+        .filter(ref => ref.type === 'surface-hole');
+    assert.ok(mountedWireEnds.length >= 2);
+    assert.equal(new Set(mountedWireEnds.map(ref => `${ref.surfaceId}:${ref.holeId}`)).size, mountedWireEnds.length);
+    assert.ok(store.project.wires.every(wire => ![wire.from, wire.to].some(ref =>
+        ref.type === 'component-pin' && ref.componentId === led.id)));
+    assert.equal(store.project.components.find(item => item.definitionId === 'resistor').placement.type, 'free',
+        'Auto Wire may add a helper but must not mount it automatically');
+
+    const once = structuredClone(store.project.wires);
+    assert.equal(autoWirePhysicalStore(store).status, 'success');
+    assert.deepEqual(store.project.wires, once, 're-running Auto Wire must keep the same legal reservations');
+});
+
+test('combined Auto Layout mounts its generated LED resistor and removes the same-strip jumper', () => {
+    const surface = createHalfBreadboardSurface();
+    const uno = createComponentInstance({ id: 'uno-layout-helper', definitionId: 'arduino-uno',
+        footprintId: defaultFootprintForComponent('arduino-uno').id, x: 140, y: 20 });
+    const led = createComponentInstance({ id: 'blue-mounted-led', definitionId: 'led',
+        footprintId: defaultFootprintForComponent('led').id, x: 0, y: 0,
+        properties: { color: '#2563eb' } });
+    led.placement = { type: 'surface', surfaceId: surface.id, rotation: 0, bindings: { C: 'C10', A: 'C11' } };
+    const store = new PhysicalCircuitStore({ load: false, routingWorker: null });
+    store.importProject(createPhysicalProject({ surfaces: [surface], components: [uno, led] }));
+
+    const result = autoLayoutPhysicalStore(store);
+    assert.equal(result.status, 'success');
+    const resistor = store.project.components.find(component => component.definitionId === 'resistor');
+    assert.equal(resistor?.properties?.provenance?.kind, 'generated');
+    assert.equal(resistor?.placement?.type, 'surface');
+    assert.equal(resistor?.placement?.surfaceId, surface.id);
+    assert.equal(resistor?.footprintId, 'axial-4',
+        'Auto Layout should use exactly five hole positions (four pitch intervals) while it fits legally');
+
+    const definition = getSurfaceDefinition(store.project.surfaces[0]);
+    const ledGroup = definition.getHole(led.placement.bindings.A).electricalGroup;
+    const resistorOutputGroup = definition.getHole(resistor.placement.bindings['2']).electricalGroup;
+    assert.equal(resistorOutputGroup, ledGroup, 'fixed strip copper must complete the resistor-to-LED connection');
+    const resistorInputHole = definition.getHole(resistor.placement.bindings['1']);
+    const ledAnodeHole = definition.getHole(led.placement.bindings.A);
+    const ledCathodeHole = definition.getHole(led.placement.bindings.C);
+    const inputFromAnode = {
+        x: resistorInputHole.x - ledAnodeHole.x,
+        y: resistorInputHole.y - ledAnodeHole.y,
+    };
+    const anodeFromCathode = {
+        x: ledAnodeHole.x - ledCathodeHole.x,
+        y: ledAnodeHole.y - ledCathodeHole.y,
+    };
+    assert.ok(inputFromAnode.x * anodeFromCathode.x + inputFromAnode.y * anodeFromCathode.y > 0,
+        'physical order should be incoming wire -> resistor -> LED -> outgoing wire without folding back');
+    assert.ok(store.project.wires.every(wire => !wire.properties?.logicalTerminals?.some(ref =>
+        ref.componentId === resistor.id && ref.pinId === '2')),
+    'no generated wire is needed for an intent already completed by one breadboard strip');
+
+    const validation = validatePhysicalProject(store.project);
+    assert.equal(validation.errors.length, 0);
+    assert.equal(validation.warnings.some(issue => issue.id.startsWith('redundant-wire:')), false);
+});
+
+test('Auto Wire is atomic when a required breadboard group has no free jumper socket', () => {
+    const surface = createHalfBreadboardSurface();
+    const uno = createComponentInstance({ id: 'uno-full-strip', definitionId: 'arduino-uno',
+        footprintId: defaultFootprintForComponent('arduino-uno').id, x: 140, y: 20 });
+    const led = createComponentInstance({ id: 'led-full-strip', definitionId: 'led',
+        footprintId: defaultFootprintForComponent('led').id, x: 0, y: 0 });
+    led.placement = { type: 'surface', surfaceId: surface.id, rotation: 0, bindings: { C: 'C10', A: 'C11' } };
+    const blockers = ['A10', 'B10', 'D10', 'E10'].map((holeId, index) => ({
+        id: `manual-blocker-${index + 1}`,
+        from: surfaceHoleRef(surface.id, holeId),
+        to: surfaceHoleRef(surface.id, `A${20 + index}`),
+        route: { mode: 'auto', waypoints: [] },
+    }));
+    const store = new PhysicalCircuitStore({ load: false, routingWorker: null });
+    store.importProject(createPhysicalProject({ surfaces: [surface], components: [uno, led], wires: blockers }));
+    const before = structuredClone(store.project);
+    const result = autoWirePhysicalStore(store);
+    assert.equal(result.status, 'failure');
+    assert.ok(result.errors.includes('breadboard-no-free-hole'));
+    assert.deepEqual(store.project, before);
 });
 
 test('user-facing Auto Layout keeps the full Auto Wire, arrange, and route workflow', () => {
@@ -208,6 +318,43 @@ test('dense direct ground jumpers stay separate and local instead of escaping ar
         'ground connections remain separate physical jumper routes');
 });
 
+test('direct layout reserves enough bottom-row depth for controller and sensor fanout lanes', () => {
+    calibrateFreeComponentFootprint('arduino-uno', [
+        ...Array.from({ length: 6 }, (_, index) => ({ pinId: `A${index}`, x: 26 + index * 4, y: 39 })),
+        { pinId: '5V', x: 18, y: 39 },
+        { pinId: 'GND.1', x: 22, y: 39 },
+    ]);
+    calibrateFreeComponentFootprint('ds1307', [
+        { pinId: 'GND', x: 2, y: 0 },
+        { pinId: '5V', x: 6, y: 0 },
+        { pinId: 'SDA', x: 10, y: 0 },
+        { pinId: 'SCL', x: 14, y: 0 },
+    ]);
+    const make = (id, definitionId) => createComponentInstance({
+        id, definitionId, footprintId: defaultFootprintForComponent(definitionId).id, x: 100, y: 100,
+    });
+    const uno = make('uno-fanout-depth', 'arduino-uno');
+    const sensors = Array.from({ length: 3 }, (_, index) => make(`bottom-sensor-${index + 1}`, 'ds1307'));
+    const wires = sensors.flatMap((sensor, index) => [
+        { id: `${sensor.id}-sda`, from: componentPinRef(uno.id, `A${index * 2}`), to: componentPinRef(sensor.id, 'SDA'), route: { mode: 'auto', waypoints: [] } },
+        { id: `${sensor.id}-scl`, from: componentPinRef(uno.id, `A${index * 2 + 1}`), to: componentPinRef(sensor.id, 'SCL'), route: { mode: 'auto', waypoints: [] } },
+        { id: `${sensor.id}-power`, from: componentPinRef(uno.id, '5V'), to: componentPinRef(sensor.id, '5V'), route: { mode: 'auto', waypoints: [] } },
+        { id: `${sensor.id}-ground`, from: componentPinRef(uno.id, 'GND.1'), to: componentPinRef(sensor.id, 'GND'), route: { mode: 'auto', waypoints: [] } },
+    ]);
+    const project = createPhysicalProject({ components: [uno, ...sensors], wires });
+
+    const result = layoutDirectClusterV2(project, uno.id, sensors.map(sensor => sensor.id));
+    assert.notEqual(result.selected, 'baseline', 'the deliberately overlapping source layout must be replaced');
+    const obstacles = componentRoutingObstacles(project, { margin: 0 });
+    const controllerBounds = obstacles.find(item => item.id === uno.id);
+    const sensorBounds = sensors.map(sensor => obstacles.find(item => item.id === sensor.id));
+    const bottomGap = Math.min(...sensorBounds.map(bounds => bounds.top)) - controllerBounds.bottom;
+    const controllerLaneDepth = (8 - 1) * ROUTING_WIRE_SEPARATION;
+    const sensorLaneDepth = (4 - 1) * ROUTING_WIRE_SEPARATION;
+    assert.ok(bottomGap + 1e-6 >= controllerLaneDepth + sensorLaneDepth + 2.54,
+        'the component row must not consume the channel needed to stagger both endpoint fanouts');
+});
+
 test('unused breadboard does not replace old-Elera direct layout and multiple controllers form separate clusters', () => {
     const surface = createHalfBreadboardSurface();
     const make = (id, definitionId, x, y, controllerId = null) => createComponentInstance({
@@ -239,6 +386,35 @@ test('unused breadboard does not replace old-Elera direct layout and multiple co
         'the Mega-owned component must stay in the Mega cluster');
     assert.deepEqual(store.project.surfaces[0].transform, surface.transform,
         'an unused breadboard is not a reason to replace the direct layout branch');
+});
+
+test('breadboard Auto Layout keeps every non-mounted component outside the board body', () => {
+    const surface = createHalfBreadboardSurface({ x: 80, y: 80 });
+    const make = (id, definitionId, x, y) => createComponentInstance({
+        id, definitionId, footprintId: defaultFootprintForComponent(definitionId).id, x, y,
+    });
+    const uno = make('uno-board-clearance', 'arduino-uno', 90, 90);
+    const mounted = make('mounted-board-clearance', 'led', 0, 0);
+    mounted.placement = { type: 'surface', surfaceId: surface.id, rotation: 0, bindings: { C: 'C12', A: 'C13' } };
+    const external = make('external-board-clearance', 'dht22', 95, 95);
+    const project = createPhysicalProject({ surfaces: [surface], components: [uno, mounted, external], wires: [
+        { id: 'mounted-signal', from: componentPinRef(uno.id, '2'), to: componentPinRef(mounted.id, 'A'), route: { mode: 'auto', waypoints: [] } },
+        { id: 'external-signal', from: componentPinRef(uno.id, '3'), to: componentPinRef(external.id, 'SDA'), route: { mode: 'auto', waypoints: [] } },
+    ] });
+    const store = new PhysicalCircuitStore({ load: false, routingWorker: null });
+    store.importProject(project);
+    arrangePhysicalStore(store);
+    const board = store.project.surfaces[0];
+    const definition = getSurfaceDefinition(board);
+    const boardBounds = { left: board.transform.x, top: board.transform.y,
+        right: board.transform.x + definition.width, bottom: board.transform.y + definition.height };
+    const freeBounds = componentRoutingObstacles(store.project, { margin: 0 })
+        .filter(bounds => store.project.components.find(item => item.id === bounds.id)?.placement.type === 'free');
+    for (const bounds of freeBounds) {
+        const overlaps = bounds.left < boardBounds.right && bounds.right > boardBounds.left &&
+            bounds.top < boardBounds.bottom && bounds.bottom > boardBounds.top;
+        assert.equal(overlaps, false, `${bounds.id} must stay clear of the breadboard`);
+    }
 });
 
 test('user-facing Auto Layout composes Auto Wire, arrangement, and routing in one history step', () => {

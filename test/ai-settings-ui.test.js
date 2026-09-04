@@ -32,6 +32,14 @@ test('AI preferences exposes the bounded BYOK tool-round budget', () => {
     assert.match(preferencesTab, /Uses your API key/);
 });
 
+test('preferences exposes optional color-aware Auto Wire LED resistors', () => {
+    const preferencesTab = loginModalSource.match(/_renderPreferencesTab\(\) \{([\s\S]*?)\n    _renderCheck/)?.[1] || '';
+    assert.match(preferencesTab, /LED current limiting/);
+    assert.match(preferencesTab, /Add a recommended resistor/);
+    assert.match(preferencesTab, /Connect directly and show a warning/);
+    assert.match(preferencesTab, /autoWireLedResistors/);
+});
+
 test('AI panel reports input, cached input, and output token totals', () => {
     assert.match(aiAssistantSource, /event\.type === 'usage'/);
     assert.match(aiAssistantSource, /cachedInputTokens/);

@@ -1,14 +1,19 @@
 import { LitElement, html, css } from 'lit';
 import Konva from 'konva';
 
-import { componentLibrary } from '../component-library.js';
+import { componentLibrary, registerCustomComponent } from '../component-library.js';
 import { calibratePhysicalPinInfo, getComponentGeometry } from '../core/component-geometry.js';
+import { measureImageContent, normalizeContentBounds } from '../core/image-content-bounds.js';
+import { getComponentPropertyDefinitions, validateComponentPropertyValue, visualPropertyValues } from '../core/component-metadata.js';
+import { canonicalLedColor, LED_COLOR_PROFILES } from '../core/led-resistor.js';
+import { applyVisualProperties, createPartVisualElement } from '../core/visual-adapter.js';
+import { getResistorPackageVisual } from './resistor-variant-elements.js';
 import { physicalCircuitStore } from '../physical/circuit-store.js';
 import { InteractionController } from '../editor/interaction-controller.js';
 import { normalizeSelectionRect, rectsIntersect, routeIntersectsRect } from '../editor/selection.js';
-import { addComponentCommand, addSurfaceCommand, deleteSelectionCommand, deleteSurfaceCommand, mountComponentCommand, moveSelectionCommand, rotateFreeComponentCommand } from '../physical/commands.js';
+import { addComponentCommand, addSurfaceCommand, deleteSelectionCommand, deleteSurfaceCommand, mountComponentCommand, moveSelectionCommand, rotateFreeComponentCommand, setComponentPropertyCommand } from '../physical/commands.js';
 import { createComponentInstance, componentPinRef, componentWorldTransform, resolveConnectionWorldPoint, surfaceHoleRef } from '../physical/model.js';
-import { calibrateFreeComponentFootprint, defaultFootprintForComponent, getFootprintDefinition, getPhysicalComponentDefinition, projectFootprintPoint } from '../physical/footprints.js';
+import { calibrateFreeComponentFootprint, defaultFootprintForComponent, footprintsForComponent, getFootprintDefinition, getPhysicalComponentDefinition, projectFootprintPoint } from '../physical/footprints.js';
 import { createFullBreadboardSurface, createHalfBreadboardSurface, getSurfaceDefinition, holeWorldPosition, holesInElectricalGroup, nearestHole } from '../physical/breadboard.js';
 import { applyTransform, screenToWorld } from '../physical/geometry.js';
 import { pinExitDirection } from '../physical/routing.js';
@@ -42,6 +47,7 @@ class CircuitCanvas extends LitElement {
     static properties = {
         _status: { state: true },
         _zoomLabel: { state: true },
+        _hoveredPinView: { state: true },
     };
 
     static styles = css`
@@ -95,7 +101,8 @@ class CircuitCanvas extends LitElement {
             position: absolute;
             left: 0;
             top: 0;
-            display: block;
+            /* Wokwi hosts use flex so their inline SVG has no text-baseline offset. */
+            display: flex;
             transform-origin: 0 0;
             pointer-events: none !important;
             user-select: none;
@@ -110,6 +117,7 @@ class CircuitCanvas extends LitElement {
             left: 0;
             top: 0;
             z-index: 2;
+            box-sizing: border-box;
             width: 7px;
             height: 7px;
             border: 1.5px solid var(--primary-hover);
@@ -118,6 +126,30 @@ class CircuitCanvas extends LitElement {
             box-shadow: 0 0 0 1px var(--primary);
             transform-origin: center;
             pointer-events: none;
+            transition: background 90ms ease, border-color 90ms ease, box-shadow 90ms ease;
+        }
+
+        .visual-terminal::after {
+            content: '';
+            position: absolute;
+            inset: -5px;
+            border: 2px solid var(--primary-hover);
+            border-radius: 50%;
+            box-shadow: 0 0 12px var(--primary-hover);
+            opacity: 0;
+            transform: scale(.65);
+            transition: opacity 90ms ease, transform 90ms ease;
+        }
+
+        .visual-terminal.hovered {
+            border-color: var(--text);
+            background: var(--primary-hover);
+            box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary-hover) 38%, transparent);
+        }
+
+        .visual-terminal.hovered::after {
+            opacity: 1;
+            transform: scale(1);
         }
 
         .dom-dip {
@@ -135,7 +167,8 @@ class CircuitCanvas extends LitElement {
         .help,
         .zoom-controls,
         .legend,
-        .net-inspector {
+        .net-inspector,
+        .property-inspector {
             position: absolute;
             z-index: 20;
             pointer-events: none;
@@ -145,6 +178,54 @@ class CircuitCanvas extends LitElement {
             border-radius: 4px;
             box-shadow: 0 8px 24px color-mix(in srgb, var(--ink) 70%, transparent);
             font-family: var(--font-ui, 'Public Sans', sans-serif);
+        }
+
+        .pin-readout {
+            position: absolute;
+            z-index: 20;
+            left: 14px;
+            top: 62px;
+            min-width: 148px;
+            max-width: min(250px, calc(100% - 28px));
+            display: grid;
+            grid-template-columns: 4px minmax(0, 1fr);
+            overflow: hidden;
+            pointer-events: none;
+            color: var(--text);
+            background: color-mix(in srgb, var(--panel) 94%, transparent);
+            border: 1px solid var(--panel-border);
+            border-radius: 4px;
+            box-shadow: 0 8px 24px color-mix(in srgb, var(--ink) 70%, transparent);
+            font-family: var(--font-ui, 'Public Sans', sans-serif);
+        }
+
+        .pin-readout::before { content: ''; background: var(--primary-hover); }
+        .pin-readout-content { min-width: 0; padding: 9px 11px 9px 9px; }
+        .pin-readout small {
+            display: block;
+            overflow: hidden;
+            color: var(--text-muted);
+            font: 8px/1.2 var(--font-tech, '0xProto', monospace);
+            letter-spacing: .08em;
+            text-overflow: ellipsis;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+        .pin-readout strong {
+            display: block;
+            margin-top: 3px;
+            overflow: hidden;
+            color: var(--text);
+            font: 700 15px/1.15 var(--font-tech, '0xProto', monospace);
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .pin-readout span {
+            display: block;
+            margin-top: 3px;
+            color: var(--text-muted);
+            font-size: 9px;
+            line-height: 1.2;
         }
 
         .mode-pill {
@@ -203,6 +284,54 @@ class CircuitCanvas extends LitElement {
         .net-part small { color: var(--text-muted); font: 8px/1.2 var(--font-tech, '0xProto', monospace); }
         .net-pin code { color: var(--text); font: 10px/1.2 var(--font-tech, '0xProto', monospace); }
 
+        .property-inspector {
+            right: 14px;
+            top: 62px;
+            width: min(270px, calc(100% - 28px));
+            padding: 0;
+            overflow: hidden;
+            pointer-events: auto;
+            user-select: text;
+        }
+
+        .property-inspector header {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 8px;
+            align-items: center;
+            padding: 10px 11px;
+            border-bottom: 1px solid var(--panel-border);
+        }
+        .property-title { min-width: 0; }
+        .property-title strong, .property-title small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .property-title strong { font: 700 12px/1.2 var(--font-ui, 'Public Sans', sans-serif); }
+        .property-title small { margin-top: 3px; color: var(--text-muted); font: 8px/1.2 var(--font-tech, '0xProto', monospace); }
+        .property-actions { display: flex; align-items: center; gap: 6px; }
+        .property-close, .property-edit {
+            height: 28px; display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+            border: 1px solid var(--panel-border); border-radius: 4px;
+            color: var(--text-muted); background: transparent; cursor: pointer;
+        }
+        .property-close { width: 28px; padding: 0; }
+        .property-edit { padding: 0 8px; font: 600 9px/1 var(--font-ui, 'Public Sans', sans-serif); }
+        .property-close:hover, .property-edit:hover { color: var(--text); border-color: var(--primary-hover); background: var(--primary); }
+        .property-fields { display: grid; gap: 10px; padding: 11px; }
+        .property-field { display: grid; gap: 5px; }
+        .property-field > span { display: flex; justify-content: space-between; gap: 8px; color: var(--text-muted); font-size: 10px; }
+        .property-field em { color: var(--text-muted); font: normal 9px/1 var(--font-tech, '0xProto', monospace); }
+        .property-field input, .property-field select {
+            box-sizing: border-box; width: 100%; height: 32px; padding: 0 8px;
+            border: 1px solid var(--panel-border); border-radius: 4px; outline: none;
+            color: var(--text); background: var(--ink);
+            font: 11px/1 var(--font-tech, '0xProto', monospace);
+        }
+        .property-field input:focus, .property-field select:focus { border-color: var(--primary-hover); }
+        .property-field input[type="color"] { padding: 3px; cursor: pointer; }
+        .property-resistance { display: grid; grid-template-columns: minmax(0, 1fr) 76px; gap: 6px; }
+        .property-checkbox { grid-template-columns: 1fr auto; align-items: center; }
+        .property-checkbox input { width: 18px; height: 18px; accent-color: var(--primary-hover); }
+        .property-empty { margin: 0; padding: 11px; color: var(--text-muted); font-size: 10px; line-height: 1.5; }
+
         .zoom-controls {
             right: 14px;
             top: 14px;
@@ -254,8 +383,16 @@ class CircuitCanvas extends LitElement {
                 max-height: 34vh;
                 overflow: auto;
             }
+            .property-inspector {
+                position: absolute;
+                inset: auto 10px 70px 10px;
+                width: auto;
+                max-height: 42vh;
+                overflow: auto;
+            }
             .help { display: none; }
             .legend { right: 10px; bottom: 46px; }
+            .pin-readout { left: 10px; top: 58px; max-width: calc(100% - 150px); }
         }
     `;
 
@@ -268,6 +405,7 @@ class CircuitCanvas extends LitElement {
         this._status = 'Drag a component onto the canvas to begin';
         this._hoveredHole = null;
         this._hoveredTerminalRef = null;
+        this._hoveredPinView = null;
         this._selectedComponentIds = new Set();
         this._selectedWireIds = new Set();
         this._selectedComponentId = null;
@@ -297,10 +435,16 @@ class CircuitCanvas extends LitElement {
             this._selectComponent(componentId);
             this._renderComponents();
         };
+        this._componentLibraryHandler = () => {
+            this._pendingPinCalibration.clear();
+            this._renderScene();
+            this.requestUpdate();
+        };
     }
 
     render() {
         const net = this._selectedNetView();
+        const propertyInspector = this._selectedPropertyInspector();
         const showStatus = this.store.project.components.length === 0
             || this.interaction.state?.type !== 'idle'
             || this._dragOver
@@ -314,6 +458,15 @@ class CircuitCanvas extends LitElement {
                 <div class="stage-host"></div>
                 <div class="component-visual-layer" aria-hidden="true"></div>
                 ${showStatus ? html`<div class="mode-pill"><span>${this._status}</span></div>` : ''}
+                ${this._hoveredPinView ? html`
+                    <aside class="pin-readout" aria-live="polite" aria-label="Hovered pin">
+                        <div class="pin-readout-content">
+                            <small>${this._hoveredPinView.owner}</small>
+                            <strong>${this._hoveredPinView.name}</strong>
+                            <span>${this._hoveredPinView.detail}</span>
+                        </div>
+                    </aside>
+                ` : ''}
                 <div class="zoom-controls" @pointerdown=${event => event.stopPropagation()} aria-label="Canvas zoom controls">
                     <button @click=${() => this._zoomBy(1.2)} title="Zoom in" aria-label="Zoom in">${faIcon('plus')}</button>
                     <output>${this._zoomLabel}</output>
@@ -340,6 +493,7 @@ class CircuitCanvas extends LitElement {
                         </div>
                     </section>
                 ` : ''}
+                ${propertyInspector ? this._renderPropertyInspector(propertyInspector) : ''}
                 <div class="help">
                     Drag parts onto empty space. Breadboard parts snap to valid holes.<br>
                     To wire, click a pin, add corners in empty space, then click another pin.<br>
@@ -353,6 +507,129 @@ class CircuitCanvas extends LitElement {
                 </div>
             </div>
         `;
+    }
+
+    _selectedPropertyInspector() {
+        if (this._selectedComponentIds.size !== 1 || this._selectedWireIds.size > 0) return null;
+        const instance = this.store.project.components.find(component => component.id === this._selectedComponentId);
+        const definition = instance && componentLibrary[instance.definitionId];
+        if (!instance || !definition) return null;
+        return {
+            instance,
+            definition,
+            descriptors: getComponentPropertyDefinitions(definition).filter(descriptor => descriptor.editable),
+            values: visualPropertyValues(definition, instance.properties),
+        };
+    }
+
+    _renderPropertyInspector({ instance, definition, descriptors, values }) {
+        return html`
+            <aside class="property-inspector" aria-label="Component properties"
+                @pointerdown=${event => event.stopPropagation()} @click=${event => event.stopPropagation()}>
+                <header>
+                    <div class="property-title">
+                        <strong>${definition.name}</strong>
+                        <small>${instance.id}</small>
+                    </div>
+                    <div class="property-actions">
+                        <button class="property-edit" @click=${() => this._editComponentDefinition(instance)}
+                            title="Edit artwork pin alignment">${faIcon('wrench')} Edit pins</button>
+                        <button class="property-close" @click=${this._closePropertyInspector} title="Close properties" aria-label="Close properties">×</button>
+                    </div>
+                </header>
+                ${descriptors.length ? html`
+                    <div class="property-fields">
+                        ${descriptors.map(descriptor => this._renderPropertyField(instance, descriptor, values[descriptor.name]))}
+                    </div>
+                ` : html`<p class="property-empty">This component has no editable properties yet.</p>`}
+            </aside>
+        `;
+    }
+
+    _renderPropertyField(instance, descriptor, value) {
+        if (descriptor.control === 'checkbox') {
+            return html`
+                <label class="property-field property-checkbox">
+                    <span>${descriptor.label}</span>
+                    <input type="checkbox" .checked=${Boolean(value)}
+                        @change=${event => this._commitComponentProperty(instance, descriptor, event.currentTarget.checked)} />
+                </label>
+            `;
+        }
+        if (descriptor.control === 'select' && descriptor.options?.length) {
+            const selectedValue = descriptor.name === 'color' ? canonicalLedColor(value) : String(value ?? '');
+            return html`
+                <label class="property-field">
+                    <span>${descriptor.label}${descriptor.unit ? html`<em>${descriptor.unit}</em>` : ''}</span>
+                    <select .value=${selectedValue}
+                        @change=${event => this._commitComponentProperty(instance, descriptor, event.currentTarget.value)}>
+                        ${descriptor.options.map(option => html`<option .value=${String(option)}>${LED_COLOR_PROFILES[option]?.label || option}</option>`)}
+                    </select>
+                </label>
+            `;
+        }
+        if (descriptor.unitFamily === 'resistance') {
+            const ohms = Math.max(1, Number(value) || 1);
+            const multiplier = ohms >= 1_000_000 ? 1_000_000 : ohms >= 1_000 ? 1_000 : 1;
+            const displayed = Math.round(ohms / multiplier * 1000) / 1000;
+            return html`
+                <label class="property-field">
+                    <span>${descriptor.label}</span>
+                    <div class="property-resistance">
+                        <input type="number" .value=${String(displayed)} min="0.001" step="any"
+                            @change=${event => this._commitResistance(instance, descriptor, event.currentTarget)} />
+                        <select .value=${String(multiplier)} @change=${event => this._commitResistance(instance, descriptor,
+                            event.currentTarget.parentElement.querySelector('input'), event.currentTarget.value)}>
+                            <option value="1">Ω</option>
+                            <option value="1000">kΩ</option>
+                            <option value="1000000">MΩ</option>
+                        </select>
+                    </div>
+                </label>
+            `;
+        }
+        const type = descriptor.control === 'color' ? 'color' : descriptor.type === 'number' ? 'number' : 'text';
+        return html`
+            <label class="property-field">
+                <span>${descriptor.label}${descriptor.unit ? html`<em>${descriptor.unit}</em>` : ''}</span>
+                <input type=${type} .value=${String(value ?? '')}
+                    min=${descriptor.min ?? ''} max=${descriptor.max ?? ''} step=${descriptor.step ?? ''}
+                    @change=${event => this._commitComponentProperty(instance, descriptor,
+                        descriptor.type === 'number' ? event.currentTarget.valueAsNumber : event.currentTarget.value)} />
+            </label>
+        `;
+    }
+
+    _commitComponentProperty(instance, descriptor, value) {
+        if (!descriptor.editable || !validateComponentPropertyValue(descriptor, value)) {
+            this._status = `${descriptor.label} has an invalid value.`;
+            this.requestUpdate();
+            return;
+        }
+        if (Object.is(visualPropertyValues(componentLibrary[instance.definitionId], instance.properties)[descriptor.name], value)) return;
+        this.store.execute(setComponentPropertyCommand(instance.id, descriptor.name, value));
+        this._status = `${descriptor.label} updated for ${componentLibrary[instance.definitionId]?.name || instance.definitionId}.`;
+        this.requestUpdate();
+    }
+
+    _commitResistance(instance, descriptor, input, selectedMultiplier = null) {
+        const multiplier = Number(selectedMultiplier || input.parentElement.querySelector('select')?.value || 1);
+        const ohms = Number(input.value) * multiplier;
+        this._commitComponentProperty(instance, descriptor, ohms);
+    }
+
+    _closePropertyInspector = () => {
+        this._clearItemSelection();
+        this._status = 'Selection cleared.';
+        this.requestUpdate();
+    };
+
+    _editComponentDefinition(instance) {
+        this.dispatchEvent(new CustomEvent('edit-component-definition', {
+            detail: { componentId: instance.definitionId },
+            bubbles: true,
+            composed: true,
+        }));
     }
 
     firstUpdated() {
@@ -386,6 +663,7 @@ class CircuitCanvas extends LitElement {
         window.addEventListener('keydown', this._keyHandler);
         window.addEventListener('elera-add-physical-component', this._physicalAddHandler);
         window.addEventListener('elera-select-physical-component', this._physicalSelectHandler);
+        window.addEventListener('elera-component-library-change', this._componentLibraryHandler);
         this._renderScene();
     }
 
@@ -397,6 +675,7 @@ class CircuitCanvas extends LitElement {
         window.removeEventListener('keydown', this._keyHandler);
         window.removeEventListener('elera-add-physical-component', this._physicalAddHandler);
         window.removeEventListener('elera-select-physical-component', this._physicalSelectHandler);
+        window.removeEventListener('elera-component-library-change', this._componentLibraryHandler);
         this.stage?.destroy();
     }
 
@@ -989,7 +1268,6 @@ class CircuitCanvas extends LitElement {
                 baseY: transform.y,
             });
             if (footprint.packageType === 'dip') this._drawDipPackage(group, component, footprint);
-            else if (component.definitionId === 'led') this._drawLed(group, component);
             else this._drawGenericComponent(group, component, footprint);
             this._drawComponentPins(group, component, footprint);
             this._installComponentInteraction(group, component);
@@ -999,27 +1277,24 @@ class CircuitCanvas extends LitElement {
         this._renderComponentVisuals();
     }
 
-    _createComponentArtwork(component) {
+    _createComponentArtwork(component, footprint = null) {
         const definition = componentLibrary[component.definitionId];
+        const packageVisual = component.definitionId === 'resistor' && footprint?.placementMode === 'breadboard-rigid'
+            ? getResistorPackageVisual(footprint) : null;
         let artwork;
-        if (definition?.type === 'custom' && definition.imageUrl) {
-            artwork = document.createElement('img');
-            artwork.src = definition.imageUrl;
-            artwork.alt = definition.name || component.definitionId;
-        } else if (!definition?.tag || definition.tag === 'div') {
-            artwork = document.createElement('div');
-            artwork.classList.add('dom-dip');
-            artwork.textContent = definition?.name || component.definitionId;
-        } else {
-            artwork = document.createElement(definition.tag);
-            for (const [name, value] of Object.entries(definition.attrs || {})) {
-                if (value !== false && value != null) artwork.setAttribute(name, String(value));
+        if (packageVisual) {
+            artwork = document.createElement(packageVisual.tag);
+            if (packageVisual.tag === 'elera-compact-resistor') {
+                artwork.leadSpanMm = packageVisual.sourceSize.width;
             }
+            applyVisualProperties(artwork, definition, component.properties);
+        } else {
+            artwork = createPartVisualElement(definition, { instanceProperties: component.properties }) || document.createElement('div');
         }
         artwork.classList.add('component-artwork');
         const nativeSize = getComponentGeometry(component.definitionId)?.native?.size;
-        const sourceWidth = Math.max(1, Number(nativeSize?.width || definition?.size?.width || 120));
-        const sourceHeight = Math.max(1, Number(nativeSize?.height || definition?.size?.height || 80));
+        const sourceWidth = Math.max(1, Number(packageVisual?.sourceSize.width || nativeSize?.width || definition?.size?.width || 120));
+        const sourceHeight = Math.max(1, Number(packageVisual?.sourceSize.height || nativeSize?.height || definition?.size?.height || 80));
         artwork.style.width = `${sourceWidth}px`;
         artwork.style.height = `${sourceHeight}px`;
         artwork.dataset.sourceWidth = String(sourceWidth);
@@ -1036,11 +1311,12 @@ class CircuitCanvas extends LitElement {
             const wrapper = document.createElement('div');
             wrapper.className = `component-visual${this._selectedComponentIds.has(component.id) ? ' selected' : ''}`;
             wrapper.dataset.componentId = component.id;
-            wrapper.append(this._createComponentArtwork(component));
+            wrapper.append(this._createComponentArtwork(component, footprint));
             for (const pin of footprint.pins) {
                 const projected = projectFootprintPoint(footprint, pin);
                 const terminal = document.createElement('span');
                 terminal.className = 'visual-terminal';
+                terminal.dataset.pinId = pin.pinId;
                 terminal.dataset.pinX = String(projected.x);
                 terminal.dataset.pinY = String(projected.y);
                 wrapper.append(terminal);
@@ -1051,12 +1327,13 @@ class CircuitCanvas extends LitElement {
         }
     }
 
-    _fitArtworkPlacement(footprint, sourceWidth, sourceHeight) {
+    _fitArtworkPlacement(footprint, sourceWidth, sourceHeight, sourceBounds = null) {
         const bounds = footprint.routingBounds || { x: 0, y: 0, width: 24, height: 14 };
-        const scale = Math.min(bounds.width / sourceWidth, bounds.height / sourceHeight);
+        const content = normalizeContentBounds(sourceBounds, { width: sourceWidth, height: sourceHeight });
+        const scale = Math.min(bounds.width / content.width, bounds.height / content.height);
         return {
-            x: bounds.x + (bounds.width - sourceWidth * scale) / 2,
-            y: bounds.y + (bounds.height - sourceHeight * scale) / 2,
+            x: bounds.x + (bounds.width - content.width * scale) / 2 - content.x * scale,
+            y: bounds.y + (bounds.height - content.height * scale) / 2 - content.y * scale,
             scale,
             rotation: 0,
         };
@@ -1064,12 +1341,17 @@ class CircuitCanvas extends LitElement {
 
     _artworkPlacement(component, footprint, sourceWidth, sourceHeight) {
         const geometry = getComponentGeometry(component.definitionId);
-        const nativePins = geometry?.native?.pins;
+        const packageVisual = component.definitionId === 'resistor' && footprint?.placementMode === 'breadboard-rigid'
+            ? getResistorPackageVisual(footprint) : null;
+        const nativePins = packageVisual?.nativePins ||
+            componentLibrary[component.definitionId]?.visualAdapter?.nativePins || geometry?.native?.pins;
         if (footprint.placementMode === 'free' && footprint.artworkPlacement) {
             return { ...footprint.artworkPlacement };
         }
         if (footprint.placementMode !== 'breadboard-rigid' || !nativePins) {
-            return this._fitArtworkPlacement(footprint, sourceWidth, sourceHeight);
+            return this._fitArtworkPlacement(
+                footprint, sourceWidth, sourceHeight, componentLibrary[component.definitionId]?.contentBounds,
+            );
         }
         const matches = footprint.pins
             .filter(pin => nativePins[pin.pinId])
@@ -1092,15 +1374,41 @@ class CircuitCanvas extends LitElement {
 
     _physicalArtworkCalibration(artwork, definition, pins, sourceWidth, sourceHeight, currentFootprint) {
         if (!definition?.tag?.startsWith('wokwi-')) {
-            const placement = this._fitArtworkPlacement(currentFootprint, sourceWidth, sourceHeight);
+            const content = normalizeContentBounds(definition?.contentBounds, {
+                width: sourceWidth,
+                height: sourceHeight,
+            });
+            const sourceXs = [content.x, content.x + content.width,
+                ...pins.map(pin => Number(pin.x)).filter(Number.isFinite)];
+            const sourceYs = [content.y, content.y + content.height,
+                ...pins.map(pin => Number(pin.y)).filter(Number.isFinite)];
+            const occupiedSourceBounds = {
+                x: Math.min(...sourceXs),
+                y: Math.min(...sourceYs),
+                width: Math.max(...sourceXs) - Math.min(...sourceXs),
+                height: Math.max(...sourceYs) - Math.min(...sourceYs),
+            };
+            const placement = this._fitArtworkPlacement(
+                currentFootprint, sourceWidth, sourceHeight, occupiedSourceBounds,
+            );
+            const transformedPins = pins.map(pin => ({
+                pinId: pin.name,
+                x: placement.x + Number(pin.x) * placement.scale,
+                y: placement.y + Number(pin.y) * placement.scale,
+            }));
+            const xs = [placement.x + occupiedSourceBounds.x * placement.scale,
+                placement.x + (occupiedSourceBounds.x + occupiedSourceBounds.width) * placement.scale];
+            const ys = [placement.y + occupiedSourceBounds.y * placement.scale,
+                placement.y + (occupiedSourceBounds.y + occupiedSourceBounds.height) * placement.scale];
             return {
                 placement,
-                bounds: currentFootprint.routingBounds,
-                pins: pins.map(pin => ({
-                    pinId: pin.name,
-                    x: placement.x + Number(pin.x) * placement.scale,
-                    y: placement.y + Number(pin.y) * placement.scale,
-                })),
+                bounds: {
+                    x: Math.min(...xs),
+                    y: Math.min(...ys),
+                    width: Math.max(...xs) - Math.min(...xs),
+                    height: Math.max(...ys) - Math.min(...ys),
+                },
+                pins: transformedPins,
             };
         }
         const svg = artwork.shadowRoot?.querySelector('svg');
@@ -1124,7 +1432,7 @@ class CircuitCanvas extends LitElement {
         const footprint = getFootprintDefinition(component?.footprintId);
         if (!component || footprint?.placementMode !== 'free') return;
         this._pendingPinCalibration.add(componentId);
-        const inspect = remaining => requestAnimationFrame(() => {
+        const inspect = remaining => requestAnimationFrame(async () => {
             const wrapper = [...(this.visualLayer?.children || [])].find(node => node.dataset.componentId === componentId);
             const artwork = wrapper?.querySelector('.component-artwork');
             const current = this.store.project.components.find(item => item.id === componentId);
@@ -1133,8 +1441,25 @@ class CircuitCanvas extends LitElement {
                 this._pendingPinCalibration.delete(componentId);
                 return;
             }
-            const definition = componentLibrary[current.definitionId];
-            const rawPins = definition?.type === 'custom' ? definition.customPins : artwork.pinInfo;
+            let definition = componentLibrary[current.definitionId];
+            if (definition?.type === 'custom' && !definition.contentBounds && definition.imageUrl) {
+                try {
+                    const metrics = await measureImageContent(definition.imageUrl);
+                    definition = registerCustomComponent({
+                        ...definition,
+                        size: metrics.size,
+                        contentBounds: metrics.contentBounds,
+                    }) || definition;
+                } catch {
+                    // Keep the full image bounds when legacy artwork cannot be sampled.
+                }
+            }
+            const adapterPins = definition?.visualAdapter?.nativePins;
+            const rawPins = definition?.type === 'custom'
+                ? definition.customPins
+                : adapterPins && Object.keys(adapterPins).length
+                    ? Object.entries(adapterPins).map(([name, point]) => ({ name, ...point }))
+                    : artwork.pinInfo;
             const isPinless = definition?.pinless === true;
             if ((!rawPins || !rawPins.length) && !isPinless && remaining > 0) {
                 inspect(remaining - 1);
@@ -1233,23 +1558,16 @@ class CircuitCanvas extends LitElement {
         }));
     }
 
-    _drawLed(group, component) {
-        const selected = this._selectedComponentIds.has(component.id);
-        group.add(new Konva.Line({ points: [0, 0, .15, -3.1], stroke: '#d4d4d8', strokeWidth: .45, listening: false }));
-        group.add(new Konva.Line({ points: [2.54, 0, 2.38, -3.1], stroke: '#d4d4d8', strokeWidth: .45, listening: false }));
-        group.add(new Konva.Circle({
-            x: 1.27, y: -4.15, radius: 2.45, fill: '#ef4444', opacity: .9,
-            stroke: selected ? this._themeColor('--primary-hover') : '#fecaca', strokeWidth: selected ? .65 : .28,
-            name: 'component-body', shadowColor: '#ef4444', shadowBlur: 1.5, shadowOpacity: .45,
-        }));
-        group.add(new Konva.Line({ points: [-.75, -2.85, 3.3, -2.85], stroke: '#fecaca', strokeWidth: .28, listening: false }));
-    }
-
     _drawGenericComponent(group, component, footprint) {
         const definition = componentLibrary[component.definitionId];
+        const packageVisual = component.definitionId === 'resistor' && footprint?.placementMode === 'breadboard-rigid'
+            ? getResistorPackageVisual(footprint) : null;
         const nativeSize = getComponentGeometry(component.definitionId)?.native?.size;
-        const sourceWidth = Math.max(1, Number(nativeSize?.width || definition?.size?.width || 120));
-        const sourceHeight = Math.max(1, Number(nativeSize?.height || definition?.size?.height || 80));
+        // Keep the interaction box in the same coordinate system as the DOM
+        // artwork. Physical resistor variants intentionally do not use the
+        // much wider original Wokwi resistor source dimensions.
+        const sourceWidth = Math.max(1, Number(packageVisual?.sourceSize.width || nativeSize?.width || definition?.size?.width || 120));
+        const sourceHeight = Math.max(1, Number(packageVisual?.sourceSize.height || nativeSize?.height || definition?.size?.height || 80));
         const placement = this._artworkPlacement(component, footprint, sourceWidth, sourceHeight);
         // Some Wokwi hosts use SVG viewBox dimensions while their inner SVG
         // declares a much smaller physical CSS size (HX711: 580x430 versus
@@ -1296,15 +1614,43 @@ class CircuitCanvas extends LitElement {
             const circle = new Konva.Circle({
                 name: 'semantic-terminal', x: projected.x, y: projected.y, radius: .82,
                 fill: this._themeColor('--text'), stroke: this._themeColor('--primary-hover'), strokeWidth: .3, opacity: .94,
+                hitStrokeWidth: 1.3,
             });
             circle.setAttr('connectionRef', componentPinRef(component.id, pin.pinId));
             circle.on('mouseenter', () => {
-                this._hoveredTerminalRef = circle.getAttr('connectionRef');
+                const ref = circle.getAttr('connectionRef');
+                this._hoveredTerminalRef = ref;
+                this._setHoveredPinView(ref);
+                this._setVisualTerminalHover(ref, true);
+                circle.setAttrs({
+                    radius: 1.14,
+                    fill: this._themeColor('--primary-hover'),
+                    stroke: this._themeColor('--text'),
+                    strokeWidth: .42,
+                    shadowColor: this._themeColor('--primary-hover'),
+                    shadowBlur: 2.2,
+                    shadowOpacity: 1,
+                    shadowEnabled: true,
+                });
+                this.componentLayer.batchDraw();
                 this.stage.container().style.cursor = 'crosshair';
                 if (this.interaction.state.type === 'drawing-wire') this._renderInteractionLayer();
             });
             circle.on('mouseleave', () => {
+                const ref = circle.getAttr('connectionRef');
                 this._hoveredTerminalRef = null;
+                this._setVisualTerminalHover(ref, false);
+                circle.setAttrs({
+                    radius: .82,
+                    fill: this._themeColor('--text'),
+                    stroke: this._themeColor('--primary-hover'),
+                    strokeWidth: .3,
+                    shadowEnabled: false,
+                });
+                this.componentLayer.batchDraw();
+                this._setHoveredPinView(this._hoveredHole
+                    ? surfaceHoleRef(this._hoveredHole.surfaceId, this._hoveredHole.holeId)
+                    : null);
                 this.stage.container().style.cursor = '';
                 if (this.interaction.state.type === 'drawing-wire') this._renderInteractionLayer();
             });
@@ -1314,6 +1660,48 @@ class CircuitCanvas extends LitElement {
                 this._activateTerminal(circle.getAttr('connectionRef'));
             });
             group.add(circle);
+        }
+    }
+
+    _setVisualTerminalHover(ref, hovered) {
+        if (ref?.type !== 'component-pin' || !this.visualLayer) return;
+        for (const wrapper of this.visualLayer.children) {
+            if (wrapper.dataset.componentId !== ref.componentId) continue;
+            for (const terminal of wrapper.querySelectorAll('.visual-terminal')) {
+                if (terminal.dataset.pinId === String(ref.pinId)) terminal.classList.toggle('hovered', hovered);
+            }
+        }
+    }
+
+    _setHoveredPinView(ref) {
+        if (!ref) {
+            this._hoveredPinView = null;
+            return;
+        }
+        if (ref.type === 'component-pin') {
+            const component = this.store.project.components.find(item => item.id === ref.componentId);
+            const definition = component
+                ? (componentLibrary[component.definitionId] || getPhysicalComponentDefinition(component.definitionId))
+                : null;
+            const role = definition?.pinMeta?.[ref.pinId] || definition?.autoWire?.[ref.pinId];
+            this._hoveredPinView = {
+                owner: definition?.name || component?.definitionId || 'Component pin',
+                name: ref.pinId,
+                detail: role ? String(role).replaceAll('_', ' ') : 'Component pin',
+            };
+            return;
+        }
+        if (ref.type === 'surface-hole') {
+            const surface = this.store.project.surfaces.find(item => item.id === ref.surfaceId);
+            const definition = getSurfaceDefinition(surface);
+            const hole = definition?.getHole(ref.holeId);
+            this._hoveredPinView = {
+                owner: definition?.name || 'Breadboard',
+                name: ref.holeId,
+                detail: hole?.zone === 'rail'
+                    ? `${hole.polarity || 'power'} rail`
+                    : 'Terminal strip',
+            };
         }
     }
 
@@ -1638,8 +2026,13 @@ class CircuitCanvas extends LitElement {
         }
         const changed = JSON.stringify(nextHover) !== JSON.stringify(this._hoveredHole);
         this._hoveredHole = nextHover;
+        if (changed && !this._hoveredTerminalRef) {
+            this._setHoveredPinView(nextHover
+                ? surfaceHoleRef(nextHover.surfaceId, nextHover.holeId)
+                : null);
+        }
         if (changed || this.interaction.state.type === 'drawing-wire') this._renderInteractionLayer();
-        this.stage.container().style.cursor = nextHover ? 'crosshair' : '';
+        this.stage.container().style.cursor = nextHover || this._hoveredTerminalRef ? 'crosshair' : '';
     }
 
     _onStageDown(event) {
@@ -1744,6 +2137,8 @@ class CircuitCanvas extends LitElement {
                 ? 'Click empty space to add corners, then click another pin to finish. Press Esc to cancel.'
                 : result === 'completed'
                     ? 'Wire added. Drag a segment to adjust it, or use Clean to route it automatically.'
+                    : result === 'blocked'
+                        ? 'That breadboard hole is occupied. Choose a free hole in the required strip.'
                     : 'Click a pin to start another wire.';
         this.requestUpdate();
     }
@@ -1932,27 +2327,37 @@ class CircuitCanvas extends LitElement {
                 rotated = this.store.execute(rotateFreeComponentCommand(component.id, delta));
             } else if (component?.placement?.type === 'surface') {
                 const footprint = getFootprintDefinition(component.footprintId);
-                const rotations = footprint?.validRotations || [];
                 const desired = ((Number(component.placement.rotation || 0) + delta) % 360 + 360) % 360;
-                const ordered = [...rotations].sort((a, b) => {
-                    const distance = value => Math.min(Math.abs(value - desired), 360 - Math.abs(value - desired));
-                    return distance(a) - distance(b) || a - b;
-                });
+                const allVariants = footprintsForComponent(component.definitionId);
+                const variants = component.definitionId === 'resistor'
+                    ? (footprint?.visualVariant === 'upright'
+                        ? allVariants.filter(item => item.preferred || item.id === 'axial-4')
+                        : allVariants.filter(item => item.visualVariant === 'upright'))
+                    : [footprint];
                 const surface = this.store.project.surfaces.find(item => item.id === component.placement.surfaceId);
                 const anchorHoleId = component.placement.bindings?.[footprint?.anchorPinId];
                 const anchorWorld = surface && anchorHoleId ? holeWorldPosition(surface, anchorHoleId) : null;
-                for (const preferredRotation of ordered) {
-                    const candidate = anchorWorld ? this.interaction.solver.solve({
-                        project: this.store.project,
-                        component,
-                        pointerWorld: anchorWorld,
-                        surfaceId: surface.id,
-                        preferredRotation,
-                    }) : null;
-                    if (!candidate || candidate.rotation === component.placement.rotation ||
-                        !this.interaction.solver.validateCandidate(this.store.project, component, candidate)) continue;
-                    rotated = this.store.execute(mountComponentCommand(component.id, candidate));
-                    break;
+                for (const variant of variants) {
+                    const ordered = [...(variant?.validRotations || [])].sort((a, b) => {
+                        const distance = value => Math.min(Math.abs(value - desired), 360 - Math.abs(value - desired));
+                        return distance(a) - distance(b) || a - b;
+                    });
+                    for (const preferredRotation of ordered) {
+                        const candidate = anchorWorld ? this.interaction.solver.solve({
+                            project: this.store.project,
+                            component,
+                            pointerWorld: anchorWorld,
+                            surfaceId: surface.id,
+                            preferredRotation,
+                            preferredFootprintId: variant.id,
+                        }) : null;
+                        if (!candidate || (candidate.rotation === component.placement.rotation &&
+                            candidate.footprintId === component.footprintId) ||
+                            !this.interaction.solver.validateCandidate(this.store.project, component, candidate)) continue;
+                        rotated = this.store.execute(mountComponentCommand(component.id, candidate));
+                        break;
+                    }
+                    if (rotated) break;
                 }
             }
             this._status = rotated

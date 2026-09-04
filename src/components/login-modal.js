@@ -9,6 +9,7 @@ import {
     saveAiSettings,
 } from '../ai/config.js';
 import { listProviderModels, testAiConnection } from '../ai/providers.js';
+import { loadEditorPreferences, saveEditorPreferences } from '../core/editor-preferences.js';
 
 class LoginModal extends LitElement {
     static properties = {
@@ -25,6 +26,7 @@ class LoginModal extends LitElement {
         _modelsStatus: { state: true },
         _modelsMessage: { state: true },
         _manualModel: { state: true },
+        _editorPreferences: { state: true },
     };
 
     static styles = css`
@@ -424,6 +426,14 @@ class LoginModal extends LitElement {
             accent-color: var(--primary-hover);
         }
 
+        .preference-group {
+            display: grid;
+            gap: 10px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--panel-border);
+        }
+        .preference-group h3 { margin: 0; color: var(--text); font-size: 13px; }
+
         :host { background: color-mix(in srgb, var(--ink) 72%, transparent); font-family: var(--font-ui, 'Public Sans', sans-serif); }
         .modal, .tabs, .body, .account-row, .status-row, .check { background: var(--panel); border-color: var(--panel-border); color: var(--text); }
         .modal, .account-row, .status-row, .check { border-radius: 4px; }
@@ -474,6 +484,7 @@ class LoginModal extends LitElement {
         this._name = '';
         this._email = '';
         this._aiSettings = this._loadAiSettings();
+        this._editorPreferences = loadEditorPreferences();
         this._testStatus = 'idle';
         this._testMessage = '';
         this._providerModels = [];
@@ -490,6 +501,7 @@ class LoginModal extends LitElement {
             this._activeTab = this.initialTab || 'account';
             this._syncFieldsFromUser();
             this._aiSettings = this._loadAiSettings();
+            this._editorPreferences = loadEditorPreferences();
             this._testStatus = 'idle';
             this._testMessage = '';
             this._providerModels = [];
@@ -524,6 +536,15 @@ class LoginModal extends LitElement {
             bubbles: true,
             composed: true,
         }));
+    }
+
+    _savePreferences() {
+        this._editorPreferences = saveEditorPreferences(this._editorPreferences);
+        this._saveAiSettings();
+    }
+
+    _setEditorPreference(key, value) {
+        this._editorPreferences = { ...this._editorPreferences, [key]: value };
     }
 
     _syncFieldsFromUser() {
@@ -919,6 +940,23 @@ class LoginModal extends LitElement {
     _renderPreferencesTab() {
         return html`
             <div class="section">
+                <div class="preference-group">
+                    <h3>Auto Wire</h3>
+                    <label>
+                        LED current limiting
+                        <select
+                            .value=${this._editorPreferences.autoWireLedResistors ? 'recommended' : 'direct'}
+                            @change=${event => this._setEditorPreference('autoWireLedResistors', event.target.value === 'recommended')}
+                        >
+                            <option value="recommended">Add a recommended resistor</option>
+                            <option value="direct">Connect directly and show a warning</option>
+                        </select>
+                        <span class="helper">Recommended resistors are calculated from the LED color and controller logic voltage. Direct wiring remains allowed, but electrical validation warns about it.</span>
+                    </label>
+                </div>
+
+                <div class="preference-group">
+                    <h3>AI assistant</h3>
                 <label>
                     Reasoning
                     <select
@@ -965,9 +1003,10 @@ class LoginModal extends LitElement {
                     ${this._renderCheck('preferMinimalComponents', 'Prefer minimal components')}
                     ${this._renderCheck('includeCodeByDefault', 'Include Arduino code by default')}
                 </div>
+                </div>
 
                 <div class="actions">
-                    <button class="btn btn-primary" type="button" @click=${this._saveAiSettings}>
+                    <button class="btn btn-primary" type="button" @click=${this._savePreferences}>
                         ${faIcon('save')}
                         Save preferences
                     </button>

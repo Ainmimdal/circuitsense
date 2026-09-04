@@ -1,0 +1,238 @@
+{
+  "format": "elera-fritzing-part-v1",
+  "id": "fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1",
+  "name": "Pololu DRV 8833 Dual Motor Driver Carrier",
+  "description": "Imported Fritzing part: Pololu DRV 8833 Dual Motor Driver Carrier",
+  "category": "actuator",
+  "sourcePart": "part.Pololu-DRV8833_db460475afdc37503aeafa0d3ea8afc1_1.fzp",
+  "library": {
+    "source": "fritzing",
+    "family": "motor-driver",
+    "variant": "variant 1",
+    "tags": [
+      "pololu",
+      "motor-driver",
+      "drv8833"
+    ]
+  },
+  "artwork": {
+    "svgUrl": "/converted-parts/fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1/breadboard.svg",
+    "sourceSize": {
+      "width": 211.80607,
+      "height": 132.29169
+    },
+    "physicalSizeMm": {
+      "width": 20.333375,
+      "height": 12.699998
+    }
+  },
+  "pins": [
+    {
+      "id": "GND",
+      "label": "GND",
+      "connector": "male",
+      "electricalRole": "GND",
+      "autoWireRequirement": "GND",
+      "capabilities": [
+        "ground"
+      ],
+      "artwork": {
+        "x": 13.381336,
+        "y": 119.060657
+      },
+      "fritzingConnectorId": "connector1"
+    },
+    {
+      "id": "VMM",
+      "label": "VMM",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 39.839736,
+        "y": 119.060657
+      },
+      "fritzingConnectorId": "connector2"
+    },
+    {
+      "id": "BIN1",
+      "label": "BIN1",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 66.297936,
+        "y": 119.060657
+      },
+      "fritzingConnectorId": "connector3"
+    },
+    {
+      "id": "BIN2",
+      "label": "BIN2",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 92.756336,
+        "y": 119.060657
+      },
+      "fritzingConnectorId": "connector4"
+    },
+    {
+      "id": "AIN2",
+      "label": "AIN2",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 119.214636,
+        "y": 119.060657
+      },
+      "fritzingConnectorId": "connector5"
+    },
+    {
+      "id": "AIN1",
+      "label": "AIN1",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 145.673036,
+        "y": 119.060657
+      },
+      "fritzingConnectorId": "connector6"
+    },
+    {
+      "id": "NSLEEP",
+      "label": "nSLEEP",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 172.131336,
+        "y": 119.060657
+      },
+      "fritzingConnectorId": "connector7"
+    },
+    {
+      "id": "NFAULT",
+      "label": "nFAULT",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 198.589736,
+        "y": 119.060657
+      },
+      "fritzingConnectorId": "connector8"
+    },
+    {
+      "id": "BISEN",
+      "label": "BISEN",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 198.361736,
+        "y": 13.385457
+      },
+      "fritzingConnectorId": "connector9"
+    },
+    {
+      "id": "AISEN",
+      "label": "AISEN",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 171.903336,
+        "y": 13.385457
+      },
+      "fritzingConnectorId": "connector10"
+    },
+    {
+      "id": "AOUT1",
+      "label": "AOUT1",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 145.445036,
+        "y": 13.385457
+      },
+      "fritzingConnectorId": "connector11"
+    },
+    {
+      "id": "AOUT2",
+      "label": "AOUT2",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 118.986736,
+        "y": 13.385457
+      },
+      "fritzingConnectorId": "connector12"
+    },
+    {
+      "id": "BOUT2",
+      "label": "BOUT2",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 92.528336,
+        "y": 13.385457
+      },
+      "fritzingConnectorId": "connector13"
+    },
+    {
+      "id": "BOUT1",
+      "label": "BOUT1",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 66.070036,
+        "y": 13.385457
+      },
+      "fritzingConnectorId": "connector14"
+    },
+    {
+      "id": "VIN",
+      "label": "VIN",
+      "connector": "male",
+      "electricalRole": "VCC",
+      "autoWireRequirement": "VCC",
+      "capabilities": [
+        "power"
+      ],
+      "artwork": {
+        "x": 39.611736,
+        "y": 13.385457
+      },
+      "fritzingConnectorId": "connector15"
+    },
+    {
+      "id": "GND.2",
+      "label": "GND",
+      "connector": "male",
+      "electricalRole": "GND",
+      "autoWireRequirement": "GND",
+      "capabilities": [
+        "ground"
+      ],
+      "artwork": {
+        "x": 13.153436,
+        "y": 13.385457
+      },
+      "fritzingConnectorId": "connector16"
+    }
+  ],
+  "packages": [],
+  "propertyDefinitions": [],
+  "connectorType": "male",
+  "currentDraw_mA": 0,
+  "breadboardRequired": false,
+  "pinless": false
+}

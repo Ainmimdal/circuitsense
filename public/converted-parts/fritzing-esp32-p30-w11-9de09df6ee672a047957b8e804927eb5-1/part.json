@@ -1,0 +1,469 @@
+{
+  "format": "elera-fritzing-part-v1",
+  "id": "fritzing-esp32-p30-w11-9de09df6ee672a047957b8e804927eb5-1",
+  "name": "DOIT Esp32 DevKit v1 (30 pins long, 11 pins width)",
+  "description": "The DOIT Esp32 DevKit v1 is one of the development board created by DOIT to evaluate the ESP-WROOM-32 module. It is based on the ESP32 microcontroller that boasts Wifi, Bluetooth, Ethernet and Low Power support all in a single chip. (vanepp) made breadboard work, adjusted pin numbering and labels and reduced size of schematic and cleaned up pcb. This chip is 30pins long (2 x15) and 11 pins width. Note in pcb view the mounting holes (2.8mm diameter) are only shown on silkscreen. If you want mounting holes drilled in the pcb, drag a hole (from core parts->pcb View->hole) over the hole in silkscreen and set the diameter to 2.8 mm.",
+  "category": "board",
+  "sourcePart": "part.esp32_p30_w11_9de09df6ee672a047957b8e804927eb5_1.fzp",
+  "library": {
+    "source": "fritzing",
+    "family": "esp32",
+    "variant": "1",
+    "tags": [
+      "module",
+      "ESP32",
+      "wifi",
+      "DOIT Esp32 DevKit v1",
+      "contrib",
+      "fritzing user"
+    ]
+  },
+  "artwork": {
+    "svgUrl": "/converted-parts/fritzing-esp32-p30-w11-9de09df6ee672a047957b8e804927eb5-1/breadboard.svg",
+    "sourceSize": {
+      "width": 1110.2366,
+      "height": 2078.741
+    },
+    "physicalSizeMm": {
+      "width": 28.200002,
+      "height": 52.800006
+    }
+  },
+  "pins": [
+    {
+      "id": "3V3",
+      "label": "3V3",
+      "connector": "male",
+      "electricalRole": "VCC",
+      "autoWireRequirement": "VCC",
+      "capabilities": [
+        "power"
+      ],
+      "artwork": {
+        "x": 1054.542,
+        "y": 1637.4242
+      },
+      "fritzingConnectorId": "connector0"
+    },
+    {
+      "id": "GND",
+      "label": "GND",
+      "connector": "male",
+      "electricalRole": "GND",
+      "autoWireRequirement": "GND",
+      "capabilities": [
+        "ground"
+      ],
+      "artwork": {
+        "x": 1054.7252,
+        "y": 1537.4241
+      },
+      "fritzingConnectorId": "connector1"
+    },
+    {
+      "id": "D15",
+      "label": "D15",
+      "connector": "male",
+      "electricalRole": "DIGITAL",
+      "autoWireRequirement": "DIGITAL",
+      "capabilities": [
+        "digital"
+      ],
+      "artwork": {
+        "x": 1054.4169,
+        "y": 1437.4241
+      },
+      "fritzingConnectorId": "connector2"
+    },
+    {
+      "id": "D2",
+      "label": "D2",
+      "connector": "male",
+      "electricalRole": "DIGITAL",
+      "autoWireRequirement": "DIGITAL",
+      "capabilities": [
+        "digital"
+      ],
+      "artwork": {
+        "x": 1054.542,
+        "y": 1337.4241
+      },
+      "fritzingConnectorId": "connector3"
+    },
+    {
+      "id": "D4",
+      "label": "D4",
+      "connector": "male",
+      "electricalRole": "DIGITAL",
+      "autoWireRequirement": "DIGITAL",
+      "capabilities": [
+        "digital"
+      ],
+      "artwork": {
+        "x": 1054.5002,
+        "y": 1237.4241
+      },
+      "fritzingConnectorId": "connector4"
+    },
+    {
+      "id": "RX2",
+      "label": "RX2",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 1054.542,
+        "y": 1137.424
+      },
+      "fritzingConnectorId": "connector5"
+    },
+    {
+      "id": "TX2",
+      "label": "TX2",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 1054.542,
+        "y": 1037.424
+      },
+      "fritzingConnectorId": "connector6"
+    },
+    {
+      "id": "D5",
+      "label": "D5",
+      "connector": "male",
+      "electricalRole": "DIGITAL",
+      "autoWireRequirement": "DIGITAL",
+      "capabilities": [
+        "digital"
+      ],
+      "artwork": {
+        "x": 1055.6246,
+        "y": 937.42395
+      },
+      "fritzingConnectorId": "connector7"
+    },
+    {
+      "id": "D18",
+      "label": "D18",
+      "connector": "male",
+      "electricalRole": "DIGITAL",
+      "autoWireRequirement": "DIGITAL",
+      "capabilities": [
+        "digital"
+      ],
+      "artwork": {
+        "x": 1054.542,
+        "y": 837.42395
+      },
+      "fritzingConnectorId": "connector8"
+    },
+    {
+      "id": "D19",
+      "label": "D19",
+      "connector": "male",
+      "electricalRole": "DIGITAL",
+      "autoWireRequirement": "DIGITAL",
+      "capabilities": [
+        "digital"
+      ],
+      "artwork": {
+        "x": 1054.5002,
+        "y": 737.42389
+      },
+      "fritzingConnectorId": "connector9"
+    },
+    {
+      "id": "D21",
+      "label": "D21",
+      "connector": "male",
+      "electricalRole": "I2C_SDA",
+      "autoWireRequirement": "I2C_SDA",
+      "capabilities": [
+        "i2c-sda"
+      ],
+      "artwork": {
+        "x": 1054.542,
+        "y": 637.42389
+      },
+      "fritzingConnectorId": "connector10"
+    },
+    {
+      "id": "RX0",
+      "label": "RX0",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 1054.542,
+        "y": 536.89355
+      },
+      "fritzingConnectorId": "connector11"
+    },
+    {
+      "id": "TX0",
+      "label": "TX0",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 1054.542,
+        "y": 436.98279
+      },
+      "fritzingConnectorId": "connector12"
+    },
+    {
+      "id": "D22",
+      "label": "D22",
+      "connector": "male",
+      "electricalRole": "I2C_SCL",
+      "autoWireRequirement": "I2C_SCL",
+      "capabilities": [
+        "i2c-scl"
+      ],
+      "artwork": {
+        "x": 1054.4169,
+        "y": 337.07196
+      },
+      "fritzingConnectorId": "connector13"
+    },
+    {
+      "id": "D23",
+      "label": "D23",
+      "connector": "male",
+      "electricalRole": "DIGITAL",
+      "autoWireRequirement": "DIGITAL",
+      "capabilities": [
+        "digital"
+      ],
+      "artwork": {
+        "x": 1054.542,
+        "y": 237.16118
+      },
+      "fritzingConnectorId": "connector14"
+    },
+    {
+      "id": "EN",
+      "label": "EN",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 54.3167,
+        "y": 237.42375
+      },
+      "fritzingConnectorId": "connector15"
+    },
+    {
+      "id": "VP",
+      "label": "VP",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 55.833435,
+        "y": 337.42172
+      },
+      "fritzingConnectorId": "connector16"
+    },
+    {
+      "id": "VN",
+      "label": "VN",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 54.500019,
+        "y": 437.4238
+      },
+      "fritzingConnectorId": "connector17"
+    },
+    {
+      "id": "D34",
+      "label": "D34",
+      "connector": "male",
+      "electricalRole": "DIGITAL",
+      "autoWireRequirement": "DIGITAL",
+      "capabilities": [
+        "digital"
+      ],
+      "artwork": {
+        "x": 54.500015,
+        "y": 537.42383
+      },
+      "fritzingConnectorId": "connector18"
+    },
+    {
+      "id": "D35",
+      "label": "D35",
+      "connector": "male",
+      "electricalRole": "DIGITAL",
+      "autoWireRequirement": "DIGITAL",
+      "capabilities": [
+        "digital"
+      ],
+      "artwork": {
+        "x": 54.500015,
+        "y": 637.42389
+      },
+      "fritzingConnectorId": "connector19"
+    },
+    {
+      "id": "D32",
+      "label": "D32",
+      "connector": "male",
+      "electricalRole": "DIGITAL",
+      "autoWireRequirement": "DIGITAL",
+      "capabilities": [
+        "digital"
+      ],
+      "artwork": {
+        "x": 54.500019,
+        "y": 737.42389
+      },
+      "fritzingConnectorId": "connector20"
+    },
+    {
+      "id": "D33",
+      "label": "D33",
+      "connector": "male",
+      "electricalRole": "DIGITAL",
+      "autoWireRequirement": "DIGITAL",
+      "capabilities": [
+        "digital"
+      ],
+      "artwork": {
+        "x": 54.500015,
+        "y": 837.42395
+      },
+      "fritzingConnectorId": "connector21"
+    },
+    {
+      "id": "D25",
+      "label": "D25",
+      "connector": "male",
+      "electricalRole": "DIGITAL",
+      "autoWireRequirement": "DIGITAL",
+      "capabilities": [
+        "digital"
+      ],
+      "artwork": {
+        "x": 54.500019,
+        "y": 937.42395
+      },
+      "fritzingConnectorId": "connector22"
+    },
+    {
+      "id": "D26",
+      "label": "D26",
+      "connector": "male",
+      "electricalRole": "DIGITAL",
+      "autoWireRequirement": "DIGITAL",
+      "capabilities": [
+        "digital"
+      ],
+      "artwork": {
+        "x": 54.500015,
+        "y": 1037.424
+      },
+      "fritzingConnectorId": "connector23"
+    },
+    {
+      "id": "D27",
+      "label": "D27",
+      "connector": "male",
+      "electricalRole": "DIGITAL",
+      "autoWireRequirement": "DIGITAL",
+      "capabilities": [
+        "digital"
+      ],
+      "artwork": {
+        "x": 54.500015,
+        "y": 1137.424
+      },
+      "fritzingConnectorId": "connector24"
+    },
+    {
+      "id": "D14",
+      "label": "D14",
+      "connector": "male",
+      "electricalRole": "DIGITAL",
+      "autoWireRequirement": "DIGITAL",
+      "capabilities": [
+        "digital"
+      ],
+      "artwork": {
+        "x": 54.500019,
+        "y": 1237.4241
+      },
+      "fritzingConnectorId": "connector25"
+    },
+    {
+      "id": "D12",
+      "label": "D12",
+      "connector": "male",
+      "electricalRole": "DIGITAL",
+      "autoWireRequirement": "DIGITAL",
+      "capabilities": [
+        "digital"
+      ],
+      "artwork": {
+        "x": 54.500015,
+        "y": 1337.4241
+      },
+      "fritzingConnectorId": "connector26"
+    },
+    {
+      "id": "D13",
+      "label": "D13",
+      "connector": "male",
+      "electricalRole": "DIGITAL",
+      "autoWireRequirement": "DIGITAL",
+      "capabilities": [
+        "digital"
+      ],
+      "artwork": {
+        "x": 54.500019,
+        "y": 1437.4241
+      },
+      "fritzingConnectorId": "connector27"
+    },
+    {
+      "id": "GND.2",
+      "label": "GND",
+      "connector": "male",
+      "electricalRole": "GND",
+      "autoWireRequirement": "GND",
+      "capabilities": [
+        "ground"
+      ],
+      "artwork": {
+        "x": 54.500015,
+        "y": 1537.4241
+      },
+      "fritzingConnectorId": "connector28"
+    },
+    {
+      "id": "VIN",
+      "label": "VIN",
+      "connector": "male",
+      "electricalRole": "VCC",
+      "autoWireRequirement": "VCC",
+      "capabilities": [
+        "power"
+      ],
+      "artwork": {
+        "x": 54.3167,
+        "y": 1637.4242
+      },
+      "fritzingConnectorId": "connector29"
+    }
+  ],
+  "packages": [],
+  "propertyDefinitions": [],
+  "connectorType": "male",
+  "currentDraw_mA": 0,
+  "breadboardRequired": false,
+  "pinless": false
+}

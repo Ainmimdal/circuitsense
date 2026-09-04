@@ -1,7 +1,14 @@
 import { LitElement, html, css } from 'lit';
-import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { componentLibrary } from '../component-library.js';
+import {
+  PART_LIBRARY_FILTERS,
+  componentLibraryMetadata,
+  componentMatchesLibraryFilter,
+  componentMatchesLibrarySearch,
+  groupLibraryComponentFamilies,
+} from '../core/component-library-view.js';
 import { faIcon } from '../utils/fa-icons.js';
+import './part-preview.js';
 
 const DISPLAY_CATEGORIES = Object.freeze([
   { id: 'controller', label: 'Controller boards', descriptor: 'MCU · host', accent: 'var(--accent-boards)' },
@@ -18,6 +25,9 @@ const DISPLAY_CATEGORIES = Object.freeze([
 function displayCategory(component) {
   if (component.isBreadboard) return 'breadboard';
   if (component.isControllerBoard) return 'controller';
+  // The Fritzing contract uses the broader `board` category. Keep those
+  // imported controller boards visible in Elera's Controller boards section.
+  if (component.category === 'board') return 'controller';
   if (component.visualKind === 'dip8') return component.category === 'internal' ? null : 'ic';
   return DISPLAY_CATEGORIES.some(category => category.id === component.category)
     ? component.category
@@ -28,6 +38,7 @@ class ComponentSidebar extends LitElement {
   static properties = {
     _libraryVersion: { state: true },
     _searchQuery: { state: true },
+    _partFilter: { state: true },
   };
 
   static styles = css`
@@ -73,7 +84,7 @@ class ComponentSidebar extends LitElement {
       align-items: center;
       justify-content: center;
       gap: 7px;
-      margin-bottom: 16px;
+      margin-bottom: 10px;
       border: 1px solid var(--panel-border);
       border-radius: 4px;
       color: var(--text);
@@ -116,6 +127,38 @@ class ComponentSidebar extends LitElement {
     }
 
     .search-input::-webkit-search-cancel-button { display: none; }
+
+    .filter-row {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 4px;
+      margin: 0 0 14px;
+    }
+
+    .filter-chip {
+      min-width: 0;
+      min-height: 27px;
+      padding: 0 4px;
+      border: 1px solid var(--panel-border);
+      border-radius: 999px;
+      color: var(--text-muted);
+      background: transparent;
+      font: 600 10px/1 var(--font-ui, 'Public Sans', sans-serif);
+      cursor: pointer;
+    }
+
+    .filter-chip:hover,
+    .filter-chip:focus-visible {
+      color: var(--text);
+      border-color: var(--text-muted);
+      outline: none;
+    }
+
+    .filter-chip[aria-pressed='true'] {
+      color: var(--text);
+      background: var(--primary);
+      border-color: var(--primary-hover);
+    }
 
     .create-btn:hover,
     .create-btn:focus-visible {
@@ -167,14 +210,38 @@ class ComponentSidebar extends LitElement {
       margin-bottom: 8px;
     }
 
+    .family-group + .family-group { margin-top: 10px; }
+
+    .family-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin: 0 2px 6px;
+      color: var(--text-muted);
+      font-size: 10px;
+      font-weight: 600;
+    }
+
+    .family-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--text);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+
+    .family-count { flex: 0 0 auto; }
+
     .component-card {
       position: relative;
       box-sizing: border-box;
       width: 100%;
-      height: 100px;
+      height: 108px;
       min-width: 0;
       display: grid;
-      grid-template-rows: 58px 22px;
+      grid-template-rows: 56px 20px 16px;
       place-items: center stretch;
       padding: 8px;
       overflow: hidden;
@@ -213,46 +280,11 @@ class ComponentSidebar extends LitElement {
     .component-preview {
       position: relative;
       width: 100%;
-      height: 58px;
+      height: 56px;
       align-self: center;
       pointer-events: none;
       overflow: hidden;
     }
-
-    .custom-preview-img {
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-      display: block;
-    }
-
-    .dip-preview {
-      position: absolute;
-      left: 12px;
-      right: 12px;
-      top: 13px;
-      height: 26px;
-      display: grid;
-      place-items: center;
-      color: var(--text-muted);
-      background: var(--ink);
-      border: 1px solid var(--panel-border);
-      border-radius: 2px;
-      font: 9px/1 var(--font-tech, '0xProto', monospace);
-    }
-
-    .dip-preview::before,
-    .dip-preview::after {
-      content: '';
-      position: absolute;
-      left: 4px;
-      right: 4px;
-      height: 4px;
-      background: repeating-linear-gradient(90deg, var(--text-muted) 0 3px, transparent 3px 9px);
-    }
-
-    .dip-preview::before { top: -5px; }
-    .dip-preview::after { bottom: -5px; }
 
     .component-name {
       min-width: 0;
@@ -263,8 +295,42 @@ class ComponentSidebar extends LitElement {
       color: var(--text);
       font-size: 12px;
       font-weight: 600;
-      line-height: 22px;
+      line-height: 20px;
       text-align: center;
+    }
+
+    .component-meta {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--text-muted);
+      font-size: 9px;
+      font-weight: 500;
+      line-height: 14px;
+      text-align: center;
+    }
+
+    .source-badge {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      z-index: 3;
+      max-width: calc(100% - 10px);
+      padding: 2px 4px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: var(--text);
+      background: color-mix(in srgb, var(--panel) 88%, transparent);
+      border: 1px solid var(--panel-border);
+      border-radius: 2px;
+      font-size: 8px;
+      font-weight: 700;
+      letter-spacing: .05em;
+      line-height: 1;
+      text-transform: uppercase;
+      white-space: nowrap;
+      pointer-events: none;
     }
 
     :host::-webkit-scrollbar { width: 6px; }
@@ -280,8 +346,8 @@ class ComponentSidebar extends LitElement {
 
     @media (max-width: 900px) {
       :host { padding-bottom: 28px; }
-      .component-card { height: 104px; grid-template-rows: 60px 22px; }
-      .component-preview { height: 60px; }
+      .component-card { height: 110px; grid-template-rows: 58px 20px 16px; }
+      .component-preview { height: 58px; }
     }
   `;
 
@@ -289,24 +355,33 @@ class ComponentSidebar extends LitElement {
     super();
     this._libraryVersion = 0;
     this._searchQuery = '';
+    this._partFilter = 'all';
     this._customLibraryHandler = () => { this._libraryVersion++; };
   }
 
   connectedCallback() {
     super.connectedCallback();
     window.addEventListener('elera-custom-components-change', this._customLibraryHandler);
+    window.addEventListener('elera-component-library-change', this._customLibraryHandler);
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     window.removeEventListener('elera-custom-components-change', this._customLibraryHandler);
+    window.removeEventListener('elera-component-library-change', this._customLibraryHandler);
   }
 
   render() {
+    const catalog = Object.values(componentLibrary)
+      .map(component => ({ component, category: DISPLAY_CATEGORIES.find(item => item.id === displayCategory(component)) }))
+      .filter(item => item.category);
+    const visible = catalog.filter(({ component, category }) =>
+      componentMatchesLibraryFilter(component, this._partFilter) &&
+      componentMatchesLibrarySearch(component, this._searchQuery, category));
     return html`
       <div class="library-header">
         <div class="title">Parts library</div>
-        <div class="library-ref">LOCAL LIBRARY</div>
+        <div class="library-ref">${catalog.length} PARTS</div>
       </div>
       <label class="search-field">
         ${faIcon('search')}
@@ -318,20 +393,20 @@ class ComponentSidebar extends LitElement {
       <button class="create-btn" @click=${this._openBuilder}>
         ${faIcon('plus')} Create custom component
       </button>
+      <div class="filter-row" role="group" aria-label="Filter parts">
+        ${PART_LIBRARY_FILTERS.map(filter => html`
+          <button class="filter-chip" type="button"
+            aria-pressed=${String(this._partFilter === filter.id)}
+            @click=${() => { this._partFilter = filter.id; }}>${filter.label}</button>
+        `)}
+      </div>
       ${(() => {
-        const query = this._searchQuery.trim().toLocaleLowerCase();
-        let visibleCount = 0;
         const sections = DISPLAY_CATEGORIES.map(category => {
-        const components = Object.values(componentLibrary)
-          .filter(component => displayCategory(component) === category.id)
-          .filter(component => !query || [
-            component.name,
-            component.description,
-            category.label,
-            category.descriptor,
-          ].some(value => value?.toLocaleLowerCase().includes(query)));
+        const components = visible
+          .filter(item => item.category.id === category.id)
+          .map(item => item.component);
         if (components.length === 0) return '';
-        visibleCount += components.length;
+        const families = groupLibraryComponentFamilies(components);
         return html`
           <section aria-labelledby="category-${category.id}" style="--category-accent:${category.accent}">
             <div class="category-header">
@@ -339,27 +414,39 @@ class ComponentSidebar extends LitElement {
                 <div class="category-name" id="category-${category.id}">${category.label}</div>
                 <span class="category-accent" aria-hidden="true"></span>
               </div>
-              <div class="category-ref">${category.descriptor}</div>
+              <div class="category-ref">${category.descriptor} · ${components.length}</div>
             </div>
-            <div class="category-grid">
-              ${components.map(component => this._renderCard(component, category))}
-            </div>
+            ${families.map(family => html`
+              <div class="family-group">
+                ${family.label ? html`
+                  <div class="family-header">
+                    <span class="family-name">${family.label}</span>
+                    <span class="family-count">${family.components.length} variants</span>
+                  </div>
+                ` : ''}
+                <div class="category-grid">
+                  ${family.components.map(component => this._renderCard(component, category))}
+                </div>
+              </div>
+            `)}
           </section>
         `;
         });
-        return visibleCount > 0
+        return visible.length > 0
           ? sections
-          : html`<div class="empty-state">No parts match “${this._searchQuery.trim()}”.</div>`;
+          : html`<div class="empty-state">No parts match this search and filter.</div>`;
       })()}
     `;
   }
 
   _renderCard(component, category) {
-    const scale = Math.min(1, 76 / component.size.width, 48 / component.size.height);
-    const attrs = Object.entries(component.attrs || {}).map(([key, value]) => `${key}="${value}"`).join(' ');
-    const style = `position:absolute; top:50%; left:50%; width:${component.size.width}px; height:${component.size.height}px; margin-left:-${component.size.width / 2}px; margin-top:-${component.size.height / 2}px; transform:scale(${scale}); pointer-events:none;`;
-    const tagHtml = `<${component.tag} ${attrs} style="${style}"></${component.tag}>`;
-
+    const metadata = componentLibraryMetadata(component);
+    const sourceBadge = metadata.source === 'fritzing'
+      ? 'Fritzing'
+      : metadata.source === 'custom' ? 'My part' : '';
+    const detail = [metadata.variant, metadata.technology].filter(Boolean).join(' · ') ||
+      (metadata.mounting === 'breadboard' ? 'Breadboard ready' :
+        metadata.mounting === 'surface' ? 'Prototype surface' : 'Jumper wired');
     return html`
       <div class="component-card" style="--category-accent:${category.accent}"
         draggable="true" tabindex="0"
@@ -367,14 +454,12 @@ class ComponentSidebar extends LitElement {
         @dragstart=${event => this._onDragStart(event, component.id)}
         @click=${() => this._onPhysicalQuickAdd(component.id)}
         @keydown=${event => event.key === 'Enter' && this._onPhysicalQuickAdd(component.id)}>
+        ${sourceBadge ? html`<span class="source-badge">${sourceBadge}</span>` : ''}
         <div class="component-preview">
-          ${component.visualKind === 'dip8'
-            ? html`<div class="dip-preview">DIP-8</div>`
-            : component.type === 'custom'
-              ? html`<img class="custom-preview-img" src=${component.imageUrl} alt="" />`
-              : unsafeHTML(tagHtml)}
+          <elera-part-preview .componentId=${component.id}></elera-part-preview>
         </div>
         <div class="component-name">${component.name}</div>
+        <div class="component-meta">${detail}</div>
       </div>
     `;
   }

@@ -1,6 +1,6 @@
 # Elera Project Status
 
-Snapshot date: 2026-09-01
+Snapshot date: 2026-09-02
 Phase: semantic physical editor / reusable package vertical slice implemented; automation integration in progress  
 Base revision: `main` / `origin/main` at `05c4c0e`
 
@@ -10,7 +10,7 @@ This is the current status source of truth. Engine behavior is governed by [ENGI
 
 | Check | Status |
 | --- | --- |
-| Node test suite | 137 of 140 tests passing. The three current failures predate this feature pass: one dense supply-bus routing expectation in `test/physical-automation.test.js` and two wire-editor expectation drifts in `test/physical-wire-edit.test.js`; all 12 AI-agent regressions pass. |
+| Node test suite | 206 of 207 tests passing. The remaining failure predates this work: one waypoint insertion expectation drift in `test/physical-wire-edit.test.js`. |
 | Production build | Passing with Vite |
 | Diff whitespace check | Passing |
 | Lint/type check | No lint or type-check scripts are currently configured |
@@ -49,6 +49,15 @@ The feature work is present in the working tree but has not been committed. The 
 - The visible Auto Wire, Auto Layout, Clean and Validation controls now operate on the active physical store rather than the hidden legacy editor state.
 - Full design and migration notes are recorded in `docs/PHYSICAL_EDITOR_ARCHITECTURE.md`.
 
+### Component architecture consolidation
+
+- A normalized part boundary now presents stable pin identity, electrical roles, Auto Wire requirements, internal nets, visual adapters and package IDs without conflating those concerns.
+- Every catalog part declared breadboard-mountable resolves to calibrated rigid package geometry in the active physical footprint registry.
+- Half/full breadboard topology now has one millimetre source. The original pixel registry is a compatibility projection and shares the exact 2.54 mm pitch and 7.62 mm E-F centre spacing.
+- The running application no longer imports the retired global editor store or placed-component renderer. Named project persistence now saves and restores the active schema-4 project.
+- The Fritzing comparison and the boundaries intentionally retained are documented in `docs/COMPONENT_ARCHITECTURE_ASSESSMENT.md`.
+- The served converted-part catalog contains 12 validated Fritzing families produced from the 13 supplied archives (the fixed and original Pololu DRV8833 archives share one stable part ID). Imported boards, sensors, drivers and the upright resistor are available through the `Imported` filter. Their free-space footprints use each SVG's declared physical `in`/`mm` dimensions instead of generic module-size clamping; multi-pin packages without trustworthy pitch metadata intentionally remain free-mounted.
+
 ### Editor and circuit model
 
 - Lit 3/Vite editor with all 50 public `@wokwi/elements` 1.9.2 visuals, drag/drop, manual wiring, pan/zoom, selection, undo/redo and project persistence. All six included MCUs have board-specific Auto Wire profiles; Nano and Nano RP2040 have legal rigid breadboard footprints, while socketed/wide boards remain external jumper-connected controllers.
@@ -84,6 +93,11 @@ The feature work is present in the working tree but has not been committed. The 
 - Focused tests cover logical nets, schema migration, board topology, scale, rigid geometry, placement, rail distribution, jumper inference, capacity alternatives, routing, manual wire editing, interaction stability and command integration.
 - Dense direct wiring keeps every jumper separate, limits congestion detours to a local corridor, and uses stable orthogonal segment grips for manual adjustment.
 - The active physical Auto Layout now follows controller header affinity, aligns the breadboard on connected signal conductors, keeps controller and board bodies separated, and routes adjacent header wires through distinct perpendicular escape lanes with hard component-body avoidance.
+- The active physical Auto Wire now keeps logical component-pin intent separate from breadboard realization, collapses fixed strip/rail connectivity, allocates unique free jumper sockets, supports mixed mounted/off-board nets, and commits atomically when capacity is insufficient.
+- Every physical breadboard socket exposes stable topology plus derived `FREE`, `COMPONENT_PIN`, or `WIRE_ENDPOINT` occupancy; validation reports socket collisions, invalid endpoints, incompatible intent nets on one group, incomplete nets, and redundant generated jumpers.
+- The unchanged Wokwi resistor remains the free-space/direct visual. Breadboard mounting uses a compact SVG occupying exactly five hole positions (four pitch intervals) with a separately shortened body, optional three-to-eight-pitch leads without body scaling, or an upright SVG—all as physical variants of the same electrical component.
+- Breadboard Auto Layout moves user-placed free components out of the board keepout instead of implicitly mounting them. A generated LED series resistor is the narrow exception: the combined command prefers the five-hole compact package, falls back through other horizontal spans, and uses upright only when no horizontal package fits legally. It then re-realizes the net so same-strip copper removes the redundant jumper.
+- Automatic routes treat every unrelated breadboard body as a hard keepout. A route receives a board exception only when one of its physical endpoints belongs to that board.
 
 ## Smart-button contract
 

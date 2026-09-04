@@ -1,0 +1,154 @@
+{
+  "format": "elera-fritzing-part-v1",
+  "id": "fritzing-5-ir-array-sensor-1",
+  "name": "5-ir-array-sensor",
+  "description": "5 IR array sensor.",
+  "category": "sensor",
+  "sourcePart": "part.5-ir-array-sensor_1.fzp",
+  "library": {
+    "source": "fritzing",
+    "family": "5-ir-array-sensor",
+    "variant": "variant 1",
+    "technology": "THT",
+    "tags": [
+      "contrib",
+      "5 IR array sensor",
+      "fritzing user",
+      "sensor",
+      "infra red"
+    ]
+  },
+  "artwork": {
+    "svgUrl": "/converted-parts/fritzing-5-ir-array-sensor-1/breadboard.svg",
+    "sourceSize": {
+      "width": 4999.9997,
+      "height": 2741.6402
+    },
+    "physicalSizeMm": {
+      "width": 127,
+      "height": 69.637664
+    }
+  },
+  "pins": [
+    {
+      "id": "NEAR",
+      "label": "Near",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 2085.084961,
+        "y": 75.757502
+      },
+      "fritzingConnectorId": "connector0"
+    },
+    {
+      "id": "CLP",
+      "label": "CLP",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 2185.0833,
+        "y": 75.516657
+      },
+      "fritzingConnectorId": "connector1"
+    },
+    {
+      "id": "S5",
+      "label": "S5",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 2285.252962,
+        "y": 75.516657
+      },
+      "fritzingConnectorId": "connector2"
+    },
+    {
+      "id": "S4",
+      "label": "S4",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 2384.849862,
+        "y": 75.492304
+      },
+      "fritzingConnectorId": "connector3"
+    },
+    {
+      "id": "S3",
+      "label": "S3",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 2484.8481,
+        "y": 75.251459
+      },
+      "fritzingConnectorId": "connector4"
+    },
+    {
+      "id": "S2",
+      "label": "S2",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 2585.017861,
+        "y": 75.251459
+      },
+      "fritzingConnectorId": "connector5"
+    },
+    {
+      "id": "S1",
+      "label": "S1",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 2684.849662,
+        "y": 75.492317
+      },
+      "fritzingConnectorId": "connector6"
+    },
+    {
+      "id": "GND",
+      "label": "GND",
+      "connector": "male",
+      "electricalRole": "GND",
+      "autoWireRequirement": "GND",
+      "capabilities": [
+        "ground"
+      ],
+      "artwork": {
+        "x": 2784.8479,
+        "y": 75.251472
+      },
+      "fritzingConnectorId": "connector7"
+    },
+    {
+      "id": "VCC",
+      "label": "VCC",
+      "connector": "male",
+      "electricalRole": "VCC",
+      "autoWireRequirement": "VCC",
+      "capabilities": [
+        "power"
+      ],
+      "artwork": {
+        "x": 2885.017562,
+        "y": 75.251472
+      },
+      "fritzingConnectorId": "connector8"
+    }
+  ],
+  "packages": [],
+  "propertyDefinitions": [],
+  "connectorType": "male",
+  "currentDraw_mA": 0,
+  "breadboardRequired": false,
+  "pinless": false
+}

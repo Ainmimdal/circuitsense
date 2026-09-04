@@ -182,7 +182,7 @@ test('Nano can own Auto Wire and mount across a breadboard trench', async () => 
     const nano = store.getInstance('nano');
     assert.equal(nano.mountedOn, store.instances.find(instance => instance.componentId === 'breadboard-half').id);
     assert.equal(Object.keys(nano.breadboardPlacement.holes).length, 30);
-    assert.match(nano.breadboardPlacement.holes['12'], /^A\d+$/);
+    assert.match(nano.breadboardPlacement.holes['12'], /^B\d+$/);
     assert.equal(nano.breadboardPlacement.holes['13'], `F${nano.breadboardPlacement.holes['12'].slice(1)}`);
     assert.equal(store.wires.some(wire => [wire.from, wire.to].some(endpoint => endpoint.instanceId === 'nano')), true);
     assert.equal(store.instances.some(instance => instance.componentId === 'arduino-uno'), false);

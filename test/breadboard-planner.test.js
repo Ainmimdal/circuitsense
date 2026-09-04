@@ -197,7 +197,7 @@ test('suppresses wires when mounted endpoints already share one terminal strip',
             to: { componentId: 'button', pinId: '1.r' },
         }],
         resources: [{ id: 'bb', typeId: 'breadboard-half-400', x: 0, y: 0 }],
-        constraints: [{ componentId: 'button', boardId: 'bb', anchorHole: 'D5', rotation: 90, locked: true }],
+        constraints: [{ componentId: 'button', boardId: 'bb', anchorHole: 'E5', rotation: 90, locked: true }],
     });
     assert.equal(result.status, 'success');
     const logicalNetId = result.physicalPlan.nets[0].id;

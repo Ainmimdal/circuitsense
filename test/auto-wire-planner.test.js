@@ -20,6 +20,34 @@ test('auto-wire planning is deterministic, shares supply nets and does not dupli
     assert.equal(JSON.stringify(input.connections), '[]');
 });
 
+test('Auto Wire sizes LED resistors by color and controller voltage', () => {
+    const forColor = (color, controller = 'arduino-uno') => planAutoWire({
+        components: [
+            { id: 'mcu', componentId: controller },
+            { id: 'led', componentId: 'led', properties: { color } },
+        ],
+        connections: [],
+    }).components.find(component => component.id === 'generated-resistor:led');
+
+    assert.equal(forColor('red').properties.value, 330);
+    assert.equal(forColor('blue').properties.value, 220);
+    assert.equal(forColor('green', 'esp32-devkit-v1').properties.value, 120);
+});
+
+test('Auto Wire can connect an LED without generating a resistor when the preference is disabled', () => {
+    const result = planAutoWire({
+        components: [
+            { id: 'uno', componentId: 'arduino-uno' },
+            { id: 'led', componentId: 'led', properties: { color: 'red' } },
+        ],
+        connections: [],
+        addLedResistors: false,
+    });
+    assert.equal(result.status, 'success');
+    assert.equal(result.components.some(component => component.componentId === 'resistor'), false);
+    assert.ok(result.connections.some(connection => connection.to.componentId === 'led' && connection.to.pinId === 'A'));
+});
+
 test('auto-wire restores the pushed router rule of choosing the nearest compatible Arduino header', () => {
     const positions = new Map([
         ['button:1.l', { x: 500, y: 40 }],

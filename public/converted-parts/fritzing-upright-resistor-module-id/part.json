@@ -1,0 +1,114 @@
+{
+  "format": "elera-fritzing-part-v1",
+  "id": "fritzing-upright-resistor-module-id",
+  "name": "Resistor upright",
+  "description": "A generic upright standing resistor (0.25W)",
+  "category": "passive",
+  "sourcePart": "part.resistor-upright.fzp",
+  "library": {
+    "source": "fritzing",
+    "family": "resistor",
+    "variant": "upright_resistor",
+    "technology": "THT",
+    "taxonomy": "discreteParts.resistor.100",
+    "tags": [
+      "Resistor",
+      "basic resistor",
+      "100 mil",
+      "upright resistor",
+      "fritzing core"
+    ]
+  },
+  "artwork": {
+    "svgUrl": "/converted-parts/fritzing-upright-resistor-module-id/breadboard.svg",
+    "sourceSize": {
+      "width": 11.723283,
+      "height": 7.147731
+    },
+    "physicalSizeMm": {
+      "width": 4.135711,
+      "height": 2.521561
+    }
+  },
+  "pins": [
+    {
+      "id": "1",
+      "label": "Pin 0",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 3.565384,
+        "y": 2.826286
+      },
+      "fritzingConnectorId": "connector0"
+    },
+    {
+      "id": "2",
+      "label": "Pin 1",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 10.673394,
+        "y": 2.769908
+      },
+      "fritzingConnectorId": "connector1"
+    }
+  ],
+  "packages": [
+    {
+      "id": "fritzing-upright-resistor-module-id-linear-1",
+      "placementMode": "breadboard-rigid",
+      "anchorPinId": "1",
+      "validRotations": [
+        0,
+        90,
+        180,
+        270
+      ],
+      "requiresTrench": false,
+      "pins": [
+        {
+          "pinId": "1",
+          "x": 0,
+          "y": 0,
+          "mount": "breadboard-hole"
+        },
+        {
+          "pinId": "2",
+          "x": 2.54,
+          "y": 0,
+          "mount": "breadboard-hole"
+        }
+      ],
+      "internalNets": [],
+      "routingBounds": {
+        "x": -1.274026,
+        "y": -1.009923,
+        "width": 4.189105,
+        "height": 2.554114
+      }
+    }
+  ],
+  "propertyDefinitions": [
+    {
+      "name": "resistance",
+      "label": "Resistance",
+      "type": "number",
+      "control": "number",
+      "defaultValue": 100,
+      "min": 1,
+      "max": 1000000000,
+      "step": 1,
+      "unit": "Ω",
+      "unitFamily": "resistance",
+      "effect": "electrical",
+      "editable": true
+    }
+  ],
+  "connectorType": "male",
+  "currentDraw_mA": 0,
+  "breadboardRequired": false,
+  "pinless": false
+}

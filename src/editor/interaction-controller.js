@@ -1,8 +1,8 @@
 import { getSurfaceDefinition, worldToSurfaceLocal } from '../physical/breadboard.js';
 import { addWireCommand, mountComponentCommand, moveFreeComponentCommand, moveSurfaceCommand } from '../physical/commands.js';
-import { BreadboardSnapSolver } from '../physical/placement.js';
+import { BreadboardSnapSolver, buildBreadboardHoleStates, HOLE_OCCUPANCY } from '../physical/placement.js';
 import { distance } from '../physical/geometry.js';
-import { componentPinRef, resolveConnectionWorldPoint } from '../physical/model.js';
+import { componentPinRef, resolveConnectionWorldPoint, surfaceHoleRef } from '../physical/model.js';
 import { pinExitDirection } from '../physical/routing.js';
 import { getFootprintDefinition } from '../physical/footprints.js';
 
@@ -75,6 +75,31 @@ function appendOrthogonal(points, target, startAxis = null, endAxis = null) {
     }
     pushUnique(points, target);
     return points;
+}
+
+function legalWireEndpoint(project, ref, additionallyReserved = null) {
+    const states = buildBreadboardHoleStates(project);
+    if (ref?.type === 'surface-hole') {
+        const key = `${ref.surfaceId}:${ref.holeId}`;
+        return states.get(key)?.state === HOLE_OCCUPANCY.FREE && key !== additionallyReserved ? ref : null;
+    }
+    if (ref?.type !== 'component-pin') return ref;
+    const component = project.components.find(item => item.id === ref.componentId);
+    if (component?.placement?.type !== 'surface') return ref;
+    const surface = project.surfaces.find(item => item.id === component.placement.surfaceId);
+    const definition = getSurfaceDefinition(surface);
+    const mountedHole = definition?.getHole(component.placement.bindings?.[ref.pinId]);
+    if (!mountedHole) return null;
+    const holeId = definition.getGroupHoles(mountedHole.electricalGroup)
+        .filter(candidate => {
+            const key = `${surface.id}:${candidate}`;
+            return key !== additionallyReserved && states.get(key)?.state === HOLE_OCCUPANCY.FREE;
+        })
+        .sort((a, b) => {
+            const left = definition.getHole(a), right = definition.getHole(b);
+            return distance(left, mountedHole) - distance(right, mountedHole) || String(a).localeCompare(String(b), undefined, { numeric: true });
+        })[0];
+    return holeId ? surfaceHoleRef(surface.id, holeId) : null;
 }
 
 export class InteractionController extends EventTarget {
@@ -169,23 +194,28 @@ export class InteractionController extends EventTarget {
 
     activateTerminal(ref) {
         if (this.state.type !== 'drawing-wire') {
-            this.state = { type: 'drawing-wire', from: structuredClone(ref), waypoints: [] };
+            const endpoint = legalWireEndpoint(this.store.project, ref);
+            if (!endpoint) return 'blocked';
+            this.state = { type: 'drawing-wire', from: structuredClone(endpoint), waypoints: [] };
             this.#emit();
             return 'started';
         }
         const from = this.state.from;
-        if (JSON.stringify(from) === JSON.stringify(ref)) {
+        const reserved = from?.type === 'surface-hole' ? `${from.surfaceId}:${from.holeId}` : null;
+        const legalRef = legalWireEndpoint(this.store.project, ref, reserved);
+        if (!legalRef) return 'blocked';
+        if (JSON.stringify(from) === JSON.stringify(legalRef)) {
             this.state = { type: 'idle' };
             this.#emit();
             return 'cancelled';
         }
-        const endpoint = resolveConnectionWorldPoint(this.store.project, ref);
-        const points = this.previewWire(endpoint, { targetRef: ref, snap: false });
+        const endpoint = resolveConnectionWorldPoint(this.store.project, legalRef);
+        const points = this.previewWire(endpoint, { targetRef: legalRef, snap: false });
         this.state = { type: 'idle' };
         this.store.execute(addWireCommand({
             id: this.store.newWireId(),
             from,
-            to: structuredClone(ref),
+            to: structuredClone(legalRef),
             route: { mode: 'manual', waypoints: points.slice(1, -1) },
             color: '#22d3ee',
         }));

@@ -1,19 +1,100 @@
 import { distance, normalizeDegrees, rotatePoint } from './geometry.js';
-import { getFootprintDefinition, projectFootprintPoint } from './footprints.js';
-import { getSurfaceDefinition, worldToSurfaceLocal } from './breadboard.js';
+import { footprintsForComponent, getFootprintDefinition, projectFootprintPoint } from './footprints.js';
+import { getSurfaceDefinition, holeWorldPosition, worldToSurfaceLocal } from './breadboard.js';
+
+export const HOLE_OCCUPANCY = Object.freeze({
+    FREE: 'FREE',
+    COMPONENT_PIN: 'COMPONENT_PIN',
+    WIRE_ENDPOINT: 'WIRE_ENDPOINT',
+});
 
 function coordinateKey(point) {
     return `${Math.round(point.x * 1000)},${Math.round(point.y * 1000)}`;
 }
 
-export function buildOccupancyMap(project, { excludeComponentId = null } = {}) {
-    const occupancy = new Map();
+function physicalHoleForRef(project, ref) {
+    if (ref?.type === 'surface-hole') return { surfaceId: ref.surfaceId, holeId: ref.holeId };
+    if (ref?.type !== 'component-pin') return null;
+    const component = project?.components?.find(item => item.id === ref.componentId);
+    if (component?.placement?.type !== 'surface') return null;
+    const holeId = component.placement.bindings?.[ref.pinId];
+    return holeId ? { surfaceId: component.placement.surfaceId, holeId } : null;
+}
+
+/**
+ * Materialize every stable breadboard socket with its dynamic occupancy. Hole
+ * identity/topology remains on the board definition; occupancy belongs to the
+ * project state and is therefore reversible and renderer-independent.
+ */
+export function buildBreadboardHoleStates(project, {
+    excludeComponentId = null,
+    excludeWireIds = [],
+    includeMountedPinWireEndpoints = false,
+} = {}) {
+    const excludedWires = new Set(excludeWireIds);
+    const states = new Map();
+    for (const surface of project?.surfaces || []) {
+        const definition = getSurfaceDefinition(surface);
+        if (!definition) continue;
+        for (const hole of definition.holes) {
+            states.set(`${surface.id}:${hole.id}`, {
+                key: `${surface.id}:${hole.id}`,
+                surfaceId: surface.id,
+                holeId: hole.id,
+                position: { x: hole.x, y: hole.y },
+                worldPosition: holeWorldPosition(surface, hole.id),
+                electricalGroup: hole.electricalGroup,
+                state: HOLE_OCCUPANCY.FREE,
+                occupants: [],
+            });
+        }
+    }
+
+    const occupy = (physical, occupant) => {
+        const record = states.get(`${physical.surfaceId}:${physical.holeId}`);
+        if (!record) return;
+        record.occupants.push(occupant);
+        if (record.state === HOLE_OCCUPANCY.FREE) record.state = occupant.type;
+    };
     for (const component of project?.components || []) {
         if (component.id === excludeComponentId || component.placement?.type !== 'surface') continue;
         for (const [pinId, holeId] of Object.entries(component.placement.bindings || {})) {
-            const key = `${component.placement.surfaceId}:${holeId}`;
-            occupancy.set(key, { componentId: component.id, pinId, holeId, surfaceId: component.placement.surfaceId });
+            occupy({ surfaceId: component.placement.surfaceId, holeId }, {
+                type: HOLE_OCCUPANCY.COMPONENT_PIN,
+                componentId: component.id,
+                pinId,
+            });
         }
+    }
+    for (const wire of project?.wires || []) {
+        if (excludedWires.has(wire.id)) continue;
+        for (const [end, ref] of [['from', wire.from], ['to', wire.to]]) {
+            if (ref?.type !== 'surface-hole' && !includeMountedPinWireEndpoints) continue;
+            const physical = physicalHoleForRef(project, ref);
+            if (!physical) continue;
+            occupy(physical, {
+                type: HOLE_OCCUPANCY.WIRE_ENDPOINT,
+                wireId: wire.id,
+                end,
+                ref,
+            });
+        }
+    }
+    return states;
+}
+
+export function buildOccupancyMap(project, options = {}) {
+    const occupancy = new Map();
+    for (const [key, state] of buildBreadboardHoleStates(project, options)) {
+        if (state.state === HOLE_OCCUPANCY.FREE) continue;
+        const first = state.occupants[0] || {};
+        occupancy.set(key, {
+            ...first,
+            holeId: state.holeId,
+            surfaceId: state.surfaceId,
+            state: state.state,
+            occupants: state.occupants,
+        });
     }
     return occupancy;
 }
@@ -66,31 +147,39 @@ export class BreadboardSnapSolver {
         this.acquisitionRadius = acquisitionRadius;
     }
 
-    solve({ project, component, pointerWorld, surfaceId, preferredRotation } = {}) {
+    solve({ project, component, pointerWorld, surfaceId, preferredRotation, preferredFootprintId = null } = {}) {
         const surface = (project?.surfaces || []).find(item => item.id === surfaceId);
         const definition = getSurfaceDefinition(surface);
-        const footprint = getFootprintDefinition(component?.footprintId);
-        if (!surface || !definition || !footprint || footprint.placementMode !== 'breadboard-rigid') return null;
+        const currentFootprint = getFootprintDefinition(component?.footprintId);
+        const footprints = footprintsForComponent(component?.definitionId)
+            .filter(footprint => footprint.placementMode === 'breadboard-rigid');
+        if (!surface || !definition || !currentFootprint || !footprints.length) return null;
+
+        const requestedFootprintId = preferredFootprintId || component.footprintId;
+        const resolvedPreferredFootprintId = footprints.some(footprint => footprint.id === requestedFootprintId)
+            ? requestedFootprintId
+            : footprints.find(footprint => footprint.preferred)?.id || footprints[0].id;
 
         const pointerLocal = worldToSurfaceLocal(surface, pointerWorld);
-        const anchorPin = footprint.pins.find(pin => pin.pinId === footprint.anchorPinId);
-        if (!anchorPin) return null;
         const occupancy = buildOccupancyMap(project, { excludeComponentId: component.id });
         const holeAtPoint = new Map(definition.holes.map(hole => [coordinateKey(hole), hole]));
-        const rotations = [...footprint.validRotations].sort((a, b) => {
-            const preferred = normalizeDegrees(preferredRotation ?? component.placement?.rotation ?? 0);
-            const deltaA = Math.min(Math.abs(a - preferred), 360 - Math.abs(a - preferred));
-            const deltaB = Math.min(Math.abs(b - preferred), 360 - Math.abs(b - preferred));
-            return deltaA - deltaB || a - b;
-        });
         const candidates = [];
 
-        for (const anchorHole of definition.holes) {
-            if (anchorHole.zone !== 'terminal') continue;
-            const anchorDistance = distance(pointerLocal, anchorHole);
-            if (anchorDistance > this.acquisitionRadius) continue;
+        for (const footprint of footprints) {
+            const anchorPin = footprint.pins.find(pin => pin.pinId === footprint.anchorPinId);
+            if (!anchorPin) continue;
+            const rotations = [...footprint.validRotations].sort((a, b) => {
+                const preferred = normalizeDegrees(preferredRotation ?? component.placement?.rotation ?? 0);
+                const deltaA = Math.min(Math.abs(a - preferred), 360 - Math.abs(a - preferred));
+                const deltaB = Math.min(Math.abs(b - preferred), 360 - Math.abs(b - preferred));
+                return deltaA - deltaB || a - b;
+            });
+            for (const anchorHole of definition.holes) {
+                if (anchorHole.zone !== 'terminal') continue;
+                const anchorDistance = distance(pointerLocal, anchorHole);
+                if (anchorDistance > this.acquisitionRadius) continue;
 
-            for (const rotation of rotations) {
+                for (const rotation of rotations) {
                 const bindings = {};
                 let valid = true;
                 for (const pin of footprint.pins.filter(item => item.mount === 'breadboard-hole')) {
@@ -124,9 +213,11 @@ export class BreadboardSnapSolver {
                     rotation,
                     bindings,
                     anchorHoleId: anchorHole.id,
-                    score: anchorDistance + rotationDelta * 0.002,
+                    score: anchorDistance + rotationDelta * 0.002 +
+                        Number(footprint.id !== resolvedPreferredFootprintId) * .08,
                     valid: true,
                 });
+                }
             }
         }
 
@@ -139,7 +230,7 @@ export class BreadboardSnapSolver {
         if (!candidate?.valid) return false;
         const surface = project.surfaces.find(item => item.id === candidate.surfaceId);
         const definition = getSurfaceDefinition(surface);
-        const footprint = getFootprintDefinition(component.footprintId);
+        const footprint = getFootprintDefinition(candidate.footprintId || component.footprintId);
         if (!definition || !footprint || !footprint.validRotations.includes(candidate.rotation)) return false;
         const requiredPins = footprint.pins.filter(pin => pin.mount === 'breadboard-hole').map(pin => pin.pinId).sort();
         if (JSON.stringify(Object.keys(candidate.bindings).sort()) !== JSON.stringify(requiredPins)) return false;

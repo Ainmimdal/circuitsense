@@ -7,6 +7,8 @@
  * (actual wokwi pin names are matched at runtime via store.pinInfoMap)
  */
 
+import { normalizeContentBounds } from './core/image-content-bounds.js';
+
 // ─── Pin-type constants ────────────────────────────────
 export const PIN = {
     VCC: 'VCC',
@@ -40,6 +42,7 @@ export const PIN_ALIASES = {
 
 // ─── Arduino Uno pin catalog (used by auto-wire) ──────
 export const ARDUINO_PINS = {
+    logicVoltage: 5,
     digital: ['2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13'],
     pwm: ['3', '5', '6', '9', '10', '11'],
     analog: ['A0', 'A1', 'A2', 'A3', 'A4', 'A5'],
@@ -62,6 +65,7 @@ export const ARDUINO_NANO_PINS = {
 };
 
 export const ARDUINO_MEGA_PINS = {
+    logicVoltage: 5,
     digital: Array.from({ length: 52 }, (_, index) => String(index + 2)),
     pwm: ['2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '44', '45', '46'],
     analog: Array.from({ length: 16 }, (_, index) => `A${index}`),
@@ -75,6 +79,7 @@ export const ARDUINO_MEGA_PINS = {
 };
 
 export const NANO_RP2040_PINS = {
+    logicVoltage: 3.3,
     digital: ['D2', 'D3', 'D4', 'D5', 'D6', 'D7', 'D8', 'D9', 'D10', 'D11', 'D12', 'D13'],
     pwm: ['D2', 'D3', 'D4', 'D5', 'D6', 'D7', 'D8', 'D9', 'D10', 'D11', 'D12'],
     analog: ['A0', 'A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7'],
@@ -91,6 +96,7 @@ export const NANO_RP2040_PINS = {
 };
 
 export const ESP32_DEVKIT_PINS = {
+    logicVoltage: 3.3,
     digital: ['D4', 'D13', 'D14', 'D18', 'D19', 'D21', 'D22', 'D23', 'D25', 'D26', 'D27', 'D32', 'D33'],
     pwm: ['D4', 'D13', 'D14', 'D18', 'D19', 'D21', 'D22', 'D23', 'D25', 'D26', 'D27', 'D32', 'D33'],
     analog: ['VP', 'VN', 'D34', 'D35', 'D32', 'D33'],
@@ -112,6 +118,7 @@ export const ESP32_DEVKIT_PINS = {
 };
 
 export const FRANZININHO_PINS = {
+    logicVoltage: 5,
     digital: ['PB0', 'PB1', 'PB2', 'PB3', 'PB4'],
     pwm: ['PB0', 'PB1', 'PB4'],
     analog: ['PB5', 'PB2', 'PB4', 'PB3'],
@@ -207,10 +214,11 @@ export const componentLibrary = {
 
     'resistor': {
         id: 'resistor',
-        name: 'Resistor 220\u03A9',
+        name: 'Resistor',
         tag: 'wokwi-resistor',
         category: 'passive',
-        description: '220 ohm resistor',
+        description: 'Axial resistor with an editable resistance value',
+        keywords: ['220 ohm', 'resistance', 'ohm'],
         icon: 'wave-square',
         attrs: { value: '220' },
         size: { width: 60, height: 10 },
@@ -743,6 +751,8 @@ export const categories = [
  * Helper — get component definition for an instance
  */
 const CUSTOM_COMPONENTS_KEY = 'elera_custom_components';
+const COMPONENT_VISUAL_OVERRIDES_KEY = 'elera_component_visual_overrides_v1';
+const baseVisualAdapters = new Map();
 
 function _pinSignalsForType(type) {
     if (type === PIN.VCC) return [{ signal: 'VCC' }];
@@ -752,6 +762,10 @@ function _pinSignalsForType(type) {
 
 function _normalizeCustomComponent(raw) {
     if (!raw || !raw.id || !raw.imageUrl || !raw.size) return null;
+    const size = {
+        width: Math.max(20, Number(raw.size.width) || 120),
+        height: Math.max(20, Number(raw.size.height) || 80),
+    };
     const pinMeta = raw.pinMeta || {};
     const customPins = (raw.customPins || []).map(pin => {
         const type = pin.type || pinMeta[pin.name] || PIN.SIGNAL;
@@ -777,13 +791,17 @@ function _normalizeCustomComponent(raw) {
         ...raw,
         type: 'custom',
         category: 'custom',
+        library: {
+            family: raw.library?.family || raw.id,
+            ...(raw.library || {}),
+            source: 'custom',
+            tags: [...new Set([...(raw.library?.tags || []), ...(raw.keywords || [])].filter(Boolean).map(String))],
+        },
         icon: raw.icon || 'image',
         attrs: {},
         currentDraw_mA: Number(raw.currentDraw_mA) || 0,
-        size: {
-            width: Math.max(20, Number(raw.size.width) || 120),
-            height: Math.max(20, Number(raw.size.height) || 80),
-        },
+        size,
+        contentBounds: raw.contentBounds ? normalizeContentBounds(raw.contentBounds, size) : null,
         customPins,
         pinMeta: normalizedPinMeta,
         autoWire: Object.keys(autoWire).length > 0 ? autoWire : undefined,
@@ -810,7 +828,7 @@ export function registerCustomComponent(componentDef, { persist = true } = {}) {
     const normalized = _normalizeCustomComponent(componentDef);
     if (!normalized) return null;
 
-    componentLibrary[normalized.id] = normalized;
+    registerComponentDefinition(normalized);
 
     if (persist && typeof localStorage !== 'undefined') {
         const existing = getStoredCustomComponents().filter(comp => comp.id !== normalized.id);
@@ -827,8 +845,122 @@ export function registerCustomComponent(componentDef, { persist = true } = {}) {
     return normalized;
 }
 
+/** Register a normalized catalog definition from a trusted importer. */
+export function registerComponentDefinition(componentDef, { notify = true } = {}) {
+    if (!componentDef?.id || !componentDef?.name || !componentDef?.size) {
+        throw new TypeError('A component definition requires id, name, and size.');
+    }
+    const width = Number(componentDef.size.width);
+    const height = Number(componentDef.size.height);
+    if (!(width > 0) || !(height > 0)) {
+        throw new TypeError('A component definition needs positive visual dimensions.');
+    }
+    const normalized = {
+        attrs: {},
+        currentDraw_mA: 0,
+        pinMeta: {},
+        connectorType: 'male',
+        ...componentDef,
+        id: String(componentDef.id),
+        size: { width, height },
+    };
+    componentLibrary[normalized.id] = normalized;
+    if (notify && typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('elera-component-library-change', {
+            detail: { component: normalized },
+        }));
+    }
+    return normalized;
+}
+
+function _normalizeVisualOverride(componentId, raw) {
+    const nativePins = Object.fromEntries(Object.entries(raw?.nativePins || {})
+        .map(([pinId, point]) => [String(pinId), { x: Number(point?.x), y: Number(point?.y) }])
+        .filter(([pinId, point]) => pinId && Number.isFinite(point.x) && Number.isFinite(point.y)));
+    return Object.keys(nativePins).length ? { componentId: String(componentId), nativePins } : null;
+}
+
+function _readVisualOverrides() {
+    if (typeof localStorage === 'undefined') return {};
+    try {
+        const parsed = JSON.parse(localStorage.getItem(COMPONENT_VISUAL_OVERRIDES_KEY) || '{}');
+        return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+    } catch (error) {
+        console.warn('[Elera] Failed to load component visual overrides:', error);
+        return {};
+    }
+}
+
+function _applyVisualOverride(componentId, override, { notify = true } = {}) {
+    const current = componentLibrary[componentId];
+    const normalized = _normalizeVisualOverride(componentId, override);
+    if (!current || !normalized) return null;
+    if (!baseVisualAdapters.has(componentId)) baseVisualAdapters.set(componentId, current.visualAdapter || null);
+    componentLibrary[componentId] = {
+        ...current,
+        visualAdapter: {
+            ...(baseVisualAdapters.get(componentId) || {}),
+            nativePins: normalized.nativePins,
+        },
+        visualOverride: normalized,
+    };
+    if (notify && typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('elera-component-library-change', {
+            detail: { component: componentLibrary[componentId], visualOverride: normalized },
+        }));
+    }
+    return normalized;
+}
+
+export function getComponentVisualOverride(componentId) {
+    const override = componentLibrary[componentId]?.visualOverride;
+    return override ? structuredClone(override) : null;
+}
+
+export function registerComponentVisualOverride(componentId, override, { persist = true } = {}) {
+    const normalized = _applyVisualOverride(componentId, override, { notify: false });
+    if (!normalized) return null;
+    if (persist && typeof localStorage !== 'undefined') {
+        const stored = _readVisualOverrides();
+        stored[componentId] = normalized;
+        localStorage.setItem(COMPONENT_VISUAL_OVERRIDES_KEY, JSON.stringify(stored));
+    }
+    if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('elera-component-library-change', {
+            detail: { component: componentLibrary[componentId], visualOverride: normalized },
+        }));
+    }
+    return normalized;
+}
+
+export function resetComponentVisualOverride(componentId, { persist = true } = {}) {
+    const current = componentLibrary[componentId];
+    if (!current || !baseVisualAdapters.has(componentId)) return false;
+    const baseVisualAdapter = baseVisualAdapters.get(componentId);
+    const restored = { ...current };
+    delete restored.visualOverride;
+    if (baseVisualAdapter) restored.visualAdapter = baseVisualAdapter;
+    else delete restored.visualAdapter;
+    componentLibrary[componentId] = restored;
+    if (persist && typeof localStorage !== 'undefined') {
+        const stored = _readVisualOverrides();
+        delete stored[componentId];
+        localStorage.setItem(COMPONENT_VISUAL_OVERRIDES_KEY, JSON.stringify(stored));
+    }
+    if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('elera-component-library-change', {
+            detail: { component: restored, visualOverride: null },
+        }));
+    }
+    return true;
+}
+
 for (const customComponent of getStoredCustomComponents()) {
     componentLibrary[customComponent.id] = customComponent;
+}
+
+for (const [componentId, override] of Object.entries(_readVisualOverrides())) {
+    _applyVisualOverride(componentId, override, { notify: false });
 }
 
 export function getComponentDef(componentId) {

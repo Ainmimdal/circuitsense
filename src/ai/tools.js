@@ -1,4 +1,5 @@
-import { componentLibrary, getComponentDef } from '../component-library.js';
+import { getComponentDef } from '../component-library.js';
+import { listPartDefinitions } from '../core/part-registry.js';
 import {
     componentPinRole,
     controllerPinMetadata,
@@ -32,7 +33,7 @@ function stringArray(value, name, { allowEmpty = false } = {}) {
 }
 
 function componentCatalog() {
-    return Object.values(componentLibrary)
+    return listPartDefinitions()
         .filter(definition => definition.category !== 'internal')
         .filter(definition => defaultFootprintForComponent(definition.id))
         .sort((a, b) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name));
@@ -40,14 +41,17 @@ function componentCatalog() {
 
 function compactDefinition(definition) {
     const footprint = defaultFootprintForComponent(definition.id);
+    const autoWire = Object.fromEntries(definition.pins
+        .filter(pin => pin.autoWireRequirement)
+        .map(pin => [pin.id, pin.autoWireRequirement]));
     return {
         componentId: definition.id,
         name: definition.name,
         category: definition.category,
         description: definition.description,
         pins: (footprint?.pins || []).map(pin => pin.pinId),
-        autoWire: definition.autoWire || null,
-        controller: Boolean(definition.autoWirePins),
+        autoWire: Object.keys(autoWire).length ? autoWire : null,
+        controller: Boolean(definition.controller),
         breadboardMountable: footprint?.placementMode === 'breadboard-rigid',
     };
 }
@@ -267,6 +271,7 @@ export function createEleraToolRegistry(store) {
                             if (!terms.length) return true;
                             const searchable = searchText([
                                 definition.id, definition.name, definition.category, definition.description,
+                                ...(definition.keywords || []),
                             ].join(' '));
                             return terms.every(term => searchable.includes(term));
                         });

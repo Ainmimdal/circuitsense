@@ -1,6 +1,6 @@
 # Elera Physical Editor Architecture
 
-Status: working Konva vertical slice, 2026-08-30.
+Status: active Konva editor with consolidated part/package boundaries, 2026-09-02.
 
 ## Invariant
 
@@ -29,6 +29,14 @@ Physical project (schema 4)
 
 The new modules live under `src/physical/` and `src/editor/`. None imports Lit, Konva, the DOM, Wokwi elements or the legacy global store, except the Lit/Konva host and the interaction controller at the outer edge.
 
+The detailed Fritzing comparison, duplication audit and retained/deferred boundaries are recorded in [COMPONENT_ARCHITECTURE_ASSESSMENT.md](COMPONENT_ARCHITECTURE_ASSESSMENT.md).
+
+## Shared definitions
+
+`src/core/part-registry.js` normalizes catalog electrical metadata and calibrated component geometry into immutable part and package definitions. The physical footprint registry consumes that boundary, so every catalog item declared breadboard-mountable resolves to a rigid package rather than a guessed free-space footprint. Electrical roles and Auto Wire requirements stay separate because they answer different questions.
+
+`src/core/breadboard-topology.js` is the one half/full breadboard authority. It owns stable hole IDs, millimetre positions, rail segmentation and electrical groups. The original pixel `board-registry` is now a derived compatibility projection; it no longer owns a second topology. Component row-grid calculations import the same topology, including the exact 7.62 mm E-F centre spacing.
+
 ## Coordinates
 
 Geometry uses millimetres. Breadboard pitch is exactly 2.54 mm. Reusable transforms cover footprint-local to surface-local to world, inverse world-to-surface conversion, and world-to-screen camera conversion. Camera zoom/pan never changes project geometry.
@@ -52,29 +60,31 @@ Mounted instances persist only surface ID, footprint, rotation and pin-to-hole b
 
 ## Connectivity and routing
 
-Connections use component-pin or surface-hole references. `ConnectivityResolver` unions breadboard internal groups, mounted pin-to-hole contacts and wires. It can resolve a component pin to its physical hole/electrical group, list its complete net and answer connectivity independently of rendering.
+Connections use component-pin or surface-hole references. Auto Wire persists component-pin `netlistIntent` separately from the physical jumper records. `ConnectivityResolver` unions breadboard internal groups, mounted pin-to-hole contacts, component internal contacts and wires. It can resolve a component pin to its physical hole/electrical group, list its complete net and answer connectivity independently of rendering.
+
+Every stable breadboard socket has a derived occupancy record: `FREE`, `COMPONENT_PIN`, or `WIRE_ENDPOINT`. Auto Wire first collapses mounted pins that already share fixed copper, then chooses a minimum connecting set across the remaining physical islands and reserves unique free sockets. Mixed nets terminate at a free socket in the mounted pin's group and continue normally to an off-board pin. Component routing bounds are independent keepouts rather than occupied holes.
 
 Wires store semantic endpoints separately from route mode/waypoints. Automatic routes resolve current endpoint world positions and score orthogonal candidates using length, bends, crossings, obstacles, crowding and awkward fan-out. Manual waypoints are supported by the model. Moving a surface recomputes route geometry while keeping the wire's endpoints unchanged.
 
 ## Mutation, persistence and rendering
 
-Commands cover add/move/mount components, move surfaces, and add/delete wires. The new store executes commands against cloned project state and provides undo/redo. It persists schema-4 semantic project data under a separate localStorage key, leaving schema-v2/legacy projects untouched for a later explicit migration adapter.
+Commands cover add/move/mount components, move surfaces, and add/delete wires. The new store executes commands against cloned project state and provides undo/redo. It persists schema-4 semantic project data under a separate localStorage key, leaving schema-v2/legacy projects untouched for a later explicit migration adapter. Named local projects also store and restore schema-4 data through `physical/project-repository.js`.
 
-The Konva host has five layers: background, board, wire, component and interaction. It recreates the scene from project state. A pointer-transparent DOM artwork layer reuses Wokwi or custom visuals for ordinary library parts. Standard DIP artwork is procedural Konva presentation driven by the package geometry (body, legs, notch, pin-1 marker and label); it does not define pin positions. Konva remains the interaction and hit-testing owner. A default test IC/LED/wire sample demonstrates the slice. Rigid breadboard parts use the generic snap solver; the wider metadata library receives explicit generated free-space footprints and terminals so boards and modules can be added, moved, wired and deleted. Hole hover highlights the topology-defined strip. Clicking two terminals creates a semantic wire.
+The Konva host has five layers: background, board, wire, component and interaction. It recreates the scene from project state. A pointer-transparent DOM artwork layer reuses Wokwi or custom visuals for ordinary library parts. The resistor keeps its original Wokwi element in free space; compact-horizontal and upright breadboard packages use dedicated Wokwi-inspired SVG elements whose rendered pin centres are fitted to the authoritative package pins. Standard DIP artwork is procedural Konva presentation driven by the package geometry (body, legs, notch, pin-1 marker and label); it does not define pin positions. Konva remains the interaction and hit-testing owner. A default test IC/LED/wire sample demonstrates the slice. Rigid breadboard parts use the generic snap solver; the wider metadata library receives explicit generated free-space footprints and terminals so boards and modules can be added, moved, wired and deleted. Hole hover highlights the topology-defined strip. Clicking two terminals creates a semantic wire.
 
 ## Validation bridge
 
-The validation bar now reads the active physical store. Footprint legality, complete pin-to-hole geometry, occupancy, wire endpoints and controller presence are checked without reading Konva. Findings can select the corresponding visible component.
+The validation bar now reads the active physical store. Footprint legality, complete pin-to-hole geometry, exclusive occupancy, wire endpoints, incompatible intent nets sharing fixed copper, incomplete intended nets, redundant generated jumpers and controller presence are checked without reading Konva. Findings can select the corresponding visible component.
 
 ## Known limitations
 
-- DIP8 and LED currently have calibrated breadboard-mounting artwork. Arduino Uno has a dedicated free-space board visual, while the rest of the metadata library uses functional labeled module artwork until calibrated visuals are migrated.
-- Flexible resistor/diode lead endpoints are designed for but not implemented.
-- Auto Wire and Auto Layout now mutate the active schema-4 project. Auto Wire reuses metadata-driven pin planning and generated helpers without moving parts; Auto Layout owns positioning and legal generic breadboard mounting. More advanced breadboard bus synthesis remains to be migrated into this active model.
+- All parts declared breadboard-mountable have calibrated rigid package geometry. DIP8 and LED have dedicated procedural artwork in the active renderer; Arduino Uno has a dedicated free-space board visual, while several other parts still use their Wokwi adapter or functional labeled module artwork.
+- Resistors use one electrical type with the unchanged Wokwi free-space visual, compact fixed-body horizontal breadboard packages spanning three through eight pitches, and an upright breadboard package. The preferred compact appearance occupies five hole positions (four pitch intervals) with a separately shortened body. The generic snap solver selects only complete legal variants; the renderer keeps recognizable leads, body and color bands.
+- Auto Wire and Auto Layout mutate the active schema-4 project. Auto Wire reuses metadata-driven pin planning and generated helpers without moving or mounting parts, and realizes only missing physical jumpers. Auto Layout owns positioning, keeps user-placed free components clear of board bodies, and may mount only its own generated series helper beside an already-mounted owner when a legal footprint is available. It prefers compact horizontal placement and uses upright only as a capacity fallback.
 - Route generation is intentionally compact; advanced A*, crossing minimization, editable handles and reserved channels remain future work.
 - Schema-v2 projects are preserved in their old key but are not yet imported into schema 3.
 - The account/projects dialog remains backed by the legacy local mock rather than Supabase.
-- Full-board surfaces, body collision/keepouts, rotate UI, delete UI and full-net component highlighting are not migrated yet.
+- Full-net component highlighting and richer physical-package selection controls remain future work.
 
 ## Recommended next phase
 

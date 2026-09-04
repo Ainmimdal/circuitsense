@@ -1,5 +1,6 @@
 import { connectionRefKey, componentPinRef, surfaceHoleRef } from './model.js';
 import { getSurfaceDefinition } from './breadboard.js';
+import { getFootprintDefinition } from './footprints.js';
 
 export class UnionFind {
     constructor() {
@@ -61,6 +62,16 @@ export class ConnectivityResolver {
         }
 
         for (const component of this.project.components || []) {
+            const footprint = getFootprintDefinition(component.footprintId);
+            for (const internalNet of footprint?.internalNets || []) {
+                const pins = internalNet.pins || [];
+                for (let index = 1; index < pins.length; index++) {
+                    this.graph.union(
+                        this.#remember(componentPinRef(component.id, pins[0])),
+                        this.#remember(componentPinRef(component.id, pins[index])),
+                    );
+                }
+            }
             if (component.placement?.type !== 'surface') continue;
             for (const [pinId, holeId] of Object.entries(component.placement.bindings || {})) {
                 const pinKey = this.#remember(componentPinRef(component.id, pinId));
@@ -104,4 +115,3 @@ export class ConnectivityResolver {
         return [...groups.values()];
     }
 }
-

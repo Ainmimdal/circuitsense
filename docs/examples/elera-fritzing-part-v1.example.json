@@ -1,0 +1,101 @@
+{
+  "format": "elera-fritzing-part-v1",
+  "id": "example-led",
+  "name": "Example LED",
+  "description": "A simple two-pin LED imported from Fritzing",
+  "category": "output",
+  "sourcePart": "Example_LED.fzp",
+  "library": {
+    "source": "fritzing",
+    "family": "led",
+    "variant": "radial-5mm",
+    "technology": "THT",
+    "taxonomy": "output.led",
+    "tags": ["light", "indicator", "diode"]
+  },
+  "artwork": {
+    "svgUrl": "/parts/example-led/breadboard.svg",
+    "sourceSize": {
+      "width": 40,
+      "height": 50
+    },
+    "physicalSizeMm": {
+      "width": 10.16,
+      "height": 12.7
+    }
+  },
+  "pins": [
+    {
+      "id": "A",
+      "label": "Anode",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "autoWireRequirement": "DIGITAL",
+      "capabilities": ["digital"],
+      "artwork": {
+        "x": 25,
+        "y": 42
+      },
+      "fritzingConnectorId": "connector0"
+    },
+    {
+      "id": "C",
+      "label": "Cathode",
+      "connector": "male",
+      "electricalRole": "GND",
+      "autoWireRequirement": "GND",
+      "capabilities": ["ground"],
+      "artwork": {
+        "x": 15,
+        "y": 42
+      },
+      "fritzingConnectorId": "connector1"
+    }
+  ],
+  "packages": [
+    {
+      "id": "example-led-radial-2.54",
+      "placementMode": "breadboard-rigid",
+      "anchorPinId": "C",
+      "validRotations": [0, 180],
+      "requiresTrench": false,
+      "pins": [
+        {
+          "pinId": "C",
+          "x": 0,
+          "y": 0,
+          "mount": "breadboard-hole"
+        },
+        {
+          "pinId": "A",
+          "x": 2.54,
+          "y": 0,
+          "mount": "breadboard-hole"
+        }
+      ],
+      "internalNets": [],
+      "routingBounds": {
+        "x": -2.54,
+        "y": -10.16,
+        "width": 7.62,
+        "height": 12.7
+      }
+    }
+  ],
+  "propertyDefinitions": [
+    {
+      "name": "color",
+      "label": "LED color",
+      "type": "string",
+      "control": "select",
+      "options": ["red", "green", "blue", "yellow", "white"],
+      "defaultValue": "red",
+      "effect": "visual",
+      "editable": true
+    }
+  ],
+  "connectorType": "male",
+  "currentDraw_mA": 20,
+  "breadboardRequired": true,
+  "pinless": false
+}

@@ -427,11 +427,11 @@ test('rotates a mounted pushbutton to the next legal rigid footprint', async () 
 
     assert.equal(tryManualBreadboardPlacement('button'), true);
     assert.deepEqual(store.getInstance('button').breadboardPlacement.holes,
-        { '1.l': 'E5', '1.r': 'G5', '2.l': 'E3', '2.r': 'G3' });
+        { '1.l': 'E5', '1.r': 'F5', '2.l': 'E3', '2.r': 'F3' });
     assert.equal(rotateMountedBreadboardComponent('button'), true);
     assert.equal(store.getInstance('button').rotation, 270);
     assert.deepEqual(store.getInstance('button').breadboardPlacement.holes,
-        { '1.l': 'F5', '1.r': 'D5', '2.l': 'F7', '2.r': 'D7' });
+        { '1.l': 'F5', '1.r': 'E5', '2.l': 'F7', '2.r': 'E7' });
 });
 
 test('selection and pin registration do not move parts, while dragging a breadboard carries its mounted circuit', async () => {

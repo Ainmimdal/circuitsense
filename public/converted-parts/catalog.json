@@ -1,0 +1,17 @@
+{
+  "format": "elera-converted-part-catalog-v1",
+  "parts": [
+    "/converted-parts/fritzing-5-ir-array-sensor-1/part.json",
+    "/converted-parts/fritzing-cytron-rekabit-1/part.json",
+    "/converted-parts/fritzing-drv8834-1/part.json",
+    "/converted-parts/fritzing-due-3f87525e1626ddb3c661348f5d1ac4e2-1/part.json",
+    "/converted-parts/fritzing-esp32-38-pin-wide/part.json",
+    "/converted-parts/fritzing-esp32-hi-letgo/part.json",
+    "/converted-parts/fritzing-esp32-p30-w11-9de09df6ee672a047957b8e804927eb5-1/part.json",
+    "/converted-parts/fritzing-l298-n-motor-driver-ed29594eba4fbd330bd92441a17764ea-15/part.json",
+    "/converted-parts/fritzing-mdd10-a-improved-1/part.json",
+    "/converted-parts/fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1/part.json",
+    "/converted-parts/fritzing-prefix0000-9b7604e7c74acc1a36bb79940b62723b-1/part.json",
+    "/converted-parts/fritzing-upright-resistor-module-id/part.json"
+  ]
+}

@@ -1,0 +1,371 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://elera.local/schema/elera-fritzing-part-v1.json",
+  "title": "Elera Fritzing Part Intermediate Record",
+  "description": "Sanitized, parser-independent input emitted by a Fritzing-to-Elera converter.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "id", "name", "artwork", "pins"],
+  "properties": {
+    "format": {
+      "const": "elera-fritzing-part-v1"
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "description": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string",
+      "enum": ["board", "sensor", "input", "output", "actuator", "passive", "custom"]
+    },
+    "sourcePart": {
+      "type": "string",
+      "minLength": 1
+    },
+    "library": {
+      "$ref": "#/$defs/library"
+    },
+    "artwork": {
+      "$ref": "#/$defs/artwork"
+    },
+    "pins": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/pin"
+      }
+    },
+    "packages": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/package"
+      }
+    },
+    "propertyDefinitions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/propertyDefinition"
+      }
+    },
+    "connectorType": {
+      "type": "string",
+      "enum": ["male", "female"]
+    },
+    "currentDraw_mA": {
+      "type": "number",
+      "minimum": 0
+    },
+    "breadboardRequired": {
+      "type": "boolean"
+    },
+    "pinless": {
+      "type": "boolean"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "pinless": {
+            "const": true
+          }
+        }
+      },
+      "then": {},
+      "else": {
+        "properties": {
+          "pins": {
+            "minItems": 1
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "point": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y"],
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      }
+    },
+    "positiveSize": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["width", "height"],
+      "properties": {
+        "width": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      }
+    },
+    "library": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "family"],
+      "properties": {
+        "source": {
+          "const": "fritzing"
+        },
+        "family": {
+          "type": "string",
+          "minLength": 1
+        },
+        "variant": {
+          "type": "string",
+          "minLength": 1
+        },
+        "technology": {
+          "type": "string",
+          "minLength": 1
+        },
+        "taxonomy": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        }
+      }
+    },
+    "artwork": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["svgUrl", "sourceSize"],
+      "properties": {
+        "svgUrl": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sourceSize": {
+          "$ref": "#/$defs/positiveSize"
+        }
+      }
+    },
+    "pin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "artwork"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "label": {
+          "type": "string"
+        },
+        "connector": {
+          "type": "string",
+          "enum": ["male", "female"]
+        },
+        "electricalRole": {
+          "type": "string",
+          "enum": ["VCC", "GND", "DIGITAL", "ANALOG", "PWM", "I2C_SDA", "I2C_SCL", "SIGNAL", "TRIGGER", "ECHO", "DATA"]
+        },
+        "autoWireRequirement": {
+          "type": "string",
+          "enum": ["VCC", "GND", "DIGITAL", "ANALOG", "PWM", "I2C_SDA", "I2C_SCL", "SIGNAL", "TRIGGER", "ECHO", "DATA"]
+        },
+        "capabilities": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "artwork": {
+          "$ref": "#/$defs/point"
+        },
+        "fritzingConnectorId": {
+          "type": ["string", "null"]
+        }
+      }
+    },
+    "packagePin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pinId", "x", "y"],
+      "properties": {
+        "pinId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "x": {
+          "type": "number",
+          "multipleOf": 2.54
+        },
+        "y": {
+          "type": "number",
+          "multipleOf": 2.54
+        },
+        "mount": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "internalNet": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pins"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pins": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        }
+      }
+    },
+    "routingBounds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y", "width", "height"],
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        },
+        "width": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      }
+    },
+    "package": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "placementMode", "anchorPinId", "validRotations", "pins", "routingBounds"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "placementMode": {
+          "const": "breadboard-rigid"
+        },
+        "anchorPinId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "validRotations": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "integer",
+            "enum": [0, 90, 180, 270]
+          },
+          "uniqueItems": true
+        },
+        "requiresTrench": {
+          "type": "boolean"
+        },
+        "pins": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/packagePin"
+          }
+        },
+        "internalNets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/internalNet"
+          }
+        },
+        "routingBounds": {
+          "$ref": "#/$defs/routingBounds"
+        }
+      }
+    },
+    "propertyDefinition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "label": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["string", "number", "boolean"]
+        },
+        "control": {
+          "type": "string",
+          "enum": ["text", "number", "checkbox", "select", "color"]
+        },
+        "defaultValue": {},
+        "options": {
+          "type": "array",
+          "items": {}
+        },
+        "effect": {
+          "type": "string",
+          "enum": ["visual", "electrical", "pin-topology", "physical-package", "simulation"]
+        },
+        "editable": {
+          "type": "boolean"
+        },
+        "min": {
+          "type": "number"
+        },
+        "max": {
+          "type": "number"
+        },
+        "step": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "unit": {
+          "type": "string"
+        },
+        "unitFamily": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="10.16mm" height="3mm" viewBox="0 0 10.16 3">
+  <defs>
+    <linearGradient id="compact-resistor-shade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff" stop-opacity=".44"/>
+      <stop offset="1" stop-color="#323232" stop-opacity=".18"/>
+    </linearGradient>
+    <path id="compact-resistor-body-shape" d="M3.42 0C2.93 0 2.54.675 2.54 1.502S2.93 3 3.42 3c.28 0 .5-.11.72-.294h1.88c.22.184.44.294.72.294.49 0 .88-.67.88-1.498S7.23 0 6.74 0c-.28 0-.5.111-.72.294H4.14C3.92.112 3.7 0 3.42 0Z"/>
+    <clipPath id="compact-resistor-body-clip"><use href="#compact-resistor-body-shape"/></clipPath>
+  </defs>
+
+  <!-- The complete default asset occupies five hole positions: 0, 1, 2, 3, 4. -->
+  <path id="compact-resistor-left-lead" d="M0 1.5H2.54" fill="none" stroke="#aaa" stroke-width=".638" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
+  <path id="compact-resistor-right-lead" d="M7.62 1.5h2.54" fill="none" stroke="#aaa" stroke-width=".638" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
+  <g id="compact-resistor-body">
+    <use href="#compact-resistor-body-shape" fill="#d5b597"/>
+    <use href="#compact-resistor-body-shape" fill="url(#compact-resistor-shade)"/>
+  </g>
+</svg>

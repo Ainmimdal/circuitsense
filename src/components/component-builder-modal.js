@@ -1,5 +1,15 @@
 import { LitElement, html, css } from 'lit';
-import { PIN, registerCustomComponent } from '../component-library.js';
+import {
+    componentLibrary,
+    getComponentVisualOverride,
+    PIN,
+    registerComponentVisualOverride,
+    registerCustomComponent,
+    resetComponentVisualOverride,
+} from '../component-library.js';
+import { getPartDefinition } from '../core/part-registry.js';
+import { measureImageContent, normalizeContentBounds } from '../core/image-content-bounds.js';
+import { createPartVisualElement } from '../core/visual-adapter.js';
 import { faIcon } from '../utils/fa-icons.js';
 
 const PIN_TYPES = [
@@ -19,6 +29,7 @@ const PIN_GRID_SIZE = 10;
 class ComponentBuilderModal extends LitElement {
     static properties = {
         open: { type: Boolean, reflect: true },
+        componentId: { attribute: false },
         _step: { state: true },
         _name: { state: true },
         _description: { state: true },
@@ -26,9 +37,11 @@ class ComponentBuilderModal extends LitElement {
         _imageUrl: { state: true },
         _imageWidth: { state: true },
         _imageHeight: { state: true },
+        _contentBounds: { state: true },
         _pins: { state: true },
         _selectedPinIndex: { state: true },
         _error: { state: true },
+        _editingComponentId: { state: true },
     };
 
     static styles = css`
@@ -210,11 +223,17 @@ class ComponentBuilderModal extends LitElement {
         .preview img,
         .custom-thumb {
             display: block;
-            max-width: 520px;
-            max-height: 420px;
             object-fit: contain;
             user-select: none;
             -webkit-user-drag: none;
+        }
+
+        .provider-artwork {
+            position: absolute;
+            inset: 0 auto auto 0;
+            display: flex;
+            transform-origin: 0 0;
+            pointer-events: none;
         }
 
         .pin-marker {
@@ -361,6 +380,16 @@ class ComponentBuilderModal extends LitElement {
             font-size: 12px;
         }
 
+        .editing-note {
+            margin: 0 0 12px;
+            padding: 9px 10px;
+            border-left: 3px solid var(--primary-hover);
+            color: var(--text-muted);
+            background: color-mix(in srgb, var(--primary) 20%, transparent);
+            font-size: 11px;
+            line-height: 1.5;
+        }
+
         :host { background: color-mix(in srgb, var(--ink) 72%, transparent); font-family: var(--font-ui, 'Public Sans', sans-serif); }
         .modal, .header, .footer, .steps, .panel, .upload-zone { background: var(--panel); border-color: var(--panel-border); color: var(--text); }
         .modal, .panel, .upload-zone { border-radius: 4px; }
@@ -395,6 +424,7 @@ class ComponentBuilderModal extends LitElement {
     constructor() {
         super();
         this.open = false;
+        this.componentId = null;
         this._reset();
     }
 
@@ -406,9 +436,58 @@ class ComponentBuilderModal extends LitElement {
         this._imageUrl = '';
         this._imageWidth = 0;
         this._imageHeight = 0;
+        this._contentBounds = null;
         this._pins = [];
         this._selectedPinIndex = -1;
         this._error = '';
+        this._editingComponentId = null;
+        this._sessionComponentId = null;
+        this._visualComponent = null;
+    }
+
+    updated(changedProperties) {
+        if (this.open && (changedProperties.has('open') || changedProperties.has('componentId')) &&
+            this._sessionComponentId !== (this.componentId || null)) {
+            this._beginSession(this.componentId || null);
+            return;
+        }
+        if (this.open && this._editingComponentId) this._mountProviderArtwork();
+    }
+
+    _beginSession(componentId) {
+        this._reset();
+        this._sessionComponentId = componentId;
+        if (!componentId) return;
+        const component = componentLibrary[componentId];
+        const part = getPartDefinition(componentId);
+        const adapterPins = part?.visualAdapter?.nativePins || {};
+        const customPins = Object.fromEntries((component?.customPins || []).map(pin => [pin.name, {
+            x: Number(pin.x),
+            y: Number(pin.y),
+        }]));
+        const nativePins = Object.keys(adapterPins).length ? adapterPins : customPins;
+        const sourceSize = part?.visualAdapter?.sourceSize || component?.size;
+        if (!component || !sourceSize?.width || !sourceSize?.height || !Object.keys(nativePins).length) {
+            this._error = 'This component does not expose editable visual pin coordinates.';
+            return;
+        }
+        this._editingComponentId = componentId;
+        this._visualComponent = component;
+        this._imageUrl = component.imageUrl || '';
+        this._name = component.name || componentId;
+        this._description = component.description || '';
+        this._currentDraw = Number(component.currentDraw_mA) || 0;
+        this._imageWidth = Number(sourceSize.width);
+        this._imageHeight = Number(sourceSize.height);
+        this._contentBounds = normalizeContentBounds(component.contentBounds, sourceSize);
+        this._pins = Object.entries(nativePins).map(([name, point]) => ({
+            name,
+            type: component.pinMeta?.[name] || PIN.SIGNAL,
+            x: Number(point.x),
+            y: Number(point.y),
+        }));
+        this._selectedPinIndex = this._pins.length ? 0 : -1;
+        this._step = 2;
     }
 
     _close() {
@@ -430,10 +509,11 @@ class ComponentBuilderModal extends LitElement {
 
         try {
             const imageUrl = await this._readFileAsDataUrl(file);
-            const size = await this._readImageSize(imageUrl);
+            const metrics = await measureImageContent(imageUrl);
             this._imageUrl = imageUrl;
-            this._imageWidth = size.width;
-            this._imageHeight = size.height;
+            this._imageWidth = metrics.size.width;
+            this._imageHeight = metrics.size.height;
+            this._contentBounds = metrics.contentBounds;
             this._name = this._name || file.name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ');
             this._pins = [];
             this._selectedPinIndex = -1;
@@ -453,24 +533,16 @@ class ComponentBuilderModal extends LitElement {
         });
     }
 
-    _readImageSize(src) {
-        return new Promise((resolve, reject) => {
-            const img = new Image();
-            img.onload = () => resolve({
-                width: img.naturalWidth || 240,
-                height: img.naturalHeight || 160,
-            });
-            img.onerror = reject;
-            img.src = src;
-        });
-    }
-
     _addPin() {
         if (!this._imageUrl) return;
         const nextIndex = this._pins.length + 1;
         const offset = (nextIndex - 1) * PIN_GRID_SIZE;
-        const x = this._clampCoord(this._snapCoord(this._imageWidth / 2 + offset), this._imageWidth);
-        const y = this._clampCoord(this._snapCoord(this._imageHeight / 2 + offset), this._imageHeight);
+        const content = normalizeContentBounds(this._contentBounds, {
+            width: this._imageWidth,
+            height: this._imageHeight,
+        });
+        const x = this._clampCoord(this._snapCoord(content.x + content.width / 2 + offset), this._imageWidth);
+        const y = this._clampCoord(this._snapCoord(content.y + content.height / 2 + offset), this._imageHeight);
         this._pins = [
             ...this._pins,
             { name: `PIN${nextIndex}`, type: PIN.SIGNAL, x, y },
@@ -510,7 +582,7 @@ class ComponentBuilderModal extends LitElement {
     _clampCoord(value, max) {
         const num = Number(value);
         if (!Number.isFinite(num)) return 0;
-        return Math.max(0, Math.min(max, Math.round(num)));
+        return Math.max(0, Math.min(max, Math.round(num * 100) / 100));
     }
 
     _snapCoord(value) {
@@ -520,8 +592,9 @@ class ComponentBuilderModal extends LitElement {
     _pointFromEvent(e, snapToGrid = false) {
         const preview = e.currentTarget.closest?.('.preview') || e.currentTarget;
         const rect = preview.getBoundingClientRect();
-        let x = (e.clientX - rect.left) / rect.width * this._imageWidth;
-        let y = (e.clientY - rect.top) / rect.height * this._imageHeight;
+        const bounds = this._previewBounds();
+        let x = bounds.x + (e.clientX - rect.left) / rect.width * bounds.width;
+        let y = bounds.y + (e.clientY - rect.top) / rect.height * bounds.height;
         if (snapToGrid) {
             x = this._snapCoord(x);
             y = this._snapCoord(y);
@@ -541,7 +614,7 @@ class ComponentBuilderModal extends LitElement {
         marker.setPointerCapture(e.pointerId);
 
         const onMove = (moveEvent) => {
-            const point = this._pointFromEvent(moveEvent, true);
+            const point = this._pointFromEvent(moveEvent, !this._editingComponentId);
             this._updatePin(index, point);
         };
 
@@ -569,8 +642,9 @@ class ComponentBuilderModal extends LitElement {
     }
 
     _pinMarkerStyle(pin) {
-        const left = pin.x / this._imageWidth * 100;
-        const top = pin.y / this._imageHeight * 100;
+        const bounds = this._previewBounds();
+        const left = (pin.x - bounds.x) / bounds.width * 100;
+        const top = (pin.y - bounds.y) / bounds.height * 100;
         const pinClass = this._pinClass(pin);
 
         if (pinClass === 'power') {
@@ -582,18 +656,127 @@ class ComponentBuilderModal extends LitElement {
         return `left:${left}%; top:${top}%; background:#22c55e; box-shadow:0 0 0 3px rgba(34, 197, 94, 0.25);`;
     }
 
+    _previewScale() {
+        if (!(this._imageWidth > 0) || !(this._imageHeight > 0)) return 1;
+        const bounds = this._previewBounds();
+        const fit = Math.min(520 / bounds.width, 420 / bounds.height);
+        if (!this._editingComponentId) return Math.min(1, fit);
+        return Math.max(.2, Math.min(8, fit, Math.max(1, 300 / bounds.width)));
+    }
+
+    _previewStyle() {
+        const scale = this._previewScale();
+        const bounds = this._previewBounds();
+        return `width:${bounds.width * scale}px; height:${bounds.height * scale}px;`;
+    }
+
+    _previewBounds() {
+        const content = normalizeContentBounds(this._contentBounds, {
+            width: this._imageWidth,
+            height: this._imageHeight,
+        });
+        const xs = [content.x, content.x + content.width, ...this._pins.map(pin => Number(pin.x)).filter(Number.isFinite)];
+        const ys = [content.y, content.y + content.height, ...this._pins.map(pin => Number(pin.y)).filter(Number.isFinite)];
+        const x = Math.max(0, Math.min(...xs));
+        const y = Math.max(0, Math.min(...ys));
+        return {
+            x,
+            y,
+            width: Math.max(1, Math.min(this._imageWidth, Math.max(...xs)) - x),
+            height: Math.max(1, Math.min(this._imageHeight, Math.max(...ys)) - y),
+        };
+    }
+
+    _customImageStyle() {
+        const scale = this._previewScale();
+        const bounds = this._previewBounds();
+        return `position:absolute;left:${-bounds.x * scale}px;top:${-bounds.y * scale}px;` +
+            `width:${this._imageWidth * scale}px;height:${this._imageHeight * scale}px;max-width:none;max-height:none;`;
+    }
+
+    _mountProviderArtwork() {
+        const mount = this.renderRoot.querySelector('.provider-artwork-mount');
+        if (!mount) return;
+        const component = componentLibrary[this._editingComponentId] || this._visualComponent;
+        let artwork = mount.firstElementChild;
+        if (!artwork || mount.dataset.componentId !== this._editingComponentId) {
+            artwork = createPartVisualElement(component);
+            if (!artwork) return;
+            artwork.classList.add('provider-artwork');
+            mount.replaceChildren(artwork);
+            mount.dataset.componentId = this._editingComponentId;
+        }
+        const scale = this._previewScale();
+        const bounds = this._previewBounds();
+        artwork.style.left = `${-bounds.x * scale}px`;
+        artwork.style.top = `${-bounds.y * scale}px`;
+        artwork.style.width = `${this._imageWidth}px`;
+        artwork.style.height = `${this._imageHeight}px`;
+        artwork.style.transform = `scale(${scale})`;
+    }
+
     _slugify(value) {
         return value.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'custom-component';
     }
 
     _canSave() {
-        return this._imageUrl && this._name.trim() && this._pins.length > 0 &&
+        const hasArtwork = this._editingComponentId || this._imageUrl;
+        return hasArtwork && this._name.trim() && this._pins.length > 0 &&
             this._pins.every(pin => pin.name.trim());
     }
 
     _save() {
         if (!this._canSave()) {
             this._error = 'Add an image, name the component, and define at least one named pin.';
+            return;
+        }
+
+        if (this._editingComponentId) {
+            const current = componentLibrary[this._editingComponentId];
+            if (current?.type === 'custom') {
+                const existingPins = new Map((current.customPins || []).map(pin => [pin.name, pin]));
+                const customPins = this._pins.map(pin => ({
+                    ...(existingPins.get(pin.name) || {}),
+                    name: pin.name,
+                    type: pin.type,
+                    x: Number(pin.x),
+                    y: Number(pin.y),
+                }));
+                const saved = registerCustomComponent({
+                    ...current,
+                    id: this._editingComponentId,
+                    imageUrl: this._imageUrl || current.imageUrl,
+                    size: { width: this._imageWidth, height: this._imageHeight },
+                    contentBounds: this._contentBounds,
+                    customPins,
+                });
+                if (!saved) {
+                    this._error = 'Could not save the custom component pin alignment.';
+                    return;
+                }
+                this.dispatchEvent(new CustomEvent('component-updated', {
+                    detail: { componentId: this._editingComponentId, component: saved },
+                    bubbles: true,
+                    composed: true,
+                }));
+                this._close();
+                return;
+            }
+            const nativePins = Object.fromEntries(this._pins.map(pin => [pin.name, {
+                x: Number(pin.x),
+                y: Number(pin.y),
+            }]));
+            const saved = registerComponentVisualOverride(this._editingComponentId, { nativePins });
+            if (!saved) {
+                this._error = 'Could not save the visual pin alignment.';
+                return;
+            }
+            this.dispatchEvent(new CustomEvent('component-updated', {
+                detail: { componentId: this._editingComponentId, visualOverride: saved },
+                bubbles: true,
+                composed: true,
+            }));
+            this._close();
             return;
         }
 
@@ -616,6 +799,7 @@ class ComponentBuilderModal extends LitElement {
             description: this._description.trim() || 'Custom uploaded component',
             imageUrl: this._imageUrl,
             size: { width: this._imageWidth, height: this._imageHeight },
+            contentBounds: this._contentBounds,
             customPins,
             pinMeta,
             currentDraw_mA: Number(this._currentDraw) || 0,
@@ -634,7 +818,24 @@ class ComponentBuilderModal extends LitElement {
         this._close();
     }
 
+    _resetVisualOverride() {
+        const componentId = this._editingComponentId;
+        if (!componentId || !resetComponentVisualOverride(componentId)) return;
+        this._beginSession(componentId);
+        this._error = '';
+    }
+
     _renderPreview() {
+        if (this._editingComponentId) {
+            return html`
+                <div class="preview-shell">
+                    <div class="preview" style=${this._previewStyle()}>
+                        <div class="provider-artwork-mount"></div>
+                        ${this._renderPinMarkers()}
+                    </div>
+                </div>
+            `;
+        }
         if (!this._imageUrl) {
             return html`
                 <div class="upload-zone">
@@ -649,19 +850,23 @@ class ComponentBuilderModal extends LitElement {
 
         return html`
             <div class="preview-shell">
-                <div class="preview">
-                    <img src=${this._imageUrl} alt="Custom component preview" />
-                    ${this._pins.map((pin, index) => html`
-                        <span
-                            class="pin-marker ${this._pinClass(pin)} ${this._selectedPinIndex === index ? 'selected' : ''}"
-                            style=${this._pinMarkerStyle(pin)}
-                            title=${pin.name}
-                            @pointerdown=${e => this._startPinDrag(e, index)}
-                        ></span>
-                    `)}
+                <div class="preview" style=${this._previewStyle()}>
+                    <img src=${this._imageUrl} alt="Custom component preview" style=${this._customImageStyle()} />
+                    ${this._renderPinMarkers()}
                 </div>
             </div>
         `;
+    }
+
+    _renderPinMarkers() {
+        return this._pins.map((pin, index) => html`
+            <span
+                class="pin-marker ${this._pinClass(pin)} ${this._selectedPinIndex === index ? 'selected' : ''}"
+                style=${this._pinMarkerStyle(pin)}
+                title=${pin.name}
+                @pointerdown=${e => this._startPinDrag(e, index)}
+            ></span>
+        `);
     }
 
     render() {
@@ -675,12 +880,12 @@ class ComponentBuilderModal extends LitElement {
                 @keypress=${this._stopShortcutPropagation}
             >
                 <div class="header">
-                    <div class="title">Custom Component Builder</div>
+                    <div class="title">${this._editingComponentId ? `Edit ${this._name}` : 'Custom Component Builder'}</div>
                     <button class="close-btn" @click=${this._close} title="Close">${faIcon('xmark')}</button>
                 </div>
 
                 <div class="steps">
-                    <div class="step ${this._step === 1 ? 'active' : ''}">1. Upload image</div>
+                    <div class="step ${this._step === 1 ? 'active' : ''}">1. ${this._editingComponentId ? 'Existing artwork' : 'Upload image'}</div>
                     <div class="step ${this._step === 2 ? 'active' : ''}">2. Place pins</div>
                     <div class="step ${this._step === 3 ? 'active' : ''}">3. Rules and metadata</div>
                 </div>
@@ -689,15 +894,25 @@ class ComponentBuilderModal extends LitElement {
                     <div class="layout">
                         <div class="panel">
                             <h3 class="panel-title">Image and pin placement</h3>
-                            ${this._renderPreview()}
-                            ${this._imageUrl ? html`
-                                <p class="meta">
-                                    Image size: ${this._imageWidth} x ${this._imageHeight}px.
+                            ${this._editingComponentId ? html`
+                                <p class="editing-note">
+                                    Drag the markers onto the real artwork. This changes visual alignment only;
+                                    electrical pin names, roles, breadboard spacing, and validation rules stay unchanged.
                                 </p>
-                                <div class="placement-actions">
-                                    <button class="btn" @click=${this._addPin}>${faIcon('plus')} Add pin</button>
-                                </div>
-                                <p class="pin-hint">Drag a pin to move it on a ${PIN_GRID_SIZE}px grid, or set exact X/Y coordinates in the pin table.</p>
+                            ` : ''}
+                            ${this._renderPreview()}
+                            ${this._imageUrl || this._editingComponentId ? html`
+                                <p class="meta">
+                                    Artwork coordinates: ${Math.round(this._imageWidth * 100) / 100} × ${Math.round(this._imageHeight * 100) / 100}.
+                                </p>
+                                ${this._editingComponentId ? html`
+                                    <p class="pin-hint">Drag freely, or enter exact decimal X/Y coordinates in the pin table.</p>
+                                ` : html`
+                                    <div class="placement-actions">
+                                        <button class="btn" @click=${this._addPin}>${faIcon('plus')} Add pin</button>
+                                    </div>
+                                    <p class="pin-hint">Drag a pin to move it on a ${PIN_GRID_SIZE}px grid, or set exact X/Y coordinates in the pin table.</p>
+                                `}
                             ` : ''}
                         </div>
 
@@ -705,15 +920,18 @@ class ComponentBuilderModal extends LitElement {
                             <h3 class="panel-title">Component rules</h3>
                             <label>
                                 Name
-                                <input .value=${this._name} @input=${e => { this._name = e.target.value; }} placeholder="e.g. Soil moisture sensor" />
+                                <input .value=${this._name} ?disabled=${Boolean(this._editingComponentId)}
+                                    @input=${e => { this._name = e.target.value; }} placeholder="e.g. Soil moisture sensor" />
                             </label>
                             <label>
                                 Description
-                                <textarea .value=${this._description} @input=${e => { this._description = e.target.value; }} placeholder="Short description shown in the sidebar"></textarea>
+                                <textarea .value=${this._description} ?disabled=${Boolean(this._editingComponentId)}
+                                    @input=${e => { this._description = e.target.value; }} placeholder="Short description shown in the sidebar"></textarea>
                             </label>
                             <label>
                                 Current draw (mA)
-                                <input type="number" min="0" .value=${String(this._currentDraw)} @input=${e => { this._currentDraw = e.target.value; }} />
+                                <input type="number" min="0" .value=${String(this._currentDraw)} ?disabled=${Boolean(this._editingComponentId)}
+                                    @input=${e => { this._currentDraw = e.target.value; }} />
                             </label>
 
                             <h3 class="panel-title">Pins</h3>
@@ -727,12 +945,14 @@ class ComponentBuilderModal extends LitElement {
                                                 Pin name
                                                 <input
                                                     .value=${pin.name}
+                                                    ?disabled=${Boolean(this._editingComponentId)}
                                                     @input=${e => this._updatePin(index, { name: e.target.value })}
                                                 />
                                             </label>
                                             <label class="pin-type-field">
                                                 Type
-                                                <select .value=${pin.type || PIN.SIGNAL} @change=${e => this._updatePin(index, { type: e.target.value })}>
+                                                <select .value=${pin.type || PIN.SIGNAL} ?disabled=${Boolean(this._editingComponentId)}
+                                                    @change=${e => this._updatePin(index, { type: e.target.value })}>
                                                     ${PIN_TYPES.map(type => html`<option value=${type}>${type}</option>`)}
                                                 </select>
                                             </label>
@@ -742,7 +962,7 @@ class ComponentBuilderModal extends LitElement {
                                                     type="number"
                                                     min="0"
                                                     max=${this._imageWidth}
-                                                    step="1"
+                                                    step=${this._editingComponentId ? '0.01' : '1'}
                                                     .value=${String(pin.x)}
                                                     @input=${e => this._updatePin(index, { x: e.target.value })}
                                                 />
@@ -753,12 +973,14 @@ class ComponentBuilderModal extends LitElement {
                                                     type="number"
                                                     min="0"
                                                     max=${this._imageHeight}
-                                                    step="1"
+                                                    step=${this._editingComponentId ? '0.01' : '1'}
                                                     .value=${String(pin.y)}
                                                     @input=${e => this._updatePin(index, { y: e.target.value })}
                                                 />
                                             </label>
-                                            <button @click=${() => this._removePin(index)} title="Remove pin">${faIcon('trash')}</button>
+                                            ${this._editingComponentId ? '' : html`
+                                                <button @click=${() => this._removePin(index)} title="Remove pin">${faIcon('trash')}</button>
+                                            `}
                                         </div>
                                     `)}
                                 </div>
@@ -769,9 +991,12 @@ class ComponentBuilderModal extends LitElement {
 
                 <div class="footer">
                     ${this._error ? html`<span class="error">${this._error}</span>` : ''}
+                    ${this._editingComponentId && getComponentVisualOverride(this._editingComponentId) ? html`
+                        <button class="btn" @click=${this._resetVisualOverride}>${faIcon('rotateLeft')} Reset alignment</button>
+                    ` : ''}
                     <button class="btn" @click=${this._close}>Cancel</button>
                     <button class="btn primary" @click=${this._save} ?disabled=${!this._canSave()}>
-                        ${faIcon('save')} Save component
+                        ${faIcon('save')} ${this._editingComponentId ? 'Save alignment' : 'Save component'}
                     </button>
                 </div>
             </div>

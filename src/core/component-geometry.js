@@ -7,12 +7,11 @@
  * instance may only translate and rotate.
  */
 
+import { TERMINAL_GRID_Y } from './breadboard-topology.js';
+
 export const DEFAULT_BREADBOARD_PITCH = 10;
 
-export const TERMINAL_ROW_GRID = Object.freeze({
-    A: 0, B: 1, C: 2, D: 3, E: 4,
-    F: 6, G: 7, H: 8, I: 9, J: 10,
-});
+export const TERMINAL_ROW_GRID = TERMINAL_GRID_Y;
 
 const GRID_TERMINAL_ROW = new Map(
     Object.entries(TERMINAL_ROW_GRID).map(([row, gridRow]) => [gridRow, row])
@@ -233,11 +232,23 @@ export const componentGeometry = deepFreeze({
             pins: { '1': { x: 0, y: 5.65 }, '2': { x: 58.8, y: 5.65 } },
         },
         calibration: { from: '1', to: '2', gridDelta: { col: 6, row: 0 } },
-        footprints: [{
-            id: 'axial-6', anchorPin: '1', rotations: [0, 180], preferred: true,
-            pins: { '1': { col: 0, row: 0 }, '2': { col: 6, row: 0 } },
-            bodyBounds: { minCol: 0, maxCol: 6, minRow: -1, maxRow: 1 },
-        }],
+        footprints: [
+            ...[3, 4, 5, 6, 7, 8].map(span => ({
+                id: `axial-${span}`, anchorPin: '1', rotations: [0, 180], preferred: span === 4,
+                visualVariant: 'compact', leadSpan: span,
+                pins: { '1': { col: 0, row: 0 }, '2': { col: span, row: 0 } },
+                // The compact package is deliberately much shorter than
+                // Wokwi's original six-pitch resistor. Other lead spans move
+                // only the leads; the compact body never scales.
+                bodyBounds: { minCol: Math.max(0, span / 2 - 1.05), maxCol: Math.min(span, span / 2 + 1.05), minRow: -.72, maxRow: .72 },
+            })),
+            {
+                id: 'resistor-upright', anchorPin: '1', rotations: [0, 90, 180, 270],
+                visualVariant: 'upright', leadSpan: 1,
+                pins: { '1': { col: 0, row: 0 }, '2': { col: 1, row: 0 } },
+                bodyBounds: { minCol: -.72, maxCol: .72, minRow: -2.9, maxRow: .45 },
+            },
+        ],
     },
 
     'pushbutton-6mm': {

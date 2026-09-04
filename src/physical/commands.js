@@ -2,6 +2,8 @@ import { componentWorldTransform, resolveConnectionWorldPoint } from './model.js
 import { normalizeDegrees } from './geometry.js';
 import { pinExitDirection } from './routing.js';
 import { moveWireRouteEndpoints, translateWireRoute } from './wire-edit.js';
+import { getComponentDef } from '../component-library.js';
+import { canonicalLedColor, recommendedLedResistorOhms } from '../core/led-resistor.js';
 
 function clone(value) {
     return structuredClone(value);
@@ -29,6 +31,36 @@ export function addSurfaceCommand(surface) {
     };
 }
 
+export function setComponentPropertyCommand(componentId, propertyName, value) {
+    return {
+        type: 'set-component-property',
+        componentId,
+        // Property-only changes do not invalidate existing wire routes.
+        wireIds: [],
+        apply(project) {
+            const component = project.components.find(item => item.id === componentId);
+            if (!component) throw new Error(`Unknown component ${componentId}.`);
+            component.properties ||= {};
+            component.properties[propertyName] = clone(value);
+            if (component.definitionId === 'led' && propertyName === 'color') {
+                component.properties.color = canonicalLedColor(value);
+                const helper = project.components.find(item => item.definitionId === 'resistor' &&
+                    item.properties?.provenance?.kind === 'generated' &&
+                    item.properties.provenance.ownerId === componentId);
+                if (helper) {
+                    const controllerId = component.properties.controllerId || helper.properties?.provenance?.controllerId;
+                    const controller = project.components.find(item => item.id === controllerId);
+                    const supplyVoltage = getComponentDef(controller?.definitionId)?.autoWirePins?.logicVoltage || 5;
+                    const ledColor = component.properties.color;
+                    helper.properties ||= {};
+                    helper.properties.value = recommendedLedResistorOhms(ledColor, supplyVoltage);
+                    helper.properties.recommendedFor = { ledColor, supplyVoltage };
+                }
+            }
+        },
+    };
+}
+
 export function deleteComponentCommand(componentId) {
     return {
         type: 'delete-component',
@@ -38,7 +70,12 @@ export function deleteComponentCommand(componentId) {
             project.components = project.components.filter(item => item.id !== componentId);
             project.wires = project.wires.filter(wire =>
                 !(wire.from?.type === 'component-pin' && wire.from.componentId === componentId) &&
-                !(wire.to?.type === 'component-pin' && wire.to.componentId === componentId));
+                !(wire.to?.type === 'component-pin' && wire.to.componentId === componentId) &&
+                !(wire.properties?.logicalTerminals || []).some(ref => ref.componentId === componentId));
+            if (Array.isArray(project.properties?.netlistIntent)) {
+                project.properties.netlistIntent = project.properties.netlistIntent.filter(edge =>
+                    edge.from?.componentId !== componentId && edge.to?.componentId !== componentId);
+            }
         },
     };
 }
@@ -50,6 +87,7 @@ export function mountComponentCommand(componentId, candidate) {
         apply(project) {
             const component = project.components.find(item => item.id === componentId);
             if (!component) throw new Error(`Unknown component ${componentId}.`);
+            if (candidate.footprintId) component.footprintId = candidate.footprintId;
             component.placement = {
                 type: 'surface',
                 surfaceId: candidate.surfaceId,
@@ -136,7 +174,12 @@ export function deleteSelectionCommand({ componentIds = [], wireIds = [] }) {
         apply(project) {
             project.components = project.components.filter(component => !selectedComponents.has(component.id));
             project.wires = project.wires.filter(wire => !selectedWires.has(wire.id) &&
-                ![wire.from, wire.to].some(ref => ref?.type === 'component-pin' && selectedComponents.has(ref.componentId)));
+                ![wire.from, wire.to].some(ref => ref?.type === 'component-pin' && selectedComponents.has(ref.componentId)) &&
+                !(wire.properties?.logicalTerminals || []).some(ref => selectedComponents.has(ref.componentId)));
+            if (Array.isArray(project.properties?.netlistIntent)) {
+                project.properties.netlistIntent = project.properties.netlistIntent.filter(edge =>
+                    !selectedComponents.has(edge.from?.componentId) && !selectedComponents.has(edge.to?.componentId));
+            }
         },
     };
 }

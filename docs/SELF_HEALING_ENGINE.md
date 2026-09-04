@@ -10,7 +10,7 @@ This document answers two questions: which engine owns each decision, and how an
 
 <!-- engine-doc-sync:start -->
 > Generated from `ENGINE_CONTRACT.md` by `npm run docs:sync`. Do not edit this block.
-> Contract fingerprint: `c8d57ccce59d`
+> Contract fingerprint: `54f3c44a83ba`
 
 ## Contract-synchronized command pipeline
 
@@ -37,11 +37,11 @@ flowchart LR
 ```mermaid
 flowchart LR
     CORE["Core invariants<br/>CORE-01<br/>CORE-02<br/>CORE-03<br/>CORE-04<br/>CORE-05<br/>CORE-06<br/>CORE-07<br/>CORE-08"]
-    AW["Auto Wire<br/>AW-01<br/>AW-02<br/>AW-03<br/>AW-04<br/>AW-05<br/>AW-06<br/>AW-07<br/>AW-08<br/>AW-09"]
-    AL["Auto Layout<br/>AL-01<br/>AL-02<br/>AL-03<br/>AL-04<br/>AL-05<br/>AL-06"]
-    BB["Breadboard<br/>BB-01<br/>BB-02<br/>BB-03<br/>BB-04<br/>BB-05<br/>BB-06<br/>BB-07<br/>BB-08<br/>BB-09"]
+    AW["Auto Wire<br/>AW-01<br/>AW-02<br/>AW-03<br/>AW-04<br/>AW-05<br/>AW-06<br/>AW-07<br/>AW-08<br/>AW-09<br/>AW-10"]
+    AL["Auto Layout<br/>AL-01<br/>AL-02<br/>AL-03<br/>AL-04<br/>AL-05<br/>AL-06<br/>AL-07<br/>AL-08"]
+    BB["Breadboard<br/>BB-01<br/>BB-02<br/>BB-03<br/>BB-04<br/>BB-05<br/>BB-06<br/>BB-07<br/>BB-08<br/>BB-09<br/>BB-10<br/>BB-11"]
     CAP["Capacity<br/>CAP-01<br/>CAP-02<br/>CAP-03"]
-    CL["Clean<br/>CL-01<br/>CL-02<br/>CL-03<br/>CL-04<br/>CL-05<br/>CL-06<br/>CL-07<br/>CL-08"]
+    CL["Clean<br/>CL-01<br/>CL-02<br/>CL-03<br/>CL-04<br/>CL-05<br/>CL-06<br/>CL-07<br/>CL-08<br/>CL-09"]
     VAL["Validation<br/>VAL-01<br/>VAL-02<br/>VAL-03<br/>VAL-04<br/>VAL-05<br/>VAL-06<br/>VAL-07<br/>VAL-08"]
     INT["Interaction recovery<br/>INT-01<br/>INT-02<br/>INT-03<br/>INT-04<br/>INT-05"]
     CORE --> AW
@@ -73,11 +73,12 @@ flowchart LR
 - **AW-02 — Compatible pin assignment.** Respect metadata roles: VCC to a compatible supply, GND to ground, I2C SDA/SCL to A4/A5 on Uno, PWM to PWM, analog to analog, and other signals to eligible digital pins.
 - **AW-03 — Nearest compatible header.** Among free compatible Arduino pins, choose the physically nearest pin to the component endpoint. Apply stable pin-name ordering when distances tie. Honor component `avoidPins` metadata.
 - **AW-04 — Shared supply nets.** VCC and GND are shared logical domains, not one independent source net per component. Physical rail fanout is decided later.
-- **AW-05 — Generated helpers.** Required helpers such as LED current-limiting resistors are ordinary logical components with deterministic IDs and provenance. Repeating Auto Wire replaces, rather than duplicates, helpers owned by the same rule.
+- **AW-05 — Generated helpers.** When the safety preference is enabled, LED current-limiting resistors are ordinary logical components with deterministic IDs, color- and voltage-aware values, and provenance. Repeating Auto Wire replaces rather than duplicates them. When disabled, Auto Wire may connect the LED directly but validation must warn about the missing resistor.
 - **AW-06 — Existing breadboard realization.** If mounted parts exist, rebuild the physical plan using every current mount, rotation and anchor hole as a hard constraint. Failure leaves the existing realization untouched.
 - **AW-07 — Direct connectivity.** Do not introduce a breadboard merely to connect endpoints that are clearer and electrically valid as a direct connection.
 - **AW-08 — Net colors.** Ground is black, power is red, conflicts are red-alert, and signal nets receive deterministic distinct palette colors. Every conductor in one logical net shares its net color.
 - **AW-09 — Controller ownership.** With multiple compatible controllers, each auto-wired component has one stable controller owner. Preserve an existing valid owner; otherwise choose deterministically by whole-component role feasibility, remaining capacity, physical distance and stable controller ID. Pin use, I2C reservations and supply domains are independent per controller. Never join controller supply domains automatically.
+- **AW-10 — Breadboard-aware realization.** Auto Wire stores component-pin netlist intent separately from physical conductors. For mounted pins it collapses fixed breadboard groups, generates only the minimum missing jumpers, reserves a distinct free socket per jumper end, and leaves all component placements unchanged. A present but unused breadboard has no effect on direct wiring.
 
 ### Auto Layout
 
@@ -87,6 +88,8 @@ flowchart LR
 - **AL-04 — Mounted order.** Place locked parts first, then the most constrained/largest-pin-count footprints, then use signal-header affinity and stable component IDs as tie breakers.
 - **AL-05 — Multiple-controller clusters.** Auto Layout builds one cluster per controller ownership group, lays out each cluster using its own direct or breadboard branch, then packs clusters without overlap. Explicit cross-controller nets are preserved and routed between clusters; they do not merge ownership or supply domains.
 - **AL-06 — Physical-stage topology preservation.** The independently callable Arrange Components stage changes placement only. It never invokes Auto Wire, creates or removes wires, changes endpoints or pin assignments, inserts helpers, or changes persisted route intent. The user-facing Auto Layout command may compose Auto Wire before this stage.
+- **AL-07 — Board clearance.** In a breadboard scene, every free/off-board component stays outside the breadboard body and clearance margin. Layout may move the board cluster or the free component, but it never mounts that component implicitly.
+- **AL-08 — Generated-helper mounting.** In the combined Auto Layout pipeline only, a helper generated by that same Auto Wire plan may be mounted beside an already-mounted owner when every pin has a legal free socket and body keepouts remain clear. Auto Layout prefers the compact five-hole/four-pitch horizontal resistor, tries other horizontal lead spans next, and uses the upright package only as a legal capacity fallback. Series helpers are oriented as a monotonic incoming jumper → resistor → LED → outgoing jumper chain, leaving jumper groups outside the two components instead of folding the resistor back across the LED. User-placed components are never mounted or have their package changed implicitly. Physical realization runs again after the helper mount so fixed breadboard copper suppresses redundant jumpers.
 
 ### Breadboard
 
@@ -99,6 +102,8 @@ flowchart LR
 - **BB-07 — Jumper connectors.** Infer male-male, male-female or female-female jumper ends from both endpoint connector types. Do not infer gender from wire color or net kind.
 - **BB-08 — Body clearance.** Jumper segments may not run underneath a mounted component body. The source and destination component bodies are excluded only for their own escape segments.
 - **BB-09 — Legal switch placement.** A four-leg pushbutton must use a registered rigid footprint in a legal 90° or 270° trench-straddling orientation. Internally common legs cannot collapse two distinct switch nets into one strip.
+- **BB-10 — Explicit socket state.** Every stable socket has a derived `FREE`, `COMPONENT_PIN`, or `WIRE_ENDPOINT` state. Component-body keepouts and routed paths are separate geometry and never masquerade as socket occupancy.
+- **BB-11 — Resistor variants.** One resistor electrical type has three presentations: the unchanged original Wokwi axial resistor for free-space/direct circuits, a compact horizontal breadboard package occupying exactly five hole positions (four pitch intervals), and an upright breadboard package. Horizontal packages may use other legal lead spans without scaling the body. Changing the physical package never changes pin identity, resistance, or circuit intent.
 
 ### Capacity
 
@@ -116,6 +121,7 @@ flowchart LR
 - **CL-06 — Global route cost.** Among valid routes, minimize Manhattan length plus bend cost and a strong near-overlap penalty. Stable net and endpoint order makes the result deterministic.
 - **CL-07 — Failure isolation.** Failure to resolve one conductor's pins preserves its previous path, routes other conductors and reports the failed conductor ID.
 - **CL-08 — Existing nets only.** Route-only operations consume the current semantic wires and may change route intent/derived paths only. They cannot create, delete, merge, split, or retarget a net.
+- **CL-09 — Surface keepout.** Automatic routes treat a breadboard body as a hard obstacle unless the wire has a physical endpoint on that breadboard. Merely having a breadboard in the scene never permits unrelated direct wires to cross it.
 
 ### Validation
 
@@ -143,7 +149,7 @@ flowchart LR
 | `CORE-01` | Logical and physical connectivity remain separate | `src/core/circuit-model.js`, `src/core/editor-project-adapter.js` | `test/editor-project-adapter.test.js`, `test/project-schema.test.js` |
 | `CORE-02` | Planning and net colors are deterministic | `src/core/auto-wire-planner.js`, `src/services/auto-wire-engine.js` | `test/auto-wire-planner.test.js`, `test/rebuild-integration.test.js` |
 | `CORE-03` | Planning is atomic and one command is one history action | `src/services/auto-wire-engine.js`, `src/store.js` | `test/rebuild-integration.test.js`, `test/breadboard-planner.test.js` |
-| `CORE-04` | Footprints use rigid 2.54 mm geometry | `src/core/component-geometry.js` | `test/component-geometry.test.js`, `test/breadboard-model.test.js` |
+| `CORE-04` | Footprints use rigid 2.54 mm geometry | `src/core/component-geometry.js`, `src/core/part-registry.js` | `test/component-geometry.test.js`, `test/part-registry.test.js` |
 | `CORE-06` | Planning does not wait for DOM registration | `src/circuit-app.js`, `src/core/component-geometry.js` | `test/component-geometry.test.js`, `test/rebuild-integration.test.js` |
 | `CORE-08` | Controller pin capabilities have one component-metadata source | `src/component-library.js`, `src/core/pin-capabilities.js` | `test/ai-agent.test.js` |
 | `AW-02` | Pin roles select compatible active-MCU headers | `src/core/auto-wire-planner.js` | `test/auto-wire-planner.test.js` |
@@ -153,23 +159,29 @@ flowchart LR
 | `AW-06` | Auto Wire preserves mounted footprints | `src/services/auto-wire-engine.js` | `test/rebuild-integration.test.js` |
 | `AW-08` | Net colors are stable and signals remain distinguishable | `src/services/auto-wire-engine.js` | `test/rebuild-integration.test.js` |
 | `AW-09` | Components keep stable controller ownership and independent controller budgets | `src/core/auto-wire-planner.js`, `src/physical/automation.js` | `test/auto-wire-planner.test.js`, `test/physical-automation.test.js` |
+| `AW-10` | Mounted nets collapse fixed groups and reserve only required jumper holes | `src/physical/breadboard-auto-wire.js`, `src/physical/automation.js` | `test/physical-core.test.js`, `test/physical-automation.test.js` |
 | `AL-01` | Direct and breadboard scenes use separate layout branches | `src/services/auto-wire-engine.js` | `test/breadboard-layout.test.js` |
 | `AL-02` | Breadboard placement follows active header affinity | `src/services/auto-wire-engine.js` | `test/breadboard-layout.test.js` |
 | `AL-04` | Constrained footprints are placed before flexible ones | `src/core/breadboard-planner.js` | `test/breadboard-planner.test.js` |
 | `AL-05` | Multiple controllers use independently laid-out non-overlapping clusters | `src/physical/automation.js` | `test/physical-automation.test.js` |
 | `AL-06` | The physical-only arrangement stage preserves semantic wires and route intent | `src/physical/automation.js`, `src/ai/tools.js` | `test/physical-automation.test.js`, `test/ai-agent.test.js` |
-| `BB-01` | Board registry models terminal and rail topology | `src/core/board-registry.js`, `src/breadboard-model.js` | `test/board-registry.test.js`, `test/breadboard-model.test.js` |
+| `AL-07` | Free components remain clear of owned breadboard bodies | `src/physical/automation.js` | `test/physical-automation.test.js` |
+| `AL-08` | Combined Auto Layout may legally mount only its generated helper and then re-realize connectivity | `src/physical/automation.js`, `src/physical/breadboard-auto-wire.js` | `test/physical-automation.test.js` |
+| `BB-01` | One canonical board registry models terminal, trench and rail topology | `src/core/breadboard-topology.js`, `src/core/board-registry.js` | `test/board-registry.test.js`, `test/physical-core.test.js` |
 | `BB-02` | Leads and jumper endpoints have exclusive holes | `src/core/breadboard-planner.js`, `src/services/breadboard-service.js` | `test/breadboard-layout.test.js`, `test/breadboard-planner.test.js` |
 | `BB-04` | Same-strip connectivity suppresses drawn jumpers | `src/core/breadboard-planner.js` | `test/breadboard-planner.test.js` |
 | `BB-05` | Rails use one feeder and unique local branches | `src/core/breadboard-planner.js` | `test/breadboard-layout.test.js`, `test/breadboard-planner.test.js` |
 | `BB-07` | Jumper gender follows connector types | `src/breadboard-model.js` | `test/breadboard-model.test.js` |
 | `BB-09` | Pushbuttons use legal trench-straddling footprints | `src/core/component-geometry.js` | `test/component-geometry.test.js`, `test/breadboard-layout.test.js` |
+| `BB-10` | Stable holes expose exclusive derived occupancy | `src/physical/placement.js`, `src/editor/interaction-controller.js` | `test/physical-core.test.js` |
+| `BB-11` | Resistors support compact variable-span and upright physical variants | `src/core/component-geometry.js`, `src/components/circuit-canvas.js` | `test/physical-core.test.js` |
 | `CAP-01` | Capacity requires a complete legal placement | `src/core/breadboard-planner.js` | `test/breadboard-planner.test.js` |
 | `CAP-02` | Capacity alternatives are proven before offering them | `src/core/breadboard-planner.js` | `test/breadboard-planner.test.js`, `test/rebuild-integration.test.js` |
 | `CL-02` | Non-board pins escape before turning | `src/services/routing-engine.js` | `test/breadboard-layout.test.js` |
 | `CL-03` | Header wires fan into distinct lanes | `src/services/routing-engine.js` | `test/breadboard-layout.test.js` |
 | `CL-05` | Same-board jumpers use short body-clear local routes | `src/services/routing-engine.js` | `test/breadboard-layout.test.js` |
 | `CL-08` | Route-only operations preserve existing semantic nets | `src/ai/tools.js`, `src/physical/routing.js` | `test/ai-agent.test.js`, `test/physical-interaction.test.js` |
+| `CL-09` | Unrelated automatic wires route around breadboard bodies | `src/physical/routing.js` | `test/physical-core.test.js` |
 | `VAL-01` | Validation distinguishes logical and physical views | `src/services/validation-engine.js` | `test/project-schema.test.js`, `test/breadboard-layout.test.js` |
 | `VAL-05` | Breadboard legality produces validation findings | `src/services/validation-engine.js` | `test/breadboard-layout.test.js`, `test/breadboard-planner.test.js` |
 | `VAL-08` | Exact controller-pin mutations enforce metadata capabilities transactionally | `src/core/pin-capabilities.js`, `src/ai/tools.js` | `test/ai-agent.test.js` |

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:svg="http://www.w3.org/2000/svg" xmlns="http://www.w3.org/2000/svg" version="1.2" height="0.099274039in" y="0in" viewBox="0 0 11.723283 7.1477309" width="0.16282327in" id="elera-fritzing-upright-resistor-module-id-svg2" gorn="0" x="0in">
+  <desc id="elera-fritzing-upright-resistor-module-id-desc3">
+    <referenceFile>Widerstand_Steckplatine.svg</referenceFile>
+  </desc>
+  
+  <defs id="elera-fritzing-upright-resistor-module-id-defs33"/>
+  <g id="elera-fritzing-upright-resistor-module-id-breadboard">
+    <path d="m 4.1738565,3.5446746 -0.4185318,0" gorn="0.3" id="elera-fritzing-upright-resistor-module-id-path4" stroke-linejoin="round" stroke-linecap="round" stroke-width="3.04393029" stoke="#8c8c8c" fill="none"/>
+    <path d="m 9.7408155,3.5446746 0.4185425,0" gorn="0.4" id="elera-fritzing-upright-resistor-module-id-path6" stroke-linejoin="round" stroke-linecap="round" stroke-width="3.04393029" stoke="#8c8c8c" fill="none"/>
+    <rect x="3.4672716" gorn="0.5" id="elera-fritzing-upright-resistor-module-id-connector0pin" width="0.19622521" fill="none" y="2.4498327" height="0.75290698"/>
+    <rect x="10.600435" gorn="0.6" id="elera-fritzing-upright-resistor-module-id-connector1pin" width="0.14591819" fill="none" y="2.3570001" height="0.82581675"/>
+    <line y1="3.5446749" gorn="0.7" id="elera-fritzing-upright-resistor-module-id-connector0leg" y2="3.5446749" stroke-linecap="round" stroke-width="1.55348933" stoke="#8c8c8c" fill="none" x2="3.5762866" x1="3.4672716"/>
+    <line y1="3.5578644" gorn="0.8" id="elera-fritzing-upright-resistor-module-id-connector1leg" y2="3.5578644" stroke-linecap="round" stroke-width="1.40202272" stoke="#8c8c8c" fill="none" x2="10.931335" x1="11.012288"/>
+    <path d="m 3.4672718,3.5446746 7.7170952,0" gorn="0.9" id="elera-fritzing-upright-resistor-module-id-path17" style="fill:#8c8c8c;fill-opacity:1;stroke:#8c8c8c;stroke-width:1.55348933"/>
+    <ellipse gorn="0.13.0.0.0.0" id="elera-fritzing-upright-resistor-module-id-path3489" cx="3.755461" rx="3.755461" style="fill:#decd87;fill-opacity:1" cy="3.5738652" ry="3.5738676"/>
+    <ellipse gorn="0.14" id="elera-fritzing-upright-resistor-module-id-path3491" cx="3.7533064" rx="1.064446" style="fill:#8c8c8c;fill-opacity:1" cy="3.4809439" ry="0.99805343"/>
+    <rect x="4.3464618" gorn="0.15" id="elera-fritzing-upright-resistor-module-id-rect3493" width="4.7059064" style="fill:#8c8c8c;fill-opacity:1" y="2.7626579" height="1.5360168"/>
+    <ellipse gorn="0.16" id="elera-fritzing-upright-resistor-module-id-path4306" cx="3.7433836" rx="3.583926" style="fill:#8c8c8c;fill-opacity:0;stroke:#000000;stroke-width:0.13894421;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" cy="3.5855815" ry="3.4151924"/>
+    <rect height="1.4400008" y="1.0277292" style="fill:#ad9f4e" width="0.72000039" id="elera-fritzing-upright-resistor-module-id-gold-band" gorn="0.5" x="5.7600031"/>
+    <rect x="3.9600022" gorn="0.5" id="elera-fritzing-upright-resistor-module-id-band-rd-multiplier" width="1.0800006" style="fill:#8a3d06" y="1.0277292" height="1.4400008"/>
+    <rect height="1.4400008" y="1.0277292" style="fill:#c40808" width="1.0800006" id="elera-fritzing-upright-resistor-module-id-band-2-nd" gorn="0.5" x="2.5200014"/>
+    <rect x="1.0800006" gorn="0.5" id="elera-fritzing-upright-resistor-module-id-band-1-st" width="1.0800006" style="fill:#c40808" y="1.0277292" height="1.4400008"/>
+  </g>
+</svg>

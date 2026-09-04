@@ -1,0 +1,587 @@
+{
+  "format": "elera-fritzing-part-v1",
+  "id": "fritzing-cytron-rekabit-1",
+  "name": "Cytron Rekabit",
+  "description": "Imported Fritzing part: Cytron Rekabit",
+  "category": "board",
+  "sourcePart": "part.cytron_rekabit.fzp",
+  "library": {
+    "source": "fritzing",
+    "family": "cytron-rekabit",
+    "variant": "variant 2",
+    "taxonomy": "part.dip.40.pins",
+    "tags": [
+      "grove",
+      "microbit",
+      "fritzing core",
+      "micro:bit",
+      "servo",
+      "cytron"
+    ]
+  },
+  "artwork": {
+    "svgUrl": "/converted-parts/fritzing-cytron-rekabit-1/breadboard.svg",
+    "sourceSize": {
+      "width": 4087.9726,
+      "height": 2837.064
+    },
+    "physicalSizeMm": {
+      "width": 103.834504,
+      "height": 72.061426
+    }
+  },
+  "pins": [
+    {
+      "id": "1",
+      "label": "GND",
+      "connector": "female",
+      "electricalRole": "GND",
+      "autoWireRequirement": "GND",
+      "capabilities": [
+        "ground"
+      ],
+      "artwork": {
+        "x": 295.932555,
+        "y": 1567.33745
+      },
+      "fritzingConnectorId": "connector0"
+    },
+    {
+      "id": "2",
+      "label": "3V3",
+      "connector": "female",
+      "electricalRole": "VCC",
+      "autoWireRequirement": "VCC",
+      "capabilities": [
+        "power"
+      ],
+      "artwork": {
+        "x": 332.90038,
+        "y": 1280.646195
+      },
+      "fritzingConnectorId": "connector1"
+    },
+    {
+      "id": "3",
+      "label": "P1",
+      "connector": "female",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 351.684945,
+        "y": 1289.88865
+      },
+      "fritzingConnectorId": "connector2"
+    },
+    {
+      "id": "4",
+      "label": "P0",
+      "connector": "female",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 397.594725,
+        "y": 1299.12995
+      },
+      "fritzingConnectorId": "connector3"
+    },
+    {
+      "id": "5",
+      "label": "GND",
+      "connector": "female",
+      "electricalRole": "GND",
+      "autoWireRequirement": "GND",
+      "capabilities": [
+        "ground"
+      ],
+      "artwork": {
+        "x": 570.22505,
+        "y": 1280.6462
+      },
+      "fritzingConnectorId": "connector4"
+    },
+    {
+      "id": "6",
+      "label": "3V3",
+      "connector": "female",
+      "electricalRole": "VCC",
+      "autoWireRequirement": "VCC",
+      "capabilities": [
+        "power"
+      ],
+      "artwork": {
+        "x": 607.1929,
+        "y": 1280.6462
+      },
+      "fritzingConnectorId": "connector5"
+    },
+    {
+      "id": "7",
+      "label": "P9",
+      "connector": "female",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 625.9775,
+        "y": 1289.88865
+      },
+      "fritzingConnectorId": "connector6"
+    },
+    {
+      "id": "8",
+      "label": "P1",
+      "connector": "female",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 671.8873,
+        "y": 1299.12995
+      },
+      "fritzingConnectorId": "connector7"
+    },
+    {
+      "id": "9",
+      "label": "GND",
+      "connector": "female",
+      "electricalRole": "GND",
+      "autoWireRequirement": "GND",
+      "capabilities": [
+        "ground"
+      ],
+      "artwork": {
+        "x": 842.68855,
+        "y": 1280.64615
+      },
+      "fritzingConnectorId": "connector8"
+    },
+    {
+      "id": "10",
+      "label": "3V3",
+      "connector": "female",
+      "electricalRole": "VCC",
+      "autoWireRequirement": "VCC",
+      "capabilities": [
+        "power"
+      ],
+      "artwork": {
+        "x": 879.65635,
+        "y": 1280.6462
+      },
+      "fritzingConnectorId": "connector9"
+    },
+    {
+      "id": "11",
+      "label": "P12",
+      "connector": "female",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 898.44095,
+        "y": 1289.88865
+      },
+      "fritzingConnectorId": "connector10"
+    },
+    {
+      "id": "12",
+      "label": "P2",
+      "connector": "female",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 944.35075,
+        "y": 1299.12995
+      },
+      "fritzingConnectorId": "connector11"
+    },
+    {
+      "id": "13",
+      "label": "GND",
+      "connector": "female",
+      "electricalRole": "GND",
+      "autoWireRequirement": "GND",
+      "capabilities": [
+        "ground"
+      ],
+      "artwork": {
+        "x": 1122.3061,
+        "y": 1280.6462
+      },
+      "fritzingConnectorId": "connector12"
+    },
+    {
+      "id": "14",
+      "label": "3V3",
+      "connector": "female",
+      "electricalRole": "VCC",
+      "autoWireRequirement": "VCC",
+      "capabilities": [
+        "power"
+      ],
+      "artwork": {
+        "x": 1159.27395,
+        "y": 1280.6462
+      },
+      "fritzingConnectorId": "connector13"
+    },
+    {
+      "id": "15",
+      "label": "P14",
+      "connector": "female",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 1178.05855,
+        "y": 1289.88865
+      },
+      "fritzingConnectorId": "connector14"
+    },
+    {
+      "id": "16",
+      "label": "P13",
+      "connector": "female",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 1223.96835,
+        "y": 1299.12995
+      },
+      "fritzingConnectorId": "connector15"
+    },
+    {
+      "id": "17",
+      "label": "GND",
+      "connector": "female",
+      "electricalRole": "GND",
+      "autoWireRequirement": "GND",
+      "capabilities": [
+        "ground"
+      ],
+      "artwork": {
+        "x": 1393.1383,
+        "y": 1280.6462
+      },
+      "fritzingConnectorId": "connector16"
+    },
+    {
+      "id": "18",
+      "label": "3V3",
+      "connector": "female",
+      "electricalRole": "VCC",
+      "autoWireRequirement": "VCC",
+      "capabilities": [
+        "power"
+      ],
+      "artwork": {
+        "x": 1430.10615,
+        "y": 1280.6462
+      },
+      "fritzingConnectorId": "connector17"
+    },
+    {
+      "id": "19",
+      "label": "P16",
+      "connector": "female",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 1448.89075,
+        "y": 1289.88865
+      },
+      "fritzingConnectorId": "connector18"
+    },
+    {
+      "id": "20",
+      "label": "P15",
+      "connector": "female",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 1494.80055,
+        "y": 1299.12995
+      },
+      "fritzingConnectorId": "connector19"
+    },
+    {
+      "id": "21",
+      "label": "GND",
+      "connector": "female",
+      "electricalRole": "GND",
+      "autoWireRequirement": "GND",
+      "capabilities": [
+        "ground"
+      ],
+      "artwork": {
+        "x": 1670.8913,
+        "y": 1278.33935
+      },
+      "fritzingConnectorId": "connector20"
+    },
+    {
+      "id": "22",
+      "label": "3V3",
+      "connector": "female",
+      "electricalRole": "VCC",
+      "autoWireRequirement": "VCC",
+      "capabilities": [
+        "power"
+      ],
+      "artwork": {
+        "x": 1707.85915,
+        "y": 1278.33935
+      },
+      "fritzingConnectorId": "connector21"
+    },
+    {
+      "id": "23",
+      "label": "SDA",
+      "connector": "female",
+      "electricalRole": "I2C_SDA",
+      "autoWireRequirement": "I2C_SDA",
+      "capabilities": [
+        "i2c-sda"
+      ],
+      "artwork": {
+        "x": 1726.6438,
+        "y": 1287.5818
+      },
+      "fritzingConnectorId": "connector22"
+    },
+    {
+      "id": "24",
+      "label": "SCL",
+      "connector": "female",
+      "electricalRole": "I2C_SCL",
+      "autoWireRequirement": "I2C_SCL",
+      "capabilities": [
+        "i2c-scl"
+      ],
+      "artwork": {
+        "x": 1772.5536,
+        "y": 1296.82305
+      },
+      "fritzingConnectorId": "connector23"
+    },
+    {
+      "id": "25",
+      "label": "SV1",
+      "connector": "female",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 3396.586959,
+        "y": 128.328009
+      },
+      "fritzingConnectorId": "connector24"
+    },
+    {
+      "id": "26",
+      "label": "VIN",
+      "connector": "female",
+      "electricalRole": "VCC",
+      "autoWireRequirement": "VCC",
+      "capabilities": [
+        "power"
+      ],
+      "artwork": {
+        "x": 3396.586959,
+        "y": 227.945499
+      },
+      "fritzingConnectorId": "connector25"
+    },
+    {
+      "id": "27",
+      "label": "GND",
+      "connector": "female",
+      "electricalRole": "GND",
+      "autoWireRequirement": "GND",
+      "capabilities": [
+        "ground"
+      ],
+      "artwork": {
+        "x": 3396.240259,
+        "y": 328.077519
+      },
+      "fritzingConnectorId": "connector26"
+    },
+    {
+      "id": "28",
+      "label": "SV2",
+      "connector": "female",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 3496.599159,
+        "y": 128.328009
+      },
+      "fritzingConnectorId": "connector27"
+    },
+    {
+      "id": "29",
+      "label": "VIN",
+      "connector": "female",
+      "electricalRole": "VCC",
+      "autoWireRequirement": "VCC",
+      "capabilities": [
+        "power"
+      ],
+      "artwork": {
+        "x": 3496.599159,
+        "y": 227.945499
+      },
+      "fritzingConnectorId": "connector28"
+    },
+    {
+      "id": "30",
+      "label": "GND",
+      "connector": "female",
+      "electricalRole": "GND",
+      "autoWireRequirement": "GND",
+      "capabilities": [
+        "ground"
+      ],
+      "artwork": {
+        "x": 3496.239759,
+        "y": 328.077519
+      },
+      "fritzingConnectorId": "connector29"
+    },
+    {
+      "id": "31",
+      "label": "SV3",
+      "connector": "female",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 3596.610859,
+        "y": 128.328009
+      },
+      "fritzingConnectorId": "connector30"
+    },
+    {
+      "id": "32",
+      "label": "VIN",
+      "connector": "female",
+      "electricalRole": "VCC",
+      "autoWireRequirement": "VCC",
+      "capabilities": [
+        "power"
+      ],
+      "artwork": {
+        "x": 3596.610859,
+        "y": 227.945499
+      },
+      "fritzingConnectorId": "connector31"
+    },
+    {
+      "id": "33",
+      "label": "GND",
+      "connector": "female",
+      "electricalRole": "GND",
+      "autoWireRequirement": "GND",
+      "capabilities": [
+        "ground"
+      ],
+      "artwork": {
+        "x": 3596.239059,
+        "y": 328.077519
+      },
+      "fritzingConnectorId": "connector32"
+    },
+    {
+      "id": "34",
+      "label": "SV4",
+      "connector": "female",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 3696.623059,
+        "y": 128.328009
+      },
+      "fritzingConnectorId": "connector33"
+    },
+    {
+      "id": "35",
+      "label": "VIN",
+      "connector": "female",
+      "electricalRole": "VCC",
+      "autoWireRequirement": "VCC",
+      "capabilities": [
+        "power"
+      ],
+      "artwork": {
+        "x": 3696.623059,
+        "y": 227.945499
+      },
+      "fritzingConnectorId": "connector34"
+    },
+    {
+      "id": "36",
+      "label": "GND",
+      "connector": "female",
+      "electricalRole": "GND",
+      "autoWireRequirement": "GND",
+      "capabilities": [
+        "ground"
+      ],
+      "artwork": {
+        "x": 3696.238559,
+        "y": 328.077519
+      },
+      "fritzingConnectorId": "connector35"
+    },
+    {
+      "id": "37",
+      "label": "M2B",
+      "connector": "female",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 3894.797514,
+        "y": 763.947626
+      },
+      "fritzingConnectorId": "connector36"
+    },
+    {
+      "id": "38",
+      "label": "M2A",
+      "connector": "female",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 3894.797101,
+        "y": 960.80307
+      },
+      "fritzingConnectorId": "connector37"
+    },
+    {
+      "id": "39",
+      "label": "M1B",
+      "connector": "female",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 3895.938255,
+        "y": 1335.486174
+      },
+      "fritzingConnectorId": "connector38"
+    },
+    {
+      "id": "40",
+      "label": "M1A",
+      "connector": "female",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 3895.93854,
+        "y": 1532.341777
+      },
+      "fritzingConnectorId": "connector39"
+    }
+  ],
+  "packages": [],
+  "propertyDefinitions": [],
+  "connectorType": "female",
+  "currentDraw_mA": 0,
+  "breadboardRequired": false,
+  "pinless": false
+}

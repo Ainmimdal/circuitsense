@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { componentLibrary } from '../src/component-library.js';
 import { getComponentGeometry } from '../src/core/component-geometry.js';
-import { defaultFootprintForComponent } from '../src/physical/footprints.js';
+import { defaultFootprintForComponent, footprintsForComponent } from '../src/physical/footprints.js';
 
 const wokwiTags = [
     'wokwi-7segment',
@@ -88,7 +88,10 @@ test('every breadboard-mountable component has rigid geometry and every MCU decl
         if (component.isBreadboard) continue;
         assert.equal(typeof component.breadboard?.mountable, 'boolean', component.id);
         if (component.breadboard?.mountable) {
-            assert.ok(defaultFootprintForComponent(component.id) || getComponentGeometry(component.id), component.id);
+            const footprint = defaultFootprintForComponent(component.id);
+            assert.ok(footprint || getComponentGeometry(component.id), component.id);
+            assert.ok(footprintsForComponent(component.id)
+                .some(candidate => candidate.placementMode === 'breadboard-rigid'), component.id);
         }
         else assert.ok(component.breadboard.reason, component.id);
     }

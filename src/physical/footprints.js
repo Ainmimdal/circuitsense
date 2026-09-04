@@ -1,5 +1,6 @@
 import { BREADBOARD_PITCH_MM } from './geometry.js';
 import { componentLibrary } from '../component-library.js';
+import { getCalibratedPackageDefinitions, getPartDefinition, listCalibratedPackageDefinitions } from '../core/part-registry.js';
 
 function deepFreeze(value) {
     if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
@@ -117,9 +118,26 @@ const COMPONENT_DEFINITIONS = deepFreeze({
         defaultFootprintId: 'led-2.54',
         visual: { kind: 'led', color: '#ef4444' },
     },
+    resistor: {
+        id: 'resistor',
+        name: 'Resistor',
+        electricalPins: [
+            { id: '1', name: 'Pin 1', role: 'signal' },
+            { id: '2', name: 'Pin 2', role: 'signal' },
+        ],
+        // Free placement preserves the unmodified Wokwi element. Snapping or
+        // Auto Layout selects one of the separate rigid package variants.
+        defaultFootprintId: 'resistor-wokwi-original',
+        visual: { kind: 'wokwi', label: 'Resistor' },
+    },
 });
 
+const CALIBRATED_FOOTPRINTS = Object.fromEntries(
+    listCalibratedPackageDefinitions().map(footprint => [footprint.id, footprint])
+);
+
 const FOOTPRINTS = deepFreeze({
+    ...CALIBRATED_FOOTPRINTS,
     'dip8-300mil': DIP8_300MIL,
     'led-2.54': {
         id: 'led-2.54',
@@ -132,6 +150,21 @@ const FOOTPRINTS = deepFreeze({
             { pinId: 'A', x: BREADBOARD_PITCH_MM, y: 0, mount: 'breadboard-hole' },
         ],
         routingBounds: { x: -1.8, y: -4.8, width: BREADBOARD_PITCH_MM + 3.6, height: 6.6 },
+    },
+    'resistor-wokwi-original': {
+        id: 'resistor-wokwi-original',
+        componentDefinitionId: 'resistor',
+        placementMode: 'free',
+        anchorPinId: '1',
+        validRotations: [0, 90, 180, 270],
+        pins: [
+            { pinId: '1', x: 0, y: 1.495, mount: 'terminal' },
+            { pinId: '2', x: 15.5575, y: 1.495, mount: 'terminal' },
+        ],
+        routingBounds: { x: 0, y: 0, width: 15.645, height: 3 },
+        artworkPlacement: { x: 0, y: 0, scale: 25.4 / 96, rotation: 0 },
+        visualVariant: 'wokwi-original',
+        leadSpan: 6,
     },
 });
 
@@ -156,8 +189,23 @@ function libraryPinIds(component) {
 
 function generatedSize(component, pinCount) {
     if (component.id === 'arduino-uno') return { width: 54, height: 39 };
-    const aspect = Math.max(.55, Math.min(2.8, Number(component.size?.width || 120) / Number(component.size?.height || 80)));
-    const area = Math.max(180, Math.min(950, Number(component.size?.width || 120) * Number(component.size?.height || 80) * .035));
+    const physicalSize = component.physicalSizeMm;
+    if (Number(physicalSize?.width) > 0 && Number(physicalSize?.height) > 0) {
+        return { width: Number(physicalSize.width), height: Number(physicalSize.height) };
+    }
+    const content = component.contentBounds || {
+        x: 0, y: 0,
+        width: Number(component.size?.width || 120),
+        height: Number(component.size?.height || 80),
+    };
+    const xs = [Number(content.x || 0), Number(content.x || 0) + Number(content.width || 1),
+        ...(component.customPins || []).map(pin => Number(pin.x)).filter(Number.isFinite)];
+    const ys = [Number(content.y || 0), Number(content.y || 0) + Number(content.height || 1),
+        ...(component.customPins || []).map(pin => Number(pin.y)).filter(Number.isFinite)];
+    const visualWidth = Math.max(...xs) - Math.min(...xs);
+    const visualHeight = Math.max(...ys) - Math.min(...ys);
+    const aspect = Math.max(.55, Math.min(2.8, visualWidth / visualHeight));
+    const area = Math.max(180, Math.min(950, visualWidth * visualHeight * .035));
     const width = Math.max(16, Math.min(66, Math.sqrt(area * aspect), Math.max(16, Math.ceil(pinCount / 2) * 2.25 + 4)));
     return { width, height: Math.max(11, Math.min(44, area / width)) };
 }
@@ -182,16 +230,33 @@ function generatedPhysicalDefinition(id) {
     if (generatedComponents.has(id)) return generatedComponents.get(id);
     const source = componentLibrary[id];
     if (!source || source.isBreadboard) return null;
-    const pinIds = libraryPinIds(source);
-    const footprintId = `free:${id}`;
+    const part = getPartDefinition(id);
+    const pinIds = part?.pins?.map(pin => pin.id) || libraryPinIds(source);
+    const calibratedPackages = getCalibratedPackageDefinitions(id);
+    const calibratedFootprint = calibratedPackages.find(footprint => footprint.id === source.breadboard?.footprintId)
+        || calibratedPackages.find(footprint => footprint.preferred)
+        || calibratedPackages[0];
+    const footprintId = calibratedFootprint?.id || `free:${id}`;
     const size = generatedSize(source, pinIds.length);
     const definition = deepFreeze({
         id,
         name: source.name || id,
-        electricalPins: pinIds.map(pinId => ({ id: pinId, name: pinId })),
+        electricalPins: part?.pins?.map(pin => ({
+            id: pin.id,
+            name: pin.label,
+            role: pin.electricalRole,
+            capabilities: pin.capabilities,
+        })) || pinIds.map(pinId => ({ id: pinId, name: pinId })),
         defaultFootprintId: footprintId,
         visual: { kind: source.isControllerBoard ? 'controller-board' : 'module', label: source.name || id },
     });
+    if (calibratedFootprint) {
+        for (const packageDefinition of calibratedPackages) {
+            if (!FOOTPRINTS[packageDefinition.id]) generatedFootprints.set(packageDefinition.id, packageDefinition);
+        }
+        generatedComponents.set(id, definition);
+        return definition;
+    }
     const footprint = deepFreeze({
         id: footprintId,
         componentDefinitionId: id,
@@ -213,7 +278,18 @@ export function getPhysicalComponentDefinition(id) {
 export function getFootprintDefinition(id) {
     if (FOOTPRINTS[id]) return FOOTPRINTS[id];
     if (generatedFootprints.has(id)) return generatedFootprints.get(id);
-    if (String(id || '').startsWith('free:')) generatedPhysicalDefinition(String(id).slice(5));
+    if (String(id || '').startsWith('free:')) {
+        const definition = generatedPhysicalDefinition(String(id).slice(5));
+        const legacy = generatedFootprints.get(id);
+        if (legacy) return legacy;
+        // Projects saved before calibrated rigid packages were introduced use
+        // free:<component-id>. Resolve that legacy ID to the component's current
+        // default package so its pins and existing wire endpoints remain valid.
+        const replacementId = definition?.defaultFootprintId;
+        if (replacementId && replacementId !== id) {
+            return FOOTPRINTS[replacementId] || generatedFootprints.get(replacementId) || null;
+        }
+    }
     return generatedFootprints.get(id) || null;
 }
 
@@ -244,6 +320,16 @@ export function registerRuntimeRoutingFootprints(footprints = []) {
 export function defaultFootprintForComponent(componentDefinitionId) {
     const component = getPhysicalComponentDefinition(componentDefinitionId);
     return component ? getFootprintDefinition(component.defaultFootprintId) : null;
+}
+
+export function footprintsForComponent(componentDefinitionId) {
+    const definition = getPhysicalComponentDefinition(componentDefinitionId);
+    if (!definition) return [];
+    // Building the definition registers every calibrated physical variant.
+    const variants = getCalibratedPackageDefinitions(componentDefinitionId)
+        .map(item => getFootprintDefinition(item.id))
+        .filter(Boolean);
+    return variants.length ? variants : [getFootprintDefinition(definition.defaultFootprintId)].filter(Boolean);
 }
 
 export function listPhysicalComponentDefinitions() {

@@ -1,4 +1,5 @@
 import { PIN, getComponentDef } from '../component-library.js';
+import { canonicalLedColor, recommendedLedResistorOhms } from './led-resistor.js';
 
 const clone = value => typeof structuredClone === 'function'
     ? structuredClone(value)
@@ -153,7 +154,10 @@ function chooseController(component, states, preservedOwner, pinPositionFor) {
             stableCompare(a.state.controller.id, b.state.controller.id))[0] || null;
 }
 
-export function planAutoWire({ components = [], connections = [], componentIds = null, pinPositionFor = null } = {}) {
+export function planAutoWire({
+    components = [], connections = [], componentIds = null, pinPositionFor = null,
+    addLedResistors = true,
+} = {}) {
     const sourceComponents = clone(components);
     const sourceConnections = clone(connections);
     let nextComponents = clone(components);
@@ -220,11 +224,15 @@ export function planAutoWire({ components = [], connections = [], componentIds =
         plannedComponent.controllerId = plan.controller.id;
         const definition = getComponentDef(component.componentId);
         for (const { pinId, type, boardPin } of plan.assignments) {
-            if (definition.needsResistor && [PIN.DIGITAL, PIN.PWM, PIN.SIGNAL].includes(type)) {
+            if (addLedResistors && definition.needsResistor && [PIN.DIGITAL, PIN.PWM, PIN.SIGNAL].includes(type)) {
                 const resistorId = `generated-resistor:${component.id}`;
+                const ledColor = canonicalLedColor(component.properties?.color);
+                const supplyVoltage = getComponentDef(plan.controller.componentId)?.autoWirePins?.logicVoltage || 5;
+                const resistorValue = recommendedLedResistorOhms(ledColor, supplyVoltage);
                 nextComponents.push({
                     id: resistorId, componentId: 'resistor', controllerId: plan.controller.id,
                     x: Number(component.x) || 0, y: Number(component.y) || 0, rotation: 0,
+                    properties: { value: resistorValue, recommendedFor: { ledColor, supplyVoltage } },
                     provenance: { kind: 'generated', ownerId: component.id, controllerId: plan.controller.id,
                         ruleId: 'current-limiting-resistor' },
                 });

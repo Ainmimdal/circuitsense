@@ -38,20 +38,20 @@ test('keeps pitch configurable while defaulting to ten pixels', () => {
 });
 
 test('maps every Nano header pin to one rigid breadboard footprint', () => {
-    const holes = deriveFootprintHoles('arduino-nano', { anchorHole: 'A2' });
+    const holes = deriveFootprintHoles('arduino-nano', { anchorHole: 'B2' });
     assert.equal(Object.keys(holes).length, 30);
     assert.deepEqual(
         { '12': holes['12'], '11': holes['11'], '1': holes['1'], '13': holes['13'], VIN: holes.VIN },
-        { '12': 'A2', '11': 'A3', '1': 'A16', '13': 'F2', VIN: 'F16' },
+        { '12': 'B2', '11': 'B3', '1': 'B16', '13': 'F2', VIN: 'F16' },
     );
 });
 
 test('maps every Nano RP2040 header pin to the Nano form-factor footprint', () => {
-    const holes = deriveFootprintHoles('nano-rp2040-connect', { anchorHole: 'A2' });
+    const holes = deriveFootprintHoles('nano-rp2040-connect', { anchorHole: 'B2' });
     assert.equal(Object.keys(holes).length, 30);
     assert.deepEqual(
         { D12: holes.D12, D11: holes.D11, RX: holes.RX, D13: holes.D13, VIN: holes.VIN },
-        { D12: 'A2', D11: 'A3', RX: 'A16', D13: 'F2', VIN: 'F16' },
+        { D12: 'B2', D11: 'B3', RX: 'B16', D13: 'F2', VIN: 'F16' },
     );
 });
 
@@ -59,20 +59,20 @@ test('derives rigid holes for every remaining through-hole and DIP visual', () =
     assert.deepEqual(deriveFootprintHoles('ir-receiver', { anchorHole: 'B2' }), {
         GND: 'B2', VCC: 'B3', DAT: 'B4',
     });
-    assert.deepEqual(deriveFootprintHoles('dip-switch-8', { anchorHole: 'B2' }), {
-        '1b': 'B2', '2b': 'B3', '3b': 'B4', '4b': 'B5', '5b': 'B6', '6b': 'B7', '7b': 'B8', '8b': 'B9',
+    assert.deepEqual(deriveFootprintHoles('dip-switch-8', { anchorHole: 'C2' }), {
+        '1b': 'C2', '2b': 'C3', '3b': 'C4', '4b': 'C5', '5b': 'C6', '6b': 'C7', '7b': 'C8', '8b': 'C9',
         '1a': 'F2', '2a': 'F3', '3a': 'F4', '4a': 'F5', '5a': 'F6', '6a': 'F7', '7a': 'F8', '8a': 'F9',
     });
     assert.deepEqual(deriveFootprintHoles('seven-segment', { anchorHole: 'A2' }), {
         G: 'A2', F: 'A3', 'COM.2': 'A4', A: 'A5', B: 'A6',
-        E: 'G2', D: 'G3', 'COM.1': 'G4', C: 'G5', DP: 'G6',
+        E: 'F2', D: 'F3', 'COM.1': 'F4', C: 'F5', DP: 'F6',
     });
     assert.deepEqual(deriveFootprintHoles('relay-dpdt', { anchorHole: 'E2' }), {
         NO2: 'E2', NC2: 'E4', P2: 'E6', COIL2: 'E9',
-        NO1: 'G2', NC1: 'G4', P1: 'G6', COIL1: 'G9',
+        NO1: 'F2', NC1: 'F4', P1: 'F6', COIL1: 'F9',
     });
-    assert.deepEqual(deriveFootprintHoles('led-bar-graph', { anchorHole: 'D2', rotation: 90 }), {
-        A10: 'D2', A9: 'D3', A8: 'D4', A7: 'D5', A6: 'D6', A5: 'D7', A4: 'D8', A3: 'D9', A2: 'D10', A1: 'D11',
+    assert.deepEqual(deriveFootprintHoles('led-bar-graph', { anchorHole: 'E2', rotation: 90 }), {
+        A10: 'E2', A9: 'E3', A8: 'E4', A7: 'E5', A6: 'E6', A5: 'E7', A4: 'E8', A3: 'E9', A2: 'E10', A1: 'E11',
         C10: 'F2', C9: 'F3', C8: 'F4', C7: 'F5', C6: 'F6', C5: 'F7', C4: 'F8', C3: 'F9', C2: 'F10', C1: 'F11',
     });
     assert.deepEqual(deriveFootprintHoles('rgb-led', { anchorHole: 'B2' }), {
@@ -101,9 +101,9 @@ test('derives all LED holes from one anchor without independently snapping pins'
 });
 
 test('supports a four-leg pushbutton straddling the centre trench', () => {
-    const proper = deriveFootprintHoles('pushbutton-6mm', { anchorHole: 'D5', rotation: 90 });
+    const proper = deriveFootprintHoles('pushbutton-6mm', { anchorHole: 'E5', rotation: 90 });
     assert.deepEqual(proper, {
-        '1.l': 'D5', '1.r': 'F5', '2.l': 'D3', '2.r': 'F3',
+        '1.l': 'E5', '1.r': 'F5', '2.l': 'E3', '2.r': 'F3',
     });
     const holeInfo = hole => {
         const match = /^([A-J])(\d+)$/.exec(hole || '');

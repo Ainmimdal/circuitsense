@@ -4,13 +4,16 @@
     "version": "0.1.0",
     "type": "module",
     "scripts": {
+        "components:generate": "node scripts/generate-wokwi-manifest.mjs",
+        "parts:convert-fritzing": "node scripts/convert-fritzing-part.mjs",
+        "components:check": "node scripts/generate-wokwi-manifest.mjs --check",
         "docs:sync": "node scripts/sync-engine-docs.mjs",
-        "predev": "npm run docs:sync",
+        "predev": "npm run components:generate && npm run docs:sync",
         "dev": "vite",
-        "prebuild": "npm run docs:sync",
+        "prebuild": "npm run components:generate && npm run docs:sync",
         "build": "vite build",
         "preview": "vite preview",
-        "pretest": "npm run docs:sync",
+        "pretest": "npm run components:check && npm run docs:sync",
         "test": "node --test"
     },
     "dependencies": {
@@ -19,6 +22,8 @@
         "lit": "^3.2.0"
     },
     "devDependencies": {
+        "@xmldom/xmldom": "^0.9.12",
+        "fflate": "^0.8.3",
         "vite": "^6.0.0"
     }
 }

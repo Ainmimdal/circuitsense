@@ -1,0 +1,237 @@
+{
+  "format": "elera-fritzing-part-v1",
+  "id": "fritzing-drv8834-1",
+  "name": "DRV8834",
+  "description": "DRV8834 Low-Voltage Stepper Motor Driver Carrier.",
+  "category": "actuator",
+  "sourcePart": "part.DRV8834_1.fzp",
+  "library": {
+    "source": "fritzing",
+    "family": "drv8834",
+    "variant": "variant 1",
+    "tags": [
+      "contrib",
+      "pololu",
+      "DRV8834",
+      "stepper motor driver",
+      "fritzing user"
+    ]
+  },
+  "artwork": {
+    "svgUrl": "/converted-parts/fritzing-drv8834-1/breadboard.svg",
+    "sourceSize": {
+      "width": 800.00024,
+      "height": 600.00022
+    },
+    "physicalSizeMm": {
+      "width": 20.32,
+      "height": 15.240001
+    }
+  },
+  "pins": [
+    {
+      "id": "1",
+      "label": "Pin 1",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 42.479168,
+        "y": 558.18768
+      },
+      "fritzingConnectorId": "connector0"
+    },
+    {
+      "id": "2",
+      "label": "Pin 2",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 142.4792,
+        "y": 558.18768
+      },
+      "fritzingConnectorId": "connector1"
+    },
+    {
+      "id": "3",
+      "label": "Pin 3",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 242.47923,
+        "y": 558.18768
+      },
+      "fritzingConnectorId": "connector2"
+    },
+    {
+      "id": "4",
+      "label": "Pin 4",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 342.47925,
+        "y": 558.18768
+      },
+      "fritzingConnectorId": "connector3"
+    },
+    {
+      "id": "5",
+      "label": "Pin 5",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 442.47928,
+        "y": 558.18768
+      },
+      "fritzingConnectorId": "connector4"
+    },
+    {
+      "id": "6",
+      "label": "Pin 6",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 542.47937,
+        "y": 558.18768
+      },
+      "fritzingConnectorId": "connector5"
+    },
+    {
+      "id": "7",
+      "label": "Pin 7",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 642.47937,
+        "y": 558.18768
+      },
+      "fritzingConnectorId": "connector6"
+    },
+    {
+      "id": "8",
+      "label": "Pin 8",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 742.47943,
+        "y": 558.18768
+      },
+      "fritzingConnectorId": "connector7"
+    },
+    {
+      "id": "9",
+      "label": "Pin 9",
+      "connector": "male",
+      "electricalRole": "GND",
+      "autoWireRequirement": "GND",
+      "capabilities": [
+        "ground"
+      ],
+      "artwork": {
+        "x": 742.47943,
+        "y": 58.187496
+      },
+      "fritzingConnectorId": "connector8"
+    },
+    {
+      "id": "10",
+      "label": "Pin 10",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 642.47937,
+        "y": 58.187496
+      },
+      "fritzingConnectorId": "connector9"
+    },
+    {
+      "id": "11",
+      "label": "Pin 11",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 542.47937,
+        "y": 58.187496
+      },
+      "fritzingConnectorId": "connector10"
+    },
+    {
+      "id": "12",
+      "label": "Pin 12",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 442.47928,
+        "y": 58.187496
+      },
+      "fritzingConnectorId": "connector11"
+    },
+    {
+      "id": "13",
+      "label": "Pin 13",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 342.47925,
+        "y": 58.187496
+      },
+      "fritzingConnectorId": "connector12"
+    },
+    {
+      "id": "14",
+      "label": "Pin 14",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 242.47923,
+        "y": 58.187496
+      },
+      "fritzingConnectorId": "connector13"
+    },
+    {
+      "id": "15",
+      "label": "Pin 15",
+      "connector": "male",
+      "electricalRole": "GND",
+      "autoWireRequirement": "GND",
+      "capabilities": [
+        "ground"
+      ],
+      "artwork": {
+        "x": 142.4792,
+        "y": 58.187496
+      },
+      "fritzingConnectorId": "connector14"
+    },
+    {
+      "id": "16",
+      "label": "Pin 16",
+      "connector": "male",
+      "electricalRole": "SIGNAL",
+      "capabilities": [],
+      "artwork": {
+        "x": 42.479168,
+        "y": 58.187496
+      },
+      "fritzingConnectorId": "connector15"
+    }
+  ],
+  "packages": [],
+  "propertyDefinitions": [],
+  "connectorType": "male",
+  "currentDraw_mA": 0,
+  "breadboardRequired": false,
+  "pinless": false
+}

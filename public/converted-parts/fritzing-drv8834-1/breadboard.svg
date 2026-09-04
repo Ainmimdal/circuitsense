@@ -1,0 +1,297 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<svg xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:svg="http://www.w3.org/2000/svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800.00024 600.00022" id="elera-fritzing-drv8834-1-svg4249" gorn="0" version="1.1" width="0.80000001in" height="0.60000002in">
+  <desc id="elera-fritzing-drv8834-1-desc2">
+    <referenceFile>DRV8834_1_breadboard.svg</referenceFile>
+  </desc>
+  <defs id="elera-fritzing-drv8834-1-defs4251"/>
+  
+  <g id="elera-fritzing-drv8834-1-breadboard">
+    <path stroke-width="40" fill-opacity="1" id="elera-fritzing-drv8834-1-rect5838" gorn="0.3.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0" d="M 0,0 V 600.0002 H 800.00026 V 0 Z" stroke="none" fill="#e6e6e6" stroke-opacity="1" stroke-miterlimit="4" stroke-dasharray="none"/>
+    <rect height="37.236099" width="97.338333" x="21.763866" id="elera-fritzing-drv8834-1-rect3806" y="130.50603" fill="#4d4d4d" stroke-width="0.999995"/>
+    <rect height="0.63888901" width="97.338333" enable-background="new    " x="21.763866" id="elera-fritzing-drv8834-1-rect3808" y="130.50603" opacity="0.2" fill="#ffffff" stroke-width="0.999995"/>
+    <rect height="11.0972" width="97.338333" y="158.70042" x="21.763866" id="elera-fritzing-drv8834-1-rect3810" fill="#333333" stroke-width="0.999995"/>
+    <rect height="0.444444" width="97.338333" y="169.42273" enable-background="new    " x="21.763866" id="elera-fritzing-drv8834-1-rect3812" opacity="0.2" stroke-width="0.999995"/>
+    <path d="m 104.96451,130.50602 v 0 0 h -1.13642 v 0 c -0.97752,3.48611 -1.64959,11.0556 -1.64959,14.9306 0,4.04167 0.58652,9.625 1.64959,13.2639 v 0 0 l 14.94409,-1e-4 v -28.1944 z" id="elera-fritzing-drv8834-1-path3814" fill="#dcdcdc" stroke-width="0.999995"/>
+    <path d="m 36.976801,131.95046 v -1.44444 H 22.04491 v 28.1944 h 14.944084 c 1.075307,-3.6527 2.358294,-9.1527 2.358294,-13.25 0,-4.8055 -0.916382,-9.3194 -2.370487,-13.49996 z" id="elera-fritzing-drv8834-1-path3816" fill="#dcdcdc" stroke-width="0.999995"/>
+    <path d="m 118.85752,160.17272 h -14.94391 l -0.0855,-1.4723 h 14.94409 z" id="elera-fritzing-drv8834-1-path3818" fill="#999999" stroke-width="0.999995"/>
+    <path d="m 22.118222,160.20042 h 14.944085 l -0.08551,-1.5 h -14.9319 l 0.07329,1.5 z" id="elera-fritzing-drv8834-1-path3820" fill="#999999" stroke-width="0.999995"/>
+    <rect height="0.63888901" width="14.944084" y="169.22823" enable-background="new    " x="22.044907" id="elera-fritzing-drv8834-1-rect3822" opacity="0.15" stroke-width="0.999995"/>
+    <rect height="0.63888901" width="14.944084" enable-background="new    " x="22.044907" id="elera-fritzing-drv8834-1-rect3824" y="130.50603" opacity="0.5" fill="#ffffff" stroke-width="0.999995"/>
+    <rect height="0.63888901" width="14.956314" y="169.22823" enable-background="new    " x="103.84032" id="elera-fritzing-drv8834-1-rect3826" opacity="0.15" stroke-width="0.999995"/>
+    <rect height="0.63888901" width="14.956314" enable-background="new    " x="103.84032" id="elera-fritzing-drv8834-1-rect3828" y="130.50603" opacity="0.5" fill="#ffffff" stroke-width="0.999995"/>
+    <line x1="31.074862" y2="169.86713" y1="169.86713" x2="31.074862" id="elera-fritzing-drv8834-1-line3830" fill="none" stroke-width="0.999995"/>
+    <rect height="9.6111097" width="1.4418678" y="160.17273" x="117.64782" id="elera-fritzing-drv8834-1-rect3832" fill="#999999" stroke-width="0.999995"/>
+    <rect height="9.6111097" width="1.4540881" y="160.17273" x="22.044907" id="elera-fritzing-drv8834-1-rect3834" fill="#999999" stroke-width="0.999995"/>
+    <rect height="64.198784" width="179.04243" x="152.87045" id="elera-fritzing-drv8834-1-rect149" y="122.90564" fill="#4d4d4d" stroke-width="0.999995"/>
+    <rect height="1.101509" width="179.04243" enable-background="new    " x="152.87045" id="elera-fritzing-drv8834-1-rect151" y="122.90564" opacity="0.2" fill="#ffffff" stroke-width="0.999995"/>
+    <rect height="19.13269" width="179.04243" y="171.51562" x="152.87045" id="elera-fritzing-drv8834-1-rect153" fill="#333333" stroke-width="0.999995"/>
+    <rect height="0.76626623" width="179.04243" y="190.00195" enable-background="new    " x="152.87045" id="elera-fritzing-drv8834-1-rect155" opacity="0.2" stroke-width="0.999995"/>
+    <path d="m 305.90828,122.90564 v 0 0 h -2.09031 v 0 c -1.79804,6.0104 -3.03423,19.06097 -3.03423,25.74186 0,6.96824 1.07884,16.59447 3.03423,22.8683 v 0 0 l 27.4879,-1.8e-4 v -48.60998 z" id="elera-fritzing-drv8834-1-path157" fill="#dcdcdc" stroke-width="0.999995"/>
+    <path d="m 180.85287,125.396 v -2.49036 h -27.46546 v 48.60998 h 27.48788 c 1.9779,-6.29762 4.33781,-15.78017 4.33781,-22.84433 0,-8.28517 -1.68558,-16.06758 -4.36023,-23.27529 z" id="elera-fritzing-drv8834-1-path159" fill="#dcdcdc" stroke-width="0.999995"/>
+    <path d="m 331.46284,174.05402 h -27.48757 l -0.1573,-2.5384 h 27.4879 z" id="elera-fritzing-drv8834-1-path161" fill="#999999" stroke-width="0.999995"/>
+    <path d="m 153.52225,174.10178 h 27.48789 l -0.15729,-2.58616 h -27.46548 l 0.1348,2.58616 z" id="elera-fritzing-drv8834-1-path163" fill="#999999" stroke-width="0.999995"/>
+    <rect height="1.101509" width="27.48789" y="189.66661" enable-background="new    " x="153.38741" id="elera-fritzing-drv8834-1-rect165" opacity="0.15" stroke-width="0.999995"/>
+    <rect height="1.101509" width="27.48789" enable-background="new    " x="153.38741" id="elera-fritzing-drv8834-1-rect167" y="122.90564" opacity="0.5" fill="#ffffff" stroke-width="0.999995"/>
+    <rect height="1.101509" width="27.510384" y="189.66661" enable-background="new    " x="303.84048" id="elera-fritzing-drv8834-1-rect169" opacity="0.15" stroke-width="0.999995"/>
+    <rect height="1.101509" width="27.510384" enable-background="new    " x="303.84048" id="elera-fritzing-drv8834-1-rect171" y="122.90564" opacity="0.5" fill="#ffffff" stroke-width="0.999995"/>
+    <line x1="169.99693" y2="190.76814" y1="190.76814" x2="169.99693" id="elera-fritzing-drv8834-1-line173" fill="none" stroke-width="0.999995"/>
+    <rect height="16.57052" width="2.6521468" y="174.05402" x="329.23773" id="elera-fritzing-drv8834-1-rect175" fill="#999999" stroke-width="0.999995"/>
+    <rect height="16.57052" width="2.6746244" y="174.05402" x="153.38741" id="elera-fritzing-drv8834-1-rect177" fill="#999999" stroke-width="0.999995"/>
+    <rect height="64.198784" width="179.04243" x="527.18927" id="elera-fritzing-drv8834-1-rect181" y="113.40516" fill="#4d4d4d" stroke-width="0.999995"/>
+    <rect height="1.101509" width="179.04243" enable-background="new    " x="527.18927" id="elera-fritzing-drv8834-1-rect183" y="113.40516" opacity="0.2" fill="#ffffff" stroke-width="0.999995"/>
+    <rect height="19.13269" width="179.04243" y="162.01514" x="527.18927" id="elera-fritzing-drv8834-1-rect185" fill="#333333" stroke-width="0.999995"/>
+    <rect height="0.76626623" width="179.04243" y="180.50148" enable-background="new    " x="527.18927" id="elera-fritzing-drv8834-1-rect187" opacity="0.2" stroke-width="0.999995"/>
+    <path d="m 680.22711,113.40516 v 0 0 h -2.09031 v 0 c -1.79804,6.0104 -3.03423,19.06097 -3.03423,25.74186 0,6.96824 1.07884,16.59447 3.03423,22.8683 v 0 0 l 27.4879,-1.8e-4 v -48.60998 z" id="elera-fritzing-drv8834-1-path189" fill="#dcdcdc" stroke-width="0.999995"/>
+    <path d="m 555.1717,115.89552 v -2.49036 h -27.46546 v 48.60998 h 27.48788 c 1.9779,-6.29762 4.33781,-15.78017 4.33781,-22.84433 0,-8.28517 -1.68558,-16.06758 -4.36023,-23.27529 z" id="elera-fritzing-drv8834-1-path191" fill="#dcdcdc" stroke-width="0.999995"/>
+    <path d="M 705.78167,164.55354 H 678.2941 l -0.1573,-2.5384 h 27.4879 z" id="elera-fritzing-drv8834-1-path193" fill="#999999" stroke-width="0.999995"/>
+    <path d="m 527.84108,164.6013 h 27.48789 l -0.15729,-2.58616 H 527.7062 l 0.1348,2.58616 z" id="elera-fritzing-drv8834-1-path195" fill="#999999" stroke-width="0.999995"/>
+    <rect height="1.101509" width="27.48789" y="180.16612" enable-background="new    " x="527.70624" id="elera-fritzing-drv8834-1-rect197" opacity="0.15" stroke-width="0.999995"/>
+    <rect height="1.101509" width="27.48789" enable-background="new    " x="527.70624" id="elera-fritzing-drv8834-1-rect199" y="113.40516" opacity="0.5" fill="#ffffff" stroke-width="0.999995"/>
+    <rect height="1.101509" width="27.510384" y="180.16612" enable-background="new    " x="678.1593" id="elera-fritzing-drv8834-1-rect201" opacity="0.15" stroke-width="0.999995"/>
+    <rect height="1.101509" width="27.510384" enable-background="new    " x="678.1593" id="elera-fritzing-drv8834-1-rect203" y="113.40516" opacity="0.5" fill="#ffffff" stroke-width="0.999995"/>
+    <line x1="544.3158" y2="181.26765" y1="181.26765" x2="544.3158" id="elera-fritzing-drv8834-1-line205" fill="none" stroke-width="0.999995"/>
+    <rect height="16.57052" width="2.6521468" y="164.55354" x="703.55658" id="elera-fritzing-drv8834-1-rect207" fill="#999999" stroke-width="0.999995"/>
+    <rect height="16.57052" width="2.6746244" y="164.55354" x="527.70624" id="elera-fritzing-drv8834-1-rect209" fill="#999999" stroke-width="0.999995"/>
+    <rect height="37.236099" width="97.338333" x="27.464153" id="elera-fritzing-drv8834-1-rect213" y="451.62216" fill="#4d4d4d" stroke-width="0.999995"/>
+    <rect height="0.63888901" width="97.338333" enable-background="new    " x="27.464153" id="elera-fritzing-drv8834-1-rect215" y="451.62216" opacity="0.2" fill="#ffffff" stroke-width="0.999995"/>
+    <rect height="11.0972" width="97.338333" y="479.81656" x="27.464153" id="elera-fritzing-drv8834-1-rect217" fill="#333333" stroke-width="0.999995"/>
+    <rect height="0.444444" width="97.338333" y="490.53888" enable-background="new    " x="27.464153" id="elera-fritzing-drv8834-1-rect219" opacity="0.2" stroke-width="0.999995"/>
+    <path d="m 110.6648,451.62217 v 0 0 h -1.13642 v 0 c -0.97753,3.48611 -1.64959,11.0556 -1.64959,14.9306 0,4.04167 0.58652,9.625 1.64959,13.2639 v 0 0 l 14.94409,-10e-5 v -28.1944 z" id="elera-fritzing-drv8834-1-path221" fill="#dcdcdc" stroke-width="0.999995"/>
+    <path d="m 42.677088,453.06661 v -1.44444 H 27.745197 v 28.1944 h 14.944084 c 1.075307,-3.6527 2.358294,-9.1527 2.358294,-13.25 0,-4.8055 -0.916382,-9.3194 -2.370487,-13.49996 z" id="elera-fritzing-drv8834-1-path223" fill="#dcdcdc" stroke-width="0.999995"/>
+    <path d="M 124.55781,481.28887 H 109.6139 l -0.0855,-1.4723 h 14.94409 z" id="elera-fritzing-drv8834-1-path225" fill="#999999" stroke-width="0.999995"/>
+    <path d="m 27.818509,481.31657 h 14.944085 l -0.08552,-1.5 h -14.9319 l 0.07329,1.5 z" id="elera-fritzing-drv8834-1-path227" fill="#999999" stroke-width="0.999995"/>
+    <rect height="0.63888901" width="14.944084" y="490.34436" enable-background="new    " x="27.745193" id="elera-fritzing-drv8834-1-rect229" opacity="0.15" stroke-width="0.999995"/>
+    <rect height="0.63888901" width="14.944084" enable-background="new    " x="27.745193" id="elera-fritzing-drv8834-1-rect231" y="451.62216" opacity="0.5" fill="#ffffff" stroke-width="0.999995"/>
+    <rect height="0.63888901" width="14.956314" y="490.34436" enable-background="new    " x="109.54061" id="elera-fritzing-drv8834-1-rect233" opacity="0.15" stroke-width="0.999995"/>
+    <rect height="0.63888901" width="14.956314" enable-background="new    " x="109.54061" id="elera-fritzing-drv8834-1-rect235" y="451.62216" opacity="0.5" fill="#ffffff" stroke-width="0.999995"/>
+    <line x1="36.775146" y2="490.98328" y1="490.98328" x2="36.775146" id="elera-fritzing-drv8834-1-line237" fill="none" stroke-width="0.999995"/>
+    <rect height="9.6111097" width="1.4418678" y="481.28888" x="123.34811" id="elera-fritzing-drv8834-1-rect239" fill="#999999" stroke-width="0.999995"/>
+    <rect height="9.6111097" width="1.4540881" y="481.28888" x="27.745193" id="elera-fritzing-drv8834-1-rect241" fill="#999999" stroke-width="0.999995"/>
+    <rect height="31.843563" width="80.237473" x="192.77246" id="elera-fritzing-drv8834-1-rect245" y="451.62216" fill="#4d4d4d" stroke-width="0.999997"/>
+    <rect height="0.54636502" width="80.237473" enable-background="new    " x="192.77246" id="elera-fritzing-drv8834-1-rect247" y="451.62216" opacity="0.2" fill="#ffffff" stroke-width="0.999997"/>
+    <rect height="9.4901018" width="80.237473" y="475.73346" x="192.77246" id="elera-fritzing-drv8834-1-rect249" fill="#333333" stroke-width="0.999997"/>
+    <rect height="0.38007957" width="80.237473" y="484.90295" enable-background="new    " x="192.77246" id="elera-fritzing-drv8834-1-rect251" opacity="0.2" stroke-width="0.999997"/>
+    <path d="m 261.35602,451.62217 v 0 0 h -0.93677 v 0 c -0.80579,2.98125 -1.35978,9.45453 -1.35978,12.76835 0,3.45635 0.48348,8.2311 1.35978,11.34302 v 0 0 l 12.31864,-9e-5 v -24.11128 z" id="elera-fritzing-drv8834-1-path253" fill="#dcdcdc" stroke-width="0.999997"/>
+    <path d="m 205.31271,452.85743 v -1.23526 h -12.30858 v 24.11128 h 12.31863 c 0.8864,-3.12371 1.94398,-7.8272 1.94398,-11.33113 0,-4.10957 -0.75539,-7.96976 -1.95403,-11.54489 z" id="elera-fritzing-drv8834-1-path255" fill="#dcdcdc" stroke-width="0.999997"/>
+    <path d="m 272.80824,476.99253 h -12.31849 l -0.0705,-1.25908 h 12.31864 z" id="elera-fritzing-drv8834-1-path257" fill="#999999" stroke-width="0.999997"/>
+    <path d="m 193.06456,477.01622 h 12.31864 l -0.0705,-1.28277 h -12.3086 l 0.0604,1.28277 z" id="elera-fritzing-drv8834-1-path259" fill="#999999" stroke-width="0.999997"/>
+    <rect height="0.54636502" width="12.318637" y="484.7366" enable-background="new    " x="193.00412" id="elera-fritzing-drv8834-1-rect261" opacity="0.15" stroke-width="0.999997"/>
+    <rect height="0.54636502" width="12.318637" enable-background="new    " x="193.00412" id="elera-fritzing-drv8834-1-rect263" y="451.62216" opacity="0.5" fill="#ffffff" stroke-width="0.999997"/>
+    <rect height="0.54636502" width="12.328718" y="484.7366" enable-background="new    " x="260.42932" id="elera-fritzing-drv8834-1-rect265" opacity="0.15" stroke-width="0.999997"/>
+    <rect height="0.54636502" width="12.328718" enable-background="new    " x="260.42932" id="elera-fritzing-drv8834-1-rect267" y="451.62216" opacity="0.5" fill="#ffffff" stroke-width="0.999997"/>
+    <line x1="200.44765" y2="485.28299" y1="485.28299" x2="200.44765" id="elera-fritzing-drv8834-1-line269" fill="none" stroke-width="0.999997"/>
+    <rect height="8.2192278" width="1.1885537" y="476.99252" x="271.81107" id="elera-fritzing-drv8834-1-rect271" fill="#999999" stroke-width="0.999997"/>
+    <rect height="8.2192278" width="1.198627" y="476.99252" x="193.00412" id="elera-fritzing-drv8834-1-rect273" fill="#999999" stroke-width="0.999997"/>
+    <rect height="31.843563" width="80.237473" x="223.174" id="elera-fritzing-drv8834-1-rect277" y="387.01892" fill="#4d4d4d" stroke-width="0.999997"/>
+    <rect height="0.54636502" width="80.237473" enable-background="new    " x="223.174" id="elera-fritzing-drv8834-1-rect279" y="387.01892" opacity="0.2" fill="#ffffff" stroke-width="0.999997"/>
+    <rect height="9.4901018" width="80.237473" y="411.13019" x="223.174" id="elera-fritzing-drv8834-1-rect281" fill="#333333" stroke-width="0.999997"/>
+    <rect height="0.38007957" width="80.237473" y="420.29971" enable-background="new    " x="223.174" id="elera-fritzing-drv8834-1-rect283" opacity="0.2" stroke-width="0.999997"/>
+    <path d="m 291.75755,387.01892 v 0 0 h -0.93677 v 0 c -0.80579,2.98125 -1.35978,9.45453 -1.35978,12.76835 0,3.45635 0.48348,8.2311 1.35978,11.34302 v 0 0 l 12.31864,-9e-5 v -24.11128 z" id="elera-fritzing-drv8834-1-path285" fill="#dcdcdc" stroke-width="0.999997"/>
+    <path d="m 235.71424,388.25418 v -1.23526 h -12.30858 v 24.11128 h 12.31863 c 0.8864,-3.12371 1.94398,-7.8272 1.94398,-11.33113 0,-4.10957 -0.75539,-7.96976 -1.95403,-11.54489 z" id="elera-fritzing-drv8834-1-path287" fill="#dcdcdc" stroke-width="0.999997"/>
+    <path d="m 303.20977,412.38928 h -12.31849 l -0.0705,-1.25908 h 12.31864 z" id="elera-fritzing-drv8834-1-path289" fill="#999999" stroke-width="0.999997"/>
+    <path d="m 223.46609,412.41297 h 12.31864 l -0.0705,-1.28277 h -12.3086 l 0.0604,1.28277 z" id="elera-fritzing-drv8834-1-path291" fill="#999999" stroke-width="0.999997"/>
+    <rect height="0.54636502" width="12.318637" y="420.13336" enable-background="new    " x="223.40565" id="elera-fritzing-drv8834-1-rect293" opacity="0.15" stroke-width="0.999997"/>
+    <rect height="0.54636502" width="12.318637" enable-background="new    " x="223.40565" id="elera-fritzing-drv8834-1-rect295" y="387.01892" opacity="0.5" fill="#ffffff" stroke-width="0.999997"/>
+    <rect height="0.54636502" width="12.328718" y="420.13336" enable-background="new    " x="290.83087" id="elera-fritzing-drv8834-1-rect297" opacity="0.15" stroke-width="0.999997"/>
+    <rect height="0.54636502" width="12.328718" enable-background="new    " x="290.83087" id="elera-fritzing-drv8834-1-rect299" y="387.01892" opacity="0.5" fill="#ffffff" stroke-width="0.999997"/>
+    <line x1="230.84918" y2="420.67975" y1="420.67975" x2="230.84918" id="elera-fritzing-drv8834-1-line301" fill="none" stroke-width="0.999997"/>
+    <rect height="8.2192278" width="1.1885537" y="412.38928" x="302.21259" id="elera-fritzing-drv8834-1-rect303" fill="#999999" stroke-width="0.999997"/>
+    <rect height="8.2192278" width="1.198627" y="412.38928" x="223.40565" id="elera-fritzing-drv8834-1-rect305" fill="#999999" stroke-width="0.999997"/>
+    <rect height="31.843563" width="80.237473" x="308.67828" id="elera-fritzing-drv8834-1-rect309" y="455.42236" fill="#4d4d4d" stroke-width="0.999997"/>
+    <rect height="0.54636502" width="80.237473" enable-background="new    " x="308.67828" id="elera-fritzing-drv8834-1-rect311" y="455.42236" opacity="0.2" fill="#ffffff" stroke-width="0.999997"/>
+    <rect height="9.4901018" width="80.237473" y="479.53363" x="308.67828" id="elera-fritzing-drv8834-1-rect313" fill="#333333" stroke-width="0.999997"/>
+    <rect height="0.38007957" width="80.237473" y="488.70312" enable-background="new    " x="308.67828" id="elera-fritzing-drv8834-1-rect315" opacity="0.2" stroke-width="0.999997"/>
+    <path d="m 377.26185,455.42236 v 0 0 h -0.93677 v 0 c -0.80579,2.98125 -1.35978,9.45453 -1.35978,12.76835 0,3.45635 0.48348,8.2311 1.35978,11.34302 v 0 0 l 12.31864,-9e-5 v -24.11128 z" id="elera-fritzing-drv8834-1-path317" fill="#dcdcdc" stroke-width="0.999997"/>
+    <path d="m 321.21854,456.65762 v -1.23526 h -12.30858 v 24.11128 h 12.31863 c 0.8864,-3.12371 1.94398,-7.8272 1.94398,-11.33113 0,-4.10957 -0.75539,-7.96976 -1.95403,-11.54489 z" id="elera-fritzing-drv8834-1-path319" fill="#dcdcdc" stroke-width="0.999997"/>
+    <path d="m 388.71407,480.79272 h -12.31849 l -0.0705,-1.25908 h 12.31864 z" id="elera-fritzing-drv8834-1-path321" fill="#999999" stroke-width="0.999997"/>
+    <path d="m 308.97039,480.81641 h 12.31864 l -0.0705,-1.28277 h -12.3086 l 0.0604,1.28277 z" id="elera-fritzing-drv8834-1-path323" fill="#999999" stroke-width="0.999997"/>
+    <rect height="0.54636502" width="12.318637" y="488.5368" enable-background="new    " x="308.90994" id="elera-fritzing-drv8834-1-rect325" opacity="0.15" stroke-width="0.999997"/>
+    <rect height="0.54636502" width="12.318637" enable-background="new    " x="308.90994" id="elera-fritzing-drv8834-1-rect327" y="455.42236" opacity="0.5" fill="#ffffff" stroke-width="0.999997"/>
+    <rect height="0.54636502" width="12.328718" y="488.5368" enable-background="new    " x="376.33517" id="elera-fritzing-drv8834-1-rect329" opacity="0.15" stroke-width="0.999997"/>
+    <rect height="0.54636502" width="12.328718" enable-background="new    " x="376.33517" id="elera-fritzing-drv8834-1-rect331" y="455.42236" opacity="0.5" fill="#ffffff" stroke-width="0.999997"/>
+    <line x1="316.35349" y2="489.08319" y1="489.08319" x2="316.35349" id="elera-fritzing-drv8834-1-line333" fill="none" stroke-width="0.999997"/>
+    <rect height="8.2192278" width="1.1885537" y="480.79272" x="387.71689" id="elera-fritzing-drv8834-1-rect335" fill="#999999" stroke-width="0.999997"/>
+    <rect height="8.2192278" width="1.198627" y="480.79272" x="308.90994" id="elera-fritzing-drv8834-1-rect337" fill="#999999" stroke-width="0.999997"/>
+    <rect height="31.843563" width="80.237473" x="677.29681" id="elera-fritzing-drv8834-1-rect341" y="202.70966" fill="#4d4d4d" stroke-width="0.999997"/>
+    <rect height="0.54636502" width="80.237473" enable-background="new    " x="677.29681" id="elera-fritzing-drv8834-1-rect343" y="202.70966" opacity="0.2" fill="#ffffff" stroke-width="0.999997"/>
+    <rect height="9.4901018" width="80.237473" y="226.82092" x="677.29681" id="elera-fritzing-drv8834-1-rect345" fill="#333333" stroke-width="0.999997"/>
+    <rect height="0.38007957" width="80.237473" y="235.99043" enable-background="new    " x="677.29681" id="elera-fritzing-drv8834-1-rect347" opacity="0.2" stroke-width="0.999997"/>
+    <path d="m 745.88039,202.70965 v 0 0 h -0.93677 v 0 c -0.80579,2.98125 -1.35978,9.45453 -1.35978,12.76835 0,3.45635 0.48348,8.2311 1.35978,11.34302 v 0 0 l 12.31864,-9e-5 v -24.11128 z" id="elera-fritzing-drv8834-1-path349" fill="#dcdcdc" stroke-width="0.999997"/>
+    <path d="m 689.83708,203.94491 v -1.23526 H 677.5285 v 24.11128 h 12.31863 c 0.8864,-3.12371 1.94398,-7.8272 1.94398,-11.33113 0,-4.10957 -0.75539,-7.96976 -1.95403,-11.54489 z" id="elera-fritzing-drv8834-1-path351" fill="#dcdcdc" stroke-width="0.999997"/>
+    <path d="m 757.33261,228.08001 h -12.31849 l -0.0705,-1.25908 h 12.31864 z" id="elera-fritzing-drv8834-1-path353" fill="#999999" stroke-width="0.999997"/>
+    <path d="m 677.58893,228.1037 h 12.31864 l -0.0705,-1.28277 h -12.3086 l 0.0604,1.28277 z" id="elera-fritzing-drv8834-1-path355" fill="#999999" stroke-width="0.999997"/>
+    <rect height="0.54636502" width="12.318637" y="235.8241" enable-background="new    " x="677.5285" id="elera-fritzing-drv8834-1-rect357" opacity="0.15" stroke-width="0.999997"/>
+    <rect height="0.54636502" width="12.318637" enable-background="new    " x="677.5285" id="elera-fritzing-drv8834-1-rect359" y="202.70966" opacity="0.5" fill="#ffffff" stroke-width="0.999997"/>
+    <rect height="0.54636502" width="12.328718" y="235.8241" enable-background="new    " x="744.95374" id="elera-fritzing-drv8834-1-rect361" opacity="0.15" stroke-width="0.999997"/>
+    <rect height="0.54636502" width="12.328718" enable-background="new    " x="744.95374" id="elera-fritzing-drv8834-1-rect363" y="202.70966" opacity="0.5" fill="#ffffff" stroke-width="0.999997"/>
+    <line x1="684.97205" y2="236.37047" y1="236.37047" x2="684.97205" id="elera-fritzing-drv8834-1-line365" fill="none" stroke-width="0.999997"/>
+    <rect height="8.2192278" width="1.1885537" y="228.08002" x="756.33545" id="elera-fritzing-drv8834-1-rect367" fill="#999999" stroke-width="0.999997"/>
+    <rect height="8.2192278" width="1.198627" y="228.08002" x="677.5285" id="elera-fritzing-drv8834-1-rect369" fill="#999999" stroke-width="0.999997"/>
+    <rect height="31.843563" width="80.237473" x="671.59656" id="elera-fritzing-drv8834-1-rect373" y="259.71252" fill="#4d4d4d" stroke-width="0.999997"/>
+    <rect height="0.54636502" width="80.237473" enable-background="new    " x="671.59656" id="elera-fritzing-drv8834-1-rect375" y="259.71252" opacity="0.2" fill="#ffffff" stroke-width="0.999997"/>
+    <rect height="9.4901018" width="80.237473" y="283.82379" x="671.59656" id="elera-fritzing-drv8834-1-rect377" fill="#333333" stroke-width="0.999997"/>
+    <rect height="0.38007957" width="80.237473" y="292.99329" enable-background="new    " x="671.59656" id="elera-fritzing-drv8834-1-rect379" opacity="0.2" stroke-width="0.999997"/>
+    <path d="m 740.1801,259.71252 v 0 0 h -0.93677 v 0 c -0.80579,2.98125 -1.35978,9.45453 -1.35978,12.76835 0,3.45635 0.48348,8.2311 1.35978,11.34302 v 0 0 l 12.31864,-9e-5 v -24.11128 z" id="elera-fritzing-drv8834-1-path381" fill="#dcdcdc" stroke-width="0.999997"/>
+    <path d="m 684.13679,260.94778 v -1.23526 h -12.30858 v 24.11128 h 12.31863 c 0.8864,-3.12371 1.94398,-7.8272 1.94398,-11.33113 0,-4.10957 -0.75539,-7.96976 -1.95403,-11.54489 z" id="elera-fritzing-drv8834-1-path383" fill="#dcdcdc" stroke-width="0.999997"/>
+    <path d="m 751.63232,285.08288 h -12.31849 l -0.0705,-1.25908 h 12.31864 z" id="elera-fritzing-drv8834-1-path385" fill="#999999" stroke-width="0.999997"/>
+    <path d="m 671.88864,285.10657 h 12.31864 l -0.0705,-1.28277 h -12.3086 l 0.0604,1.28277 z" id="elera-fritzing-drv8834-1-path387" fill="#999999" stroke-width="0.999997"/>
+    <rect height="0.54636502" width="12.318637" y="292.82697" enable-background="new    " x="671.82819" id="elera-fritzing-drv8834-1-rect389" opacity="0.15" stroke-width="0.999997"/>
+    <rect height="0.54636502" width="12.318637" enable-background="new    " x="671.82819" id="elera-fritzing-drv8834-1-rect391" y="259.71252" opacity="0.5" fill="#ffffff" stroke-width="0.999997"/>
+    <rect height="0.54636502" width="12.328718" y="292.82697" enable-background="new    " x="739.25342" id="elera-fritzing-drv8834-1-rect393" opacity="0.15" stroke-width="0.999997"/>
+    <rect height="0.54636502" width="12.328718" enable-background="new    " x="739.25342" id="elera-fritzing-drv8834-1-rect395" y="259.71252" opacity="0.5" fill="#ffffff" stroke-width="0.999997"/>
+    <line x1="679.27173" y2="293.37335" y1="293.37335" x2="679.27173" id="elera-fritzing-drv8834-1-line397" fill="none" stroke-width="0.999997"/>
+    <rect height="8.2192278" width="1.1885537" y="285.08289" x="750.63513" id="elera-fritzing-drv8834-1-rect399" fill="#999999" stroke-width="0.999997"/>
+    <rect height="8.2192278" width="1.198627" y="285.08289" x="671.82819" id="elera-fritzing-drv8834-1-rect401" fill="#999999" stroke-width="0.999997"/>
+    <rect height="31.843563" width="80.237473" x="278.22632" id="elera-fritzing-drv8834-1-rect405" y="-629.74072" transform="rotate(90)" fill="#4d4d4d" stroke-width="0.999997"/>
+    <rect height="0.54636502" width="80.237473" enable-background="new    " x="278.22632" id="elera-fritzing-drv8834-1-rect407" y="-629.74072" transform="rotate(90)" opacity="0.2" fill="#ffffff" stroke-width="0.999997"/>
+    <rect height="9.4901018" width="80.237473" y="-605.62946" x="278.22632" id="elera-fritzing-drv8834-1-rect409" transform="rotate(90)" fill="#333333" stroke-width="0.999997"/>
+    <rect height="0.38007957" width="80.237473" y="-596.45996" enable-background="new    " x="278.22632" id="elera-fritzing-drv8834-1-rect411" transform="rotate(90)" opacity="0.2" stroke-width="0.999997"/>
+    <path d="m 629.74074,346.80987 v 0 0 -0.93677 0 c -2.98125,-0.80579 -9.45453,-1.35978 -12.76835,-1.35978 -3.45635,0 -8.2311,0.48348 -11.34302,1.35978 v 0 0 l 9e-5,12.31864 h 24.11128 z" id="elera-fritzing-drv8834-1-path413" fill="#dcdcdc" stroke-width="0.999997"/>
+    <path d="m 628.50548,290.76656 h 1.23526 v -12.30858 h -24.11128 v 12.31863 c 3.12371,0.8864 7.8272,1.94398 11.33113,1.94398 4.10957,0 7.96976,-0.75539 11.54489,-1.95403 z" id="elera-fritzing-drv8834-1-path415" fill="#dcdcdc" stroke-width="0.999997"/>
+    <path d="M 604.37038,358.26209 V 345.9436 l 1.25908,-0.0705 v 12.31864 z" id="elera-fritzing-drv8834-1-path417" fill="#999999" stroke-width="0.999997"/>
+    <path d="m 604.34669,278.51841 v 12.31864 l 1.28277,-0.0705 v -12.3086 l -1.28277,0.0604 z" id="elera-fritzing-drv8834-1-path419" fill="#999999" stroke-width="0.999997"/>
+    <rect height="0.54636502" width="12.318637" y="-596.62628" enable-background="new    " x="278.45798" id="elera-fritzing-drv8834-1-rect421" transform="rotate(90)" opacity="0.15" stroke-width="0.999997"/>
+    <rect height="0.54636502" width="12.318637" enable-background="new    " x="278.45798" id="elera-fritzing-drv8834-1-rect423" y="-629.74072" transform="rotate(90)" opacity="0.5" fill="#ffffff" stroke-width="0.999997"/>
+    <rect height="0.54636502" width="12.328718" y="-596.62628" enable-background="new    " x="345.88318" id="elera-fritzing-drv8834-1-rect425" transform="rotate(90)" opacity="0.15" stroke-width="0.999997"/>
+    <rect height="0.54636502" width="12.328718" enable-background="new    " x="345.88318" id="elera-fritzing-drv8834-1-rect427" y="-629.74072" transform="rotate(90)" opacity="0.5" fill="#ffffff" stroke-width="0.999997"/>
+    <line x1="596.0799" y2="285.90149" y1="285.90149" x2="596.0799" id="elera-fritzing-drv8834-1-line429" fill="none" stroke-width="0.999997"/>
+    <rect height="8.2192278" width="1.1885537" y="-604.37036" x="357.26492" id="elera-fritzing-drv8834-1-rect431" transform="rotate(90)" fill="#999999" stroke-width="0.999997"/>
+    <rect height="8.2192278" width="1.198627" y="-604.37036" x="278.45798" id="elera-fritzing-drv8834-1-rect433" transform="rotate(90)" fill="#999999" stroke-width="0.999997"/>
+    <rect height="31.843563" width="80.237473" x="397.93234" id="elera-fritzing-drv8834-1-rect437" y="-629.74072" transform="rotate(90)" fill="#4d4d4d" stroke-width="0.999997"/>
+    <rect height="0.54636502" width="80.237473" enable-background="new    " x="397.93234" id="elera-fritzing-drv8834-1-rect439" y="-629.74072" transform="rotate(90)" opacity="0.2" fill="#ffffff" stroke-width="0.999997"/>
+    <rect height="9.4901018" width="80.237473" y="-605.62946" x="397.93234" id="elera-fritzing-drv8834-1-rect441" transform="rotate(90)" fill="#333333" stroke-width="0.999997"/>
+    <rect height="0.38007957" width="80.237473" y="-596.45996" enable-background="new    " x="397.93234" id="elera-fritzing-drv8834-1-rect443" transform="rotate(90)" opacity="0.2" stroke-width="0.999997"/>
+    <path d="m 629.74074,466.51589 v 0 0 -0.93677 0 c -2.98125,-0.80579 -9.45453,-1.35978 -12.76835,-1.35978 -3.45635,0 -8.2311,0.48348 -11.34302,1.35978 v 0 0 l 9e-5,12.31864 h 24.11128 z" id="elera-fritzing-drv8834-1-path445" fill="#dcdcdc" stroke-width="0.999997"/>
+    <path d="m 628.50548,410.47258 h 1.23526 V 398.164 h -24.11128 v 12.31863 c 3.12371,0.8864 7.8272,1.94398 11.33113,1.94398 4.10957,0 7.96976,-0.75539 11.54489,-1.95403 z" id="elera-fritzing-drv8834-1-path447" fill="#dcdcdc" stroke-width="0.999997"/>
+    <path d="m 604.37038,477.96811 v -12.31849 l 1.25908,-0.0705 v 12.31864 z" id="elera-fritzing-drv8834-1-path449" fill="#999999" stroke-width="0.999997"/>
+    <path d="m 604.34669,398.22443 v 12.31864 l 1.28277,-0.0705 v -12.3086 l -1.28277,0.0604 z" id="elera-fritzing-drv8834-1-path451" fill="#999999" stroke-width="0.999997"/>
+    <rect height="0.54636502" width="12.318637" y="-596.62628" enable-background="new    " x="398.164" id="elera-fritzing-drv8834-1-rect453" transform="rotate(90)" opacity="0.15" stroke-width="0.999997"/>
+    <rect height="0.54636502" width="12.318637" enable-background="new    " x="398.164" id="elera-fritzing-drv8834-1-rect455" y="-629.74072" transform="rotate(90)" opacity="0.5" fill="#ffffff" stroke-width="0.999997"/>
+    <rect height="0.54636502" width="12.328718" y="-596.62628" enable-background="new    " x="465.5892" id="elera-fritzing-drv8834-1-rect457" transform="rotate(90)" opacity="0.15" stroke-width="0.999997"/>
+    <rect height="0.54636502" width="12.328718" enable-background="new    " x="465.5892" id="elera-fritzing-drv8834-1-rect459" y="-629.74072" transform="rotate(90)" opacity="0.5" fill="#ffffff" stroke-width="0.999997"/>
+    <line x1="596.0799" y2="405.60751" y1="405.60751" x2="596.0799" id="elera-fritzing-drv8834-1-line461" fill="none" stroke-width="0.999997"/>
+    <rect height="8.2192278" width="1.1885537" y="-604.37036" x="476.97095" id="elera-fritzing-drv8834-1-rect463" transform="rotate(90)" fill="#999999" stroke-width="0.999997"/>
+    <rect height="8.2192278" width="1.198627" y="-604.37036" x="398.164" id="elera-fritzing-drv8834-1-rect465" transform="rotate(90)" fill="#999999" stroke-width="0.999997"/>
+    <rect height="31.843563" width="80.237473" x="164.27103" id="elera-fritzing-drv8834-1-rect469" y="324.31577" fill="#d4aa00" stroke-width="0.999997"/>
+    <rect height="0.54636502" width="80.237473" enable-background="new    " x="164.27103" id="elera-fritzing-drv8834-1-rect471" y="324.31577" opacity="0.2" fill="#ffffff" stroke-width="0.999997"/>
+    <rect height="9.4901018" width="80.237473" y="348.42706" x="164.27103" id="elera-fritzing-drv8834-1-rect473" fill="#333333" stroke-width="0.999997"/>
+    <rect height="0.38007957" width="80.237473" y="357.59656" enable-background="new    " x="164.27103" id="elera-fritzing-drv8834-1-rect475" opacity="0.2" stroke-width="0.999997"/>
+    <path d="m 232.85459,324.31577 v 0 0 h -0.93677 v 0 c -0.80579,2.98125 -1.35978,9.45453 -1.35978,12.76835 0,3.45635 0.48348,8.2311 1.35978,11.34302 v 0 0 l 12.31864,-9e-5 v -24.11128 z" id="elera-fritzing-drv8834-1-path477" fill="#dcdcdc" stroke-width="0.999997"/>
+    <path d="m 176.81128,325.55103 v -1.23526 H 164.5027 v 24.11128 h 12.31863 c 0.8864,-3.12371 1.94398,-7.8272 1.94398,-11.33113 0,-4.10957 -0.75539,-7.96976 -1.95403,-11.54489 z" id="elera-fritzing-drv8834-1-path479" fill="#dcdcdc" stroke-width="0.999997"/>
+    <path d="m 244.30681,349.68613 h -12.31849 l -0.0705,-1.25908 h 12.31864 z" id="elera-fritzing-drv8834-1-path481" fill="#999999" stroke-width="0.999997"/>
+    <path d="m 164.56313,349.70982 h 12.31864 l -0.0705,-1.28277 h -12.3086 l 0.0604,1.28277 z" id="elera-fritzing-drv8834-1-path483" fill="#999999" stroke-width="0.999997"/>
+    <rect height="0.54636502" width="12.318637" y="357.43021" enable-background="new    " x="164.5027" id="elera-fritzing-drv8834-1-rect485" opacity="0.15" stroke-width="0.999997"/>
+    <rect height="0.54636502" width="12.318637" enable-background="new    " x="164.5027" id="elera-fritzing-drv8834-1-rect487" y="324.31577" opacity="0.5" fill="#ffffff" stroke-width="0.999997"/>
+    <rect height="0.54636502" width="12.328718" y="357.43021" enable-background="new    " x="231.9279" id="elera-fritzing-drv8834-1-rect489" opacity="0.15" stroke-width="0.999997"/>
+    <rect height="0.54636502" width="12.328718" enable-background="new    " x="231.9279" id="elera-fritzing-drv8834-1-rect491" y="324.31577" opacity="0.5" fill="#ffffff" stroke-width="0.999997"/>
+    <line x1="171.94623" y2="357.97659" y1="357.97659" x2="171.94623" id="elera-fritzing-drv8834-1-line493" fill="none" stroke-width="0.999997"/>
+    <rect height="8.2192278" width="1.1885537" y="349.68613" x="243.30963" id="elera-fritzing-drv8834-1-rect495" fill="#999999" stroke-width="0.999997"/>
+    <rect height="8.2192278" width="1.198627" y="349.68613" x="164.5027" id="elera-fritzing-drv8834-1-rect497" fill="#999999" stroke-width="0.999997"/>
+    <rect height="31.843563" width="80.237473" x="31.257561" id="elera-fritzing-drv8834-1-rect501" y="262.51154" fill="#d4aa00" stroke-width="0.999997"/>
+    <rect height="0.54636502" width="80.237473" enable-background="new    " x="31.257561" id="elera-fritzing-drv8834-1-rect503" y="262.51154" opacity="0.2" fill="#ffffff" stroke-width="0.999997"/>
+    <rect height="9.4901018" width="80.237473" y="286.6228" x="31.257561" id="elera-fritzing-drv8834-1-rect505" fill="#333333" stroke-width="0.999997"/>
+    <rect height="0.38007957" width="80.237473" y="295.7923" enable-background="new    " x="31.257561" id="elera-fritzing-drv8834-1-rect507" opacity="0.2" stroke-width="0.999997"/>
+    <path d="m 99.841119,262.51153 v 0 0 h -0.936765 v 0 c -0.805791,2.98125 -1.359785,9.45453 -1.359785,12.76835 0,3.45635 0.483481,8.2311 1.359785,11.34302 v 0 0 l 12.318636,-9e-5 v -24.11128 z" id="elera-fritzing-drv8834-1-path509" fill="#dcdcdc" stroke-width="0.999997"/>
+    <path d="m 43.797813,263.74679 v -1.23526 H 31.489228 v 24.11128 h 12.318637 c 0.886391,-3.12371 1.943978,-7.8272 1.943978,-11.33113 0,-4.10957 -0.755388,-7.96976 -1.95403,-11.54489 z" id="elera-fritzing-drv8834-1-path511" fill="#dcdcdc" stroke-width="0.999997"/>
+    <path d="M 111.29334,287.88189 H 98.974845 l -0.07049,-1.25908 h 12.318635 z" id="elera-fritzing-drv8834-1-path513" fill="#999999" stroke-width="0.999997"/>
+    <path d="m 31.54966,287.90558 h 12.318637 l -0.07049,-1.28277 H 31.489213 l 0.06041,1.28277 z" id="elera-fritzing-drv8834-1-path515" fill="#999999" stroke-width="0.999997"/>
+    <rect height="0.54636502" width="12.318637" y="295.62598" enable-background="new    " x="31.489225" id="elera-fritzing-drv8834-1-rect517" opacity="0.15" stroke-width="0.999997"/>
+    <rect height="0.54636502" width="12.318637" enable-background="new    " x="31.489225" id="elera-fritzing-drv8834-1-rect519" y="262.51154" opacity="0.5" fill="#ffffff" stroke-width="0.999997"/>
+    <rect height="0.54636502" width="12.328718" y="295.62598" enable-background="new    " x="98.914436" id="elera-fritzing-drv8834-1-rect521" opacity="0.15" stroke-width="0.999997"/>
+    <rect height="0.54636502" width="12.328718" enable-background="new    " x="98.914436" id="elera-fritzing-drv8834-1-rect523" y="262.51154" opacity="0.5" fill="#ffffff" stroke-width="0.999997"/>
+    <line x1="38.932755" y2="296.17236" y1="296.17236" x2="38.932755" id="elera-fritzing-drv8834-1-line525" fill="none" stroke-width="0.999997"/>
+    <rect height="8.2192278" width="1.1885537" y="287.8819" x="110.29617" id="elera-fritzing-drv8834-1-rect527" fill="#999999" stroke-width="0.999997"/>
+    <rect height="8.2192278" width="1.198627" y="287.8819" x="31.489225" id="elera-fritzing-drv8834-1-rect529" fill="#999999" stroke-width="0.999997"/>
+    <rect height="49.00251" width="94.344963" x="24.539707" id="elera-fritzing-drv8834-1-rect533" y="185.25623" fill="#aa8800" stroke-width="1"/>
+    <rect height="0.84077454" width="94.344963" enable-background="new    " x="24.539707" id="elera-fritzing-drv8834-1-rect535" y="185.25623" opacity="0.2" fill="#ffffff" stroke-width="1"/>
+    <rect height="14.603857" width="94.344963" y="222.35991" x="24.539707" id="elera-fritzing-drv8834-1-rect537" fill="#333333" stroke-width="1"/>
+    <rect height="0.58488595" width="94.344963" y="236.4704" enable-background="new    " x="24.539707" id="elera-fritzing-drv8834-1-rect539" opacity="0.2" stroke-width="1"/>
+    <path d="m 105.18175,185.25623 v 0 0 h -1.10147 v 0 c -0.94747,4.5877 -1.59887,14.54911 -1.59887,19.64859 0,5.31882 0.56849,12.66645 1.59887,17.45522 v 0 0 l 14.48452,-1.3e-4 v -37.10368 z" id="elera-fritzing-drv8834-1-path541" fill="#dcdcdc" stroke-width="1"/>
+    <path d="m 39.28481,187.15711 v -1.90088 H 24.812108 v 37.10368 h 14.484521 c 1.042238,-4.80693 2.285771,-12.0449 2.285771,-17.43693 0,-6.32401 -0.888201,-12.26428 -2.29759,-17.76587 z" id="elera-fritzing-drv8834-1-path543" fill="#dcdcdc" stroke-width="1"/>
+    <path d="m 118.64752,224.29745 h -14.48436 l -0.0829,-1.93754 h 14.48452 z" id="elera-fritzing-drv8834-1-path545" fill="#999999" stroke-width="1"/>
+    <path d="m 24.883166,224.3339 h 14.484521 l -0.08288,-1.97399 H 24.812091 l 0.07103,1.97399 z" id="elera-fritzing-drv8834-1-path547" fill="#999999" stroke-width="1"/>
+    <rect height="0.84077454" width="14.484521" y="236.21443" enable-background="new    " x="24.812105" id="elera-fritzing-drv8834-1-rect549" opacity="0.15" stroke-width="1"/>
+    <rect height="0.84077454" width="14.484521" enable-background="new    " x="24.812105" id="elera-fritzing-drv8834-1-rect551" y="185.25623" opacity="0.5" fill="#ffffff" stroke-width="1"/>
+    <rect height="0.84077454" width="14.496374" y="236.21443" enable-background="new    " x="104.09213" id="elera-fritzing-drv8834-1-rect553" opacity="0.15" stroke-width="1"/>
+    <rect height="0.84077454" width="14.496374" enable-background="new    " x="104.09213" id="elera-fritzing-drv8834-1-rect555" y="185.25623" opacity="0.5" fill="#ffffff" stroke-width="1"/>
+    <line x1="33.564369" y2="237.05522" y1="237.05522" x2="33.564369" id="elera-fritzing-drv8834-1-line557" fill="none" stroke-width="1"/>
+    <rect height="12.64817" width="1.3975272" y="224.29745" x="117.47502" id="elera-fritzing-drv8834-1-rect559" fill="#999999" stroke-width="1"/>
+    <rect height="12.64817" width="1.4093716" y="224.29745" x="24.812105" id="elera-fritzing-drv8834-1-rect561" fill="#999999" stroke-width="1"/>
+    <rect height="49.00251" width="94.344963" x="331.92957" id="elera-fritzing-drv8834-1-rect567" y="-126.49847" transform="rotate(90)" fill="#aa8800" stroke-width="1"/>
+    <rect height="0.84077454" width="94.344963" enable-background="new    " x="331.92957" id="elera-fritzing-drv8834-1-rect569" y="-126.49847" transform="rotate(90)" opacity="0.2" fill="#ffffff" stroke-width="1"/>
+    <rect height="14.603857" width="94.344963" y="-89.394791" x="331.92957" id="elera-fritzing-drv8834-1-rect571" transform="rotate(90)" fill="#333333" stroke-width="1"/>
+    <rect height="0.58488595" width="94.344963" y="-75.284294" enable-background="new    " x="331.92957" id="elera-fritzing-drv8834-1-rect573" transform="rotate(90)" opacity="0.2" stroke-width="1"/>
+    <path d="m 126.49847,412.57162 v 0 0 -1.10147 0 c -4.5877,-0.94747 -14.54911,-1.59887 -19.64859,-1.59887 -5.31882,0 -12.666449,0.56849 -17.455223,1.59887 v 0 0 l 1.32e-4,14.48452 h 37.103681 z" id="elera-fritzing-drv8834-1-path575" fill="#dcdcdc" stroke-width="1"/>
+    <path d="m 124.59759,346.67468 h 1.90088 v -14.4727 H 89.394789 v 14.48452 c 4.806934,1.04224 12.044901,2.28577 17.436931,2.28577 6.32401,0 12.26428,-0.8882 17.76587,-2.29759 z" id="elera-fritzing-drv8834-1-path577" fill="#dcdcdc" stroke-width="1"/>
+    <path d="m 87.45725,426.03739 v -14.48436 l 1.937539,-0.0829 v 14.48452 z" id="elera-fritzing-drv8834-1-path579" fill="#999999" stroke-width="1"/>
+    <path d="m 87.420797,332.27304 v 14.48452 l 1.973992,-0.0829 v -14.47271 l -1.973992,0.071 z" id="elera-fritzing-drv8834-1-path581" fill="#999999" stroke-width="1"/>
+    <rect height="0.84077454" width="14.484521" y="-75.54026" enable-background="new    " x="332.20197" id="elera-fritzing-drv8834-1-rect583" transform="rotate(90)" opacity="0.15" stroke-width="1"/>
+    <rect height="0.84077454" width="14.484521" enable-background="new    " x="332.20197" id="elera-fritzing-drv8834-1-rect585" y="-126.49847" transform="rotate(90)" opacity="0.5" fill="#ffffff" stroke-width="1"/>
+    <rect height="0.84077454" width="14.496374" y="-75.54026" enable-background="new    " x="411.48199" id="elera-fritzing-drv8834-1-rect587" transform="rotate(90)" opacity="0.15" stroke-width="1"/>
+    <rect height="0.84077454" width="14.496374" enable-background="new    " x="411.48199" id="elera-fritzing-drv8834-1-rect589" y="-126.49847" transform="rotate(90)" opacity="0.5" fill="#ffffff" stroke-width="1"/>
+    <line x1="74.699471" y2="340.95425" y1="340.95425" x2="74.699471" id="elera-fritzing-drv8834-1-line591" fill="none" stroke-width="1"/>
+    <rect height="12.64817" width="1.3975272" y="-87.457245" x="424.8649" id="elera-fritzing-drv8834-1-rect593" transform="rotate(90)" fill="#999999" stroke-width="1"/>
+    <rect height="12.64817" width="1.4093716" y="-87.457245" x="332.20197" id="elera-fritzing-drv8834-1-rect595" transform="rotate(90)" fill="#999999" stroke-width="1"/>
+    <rect transform="rotate(90)" height="41.076118" width="19.979353" y="-346.48096" x="312.32275" connectorname="3" id="elera-fritzing-drv8834-1-rect863" fill="#8c8c8c" stroke="none" stroke-width="0" stroke-linecap="round"/>
+    <rect transform="rotate(90)" height="41.076118" width="19.979353" y="-346.48096" x="280.64825" connectorname="2" id="elera-fritzing-drv8834-1-rect861" fill="#8c8c8c" stroke="none" stroke-width="0" stroke-linecap="round"/>
+    <rect transform="rotate(90)" height="41.076118" width="19.979353" y="-346.48096" x="248.97363" connectorname="1" id="elera-fritzing-drv8834-1-rect859" fill="#8c8c8c" stroke="none" stroke-width="0" stroke-linecap="round"/>
+    <rect transform="rotate(90)" height="41.076118" width="19.979353" y="-346.48096" x="343.99765" connectorname="4" id="elera-fritzing-drv8834-1-rect865" fill="#8c8c8c" stroke="none" stroke-width="0" stroke-linecap="round"/>
+    <rect id="elera-fritzing-drv8834-1-rect835" connectorname="4" x="464.16788" y="367.84436" width="19.979353" height="41.076118" fill="#8c8c8c" stroke="none" stroke-width="0" stroke-linecap="round"/>
+    <rect transform="rotate(90)" id="elera-fritzing-drv8834-1-rect873" connectorname="4" x="343.99765" y="-536.06427" width="19.979353" height="41.076118" fill="#8c8c8c" stroke="none" stroke-width="0" stroke-linecap="round"/>
+    <rect transform="rotate(90)" id="elera-fritzing-drv8834-1-rect871" connectorname="3" x="312.32275" y="-536.06427" width="19.979353" height="41.076118" fill="#8c8c8c" stroke="none" stroke-width="0" stroke-linecap="round"/>
+    <rect transform="rotate(90)" id="elera-fritzing-drv8834-1-rect869" connectorname="2" x="280.64825" y="-536.06427" width="19.979353" height="41.076118" fill="#8c8c8c" stroke="none" stroke-width="0" stroke-linecap="round"/>
+    <rect transform="rotate(90)" id="elera-fritzing-drv8834-1-rect867" connectorname="1" x="248.97363" y="-536.06427" width="19.979353" height="41.076118" fill="#8c8c8c" stroke="none" stroke-width="0" stroke-linecap="round"/>
+    <rect id="elera-fritzing-drv8834-1-rect829" connectorname="1" x="369.14386" y="367.84436" width="19.979353" height="41.076118" fill="#8c8c8c" stroke="none" stroke-width="0" stroke-linecap="round"/>
+    <rect id="elera-fritzing-drv8834-1-rect831" connectorname="2" x="400.81848" y="367.84436" width="19.979353" height="41.076118" fill="#8c8c8c" stroke="none" stroke-width="0" stroke-linecap="round"/>
+    <rect id="elera-fritzing-drv8834-1-rect833" connectorname="3" x="432.49301" y="367.84436" width="19.979353" height="41.076118" fill="#8c8c8c" stroke="none" stroke-width="0" stroke-linecap="round"/>
+    <rect id="elera-fritzing-drv8834-1-rect837" connectorname="5" x="464.16788" y="208.91728" width="19.979353" height="41.076118" fill="#8c8c8c" stroke="none" stroke-width="0" stroke-linecap="round"/>
+    <rect id="elera-fritzing-drv8834-1-rect839" connectorname="6" x="432.49301" y="208.91728" width="19.979353" height="41.076118" fill="#8c8c8c" stroke="none" stroke-width="0" stroke-linecap="round"/>
+    <rect id="elera-fritzing-drv8834-1-rect841" connectorname="7" x="400.81848" y="208.91728" width="19.979353" height="41.076118" fill="#8c8c8c" stroke="none" stroke-width="0" stroke-linecap="round"/>
+    <rect id="elera-fritzing-drv8834-1-rect843" connectorname="8" x="369.14386" y="208.91728" width="19.979353" height="41.076118" fill="#8c8c8c" stroke="none" stroke-width="0" stroke-linecap="round"/>
+    <rect id="elera-fritzing-drv8834-1-rect845" connectorname="EP" x="363.2963" y="256.0498" width="126.69878" height="104.70357" fill="#8c8c8c" stroke="none" stroke-width="0" stroke-linecap="round"/>
+    <rect id="elera-fritzing-drv8834-1-rect847" x="338.02484" y="239.18842" width="166.66666" height="138.42674" fill="#303030" stroke="none" stroke-width="0"/>
+    <polygon transform="matrix(1.23774,0,0,1.0228753,338.02484,191.21391)" id="elera-fritzing-drv8834-1-polygon849" points="134.654,46.9016 124.654,56.9016 10,56.9016 0,46.9016 " fill="#1f1f1f" stroke-width="1.15931"/>
+    <polygon transform="matrix(1.23774,0,0,1.0228753,338.02484,191.21391)" id="elera-fritzing-drv8834-1-polygon851" points="134.654,182.232 124.654,172.232 10,172.232 0,182.232 " fill="#1f1f1f" stroke-width="1.15931"/>
+    <polygon transform="matrix(1.23774,0,0,1.0228753,338.02484,191.21391)" id="elera-fritzing-drv8834-1-polygon853" points="0,182.232 10,172.232 10,56.9016 0,46.9016 " fill="#000000" stroke-width="1.15931"/>
+    <polygon transform="matrix(1.23774,0,0,1.0228753,338.02484,191.21391)" id="elera-fritzing-drv8834-1-polygon855" points="134.654,182.232 124.654,172.232 124.654,56.9016 134.654,46.9016 " fill="#3d3d3d" stroke-width="1.15931"/>
+    <ellipse ry="10.228753" rx="12.3774" id="elera-fritzing-drv8834-1-ellipse857" cy="346.92825" cx="375.15704" fill="#1f1f1f" stroke="none" stroke-width="0"/>
+    <rect width="36.847198" gorn="0.1.0.1.0.0.0.0.0" x="-771.99109" height="10.8472" y="-343.97949" id="elera-fritzing-drv8834-1-rect10" transform="scale(-1)" fill="#8c8c8c"/>
+    <rect width="16.2778" gorn="0.1.0.1.0.0.0.0.1" x="-771.99109" height="27.7222" y="-342.52051" id="elera-fritzing-drv8834-1-rect14" transform="scale(-1)" fill="#8c8c8c"/>
+    <rect width="37.055599" gorn="0.1.0.1.0.0.0.1.0" x="-684.26886" height="10.8472" y="-344.14551" id="elera-fritzing-drv8834-1-rect8" transform="scale(-1)" fill="#8c8c8c"/>
+    <rect width="16.263901" gorn="0.1.0.1.0.0.0.1.1" x="-663.47675" height="27.9167" y="-342.71552" id="elera-fritzing-drv8834-1-rect16" transform="scale(-1)" fill="#8c8c8c"/>
+    <rect width="33.625" gorn="0.1.0.1.0.0.0.2.0" x="-726.42163" height="10.8472" y="-474.95154" id="elera-fritzing-drv8834-1-rect12" transform="scale(-1)" fill="#8c8c8c"/>
+    <rect width="16.263901" gorn="0.1.0.1.0.0.0.2.1" x="-717.74103" height="32.541698" id="elera-fritzing-drv8834-1-rect18" y="-493.82651" transform="scale(-1)" fill="#8c8c8c"/>
+    <path gorn="0.1.0.1.0.0.1" d="m 709.61604,472.24322 c 37.0278,0 67.0417,-30.0139 67.0417,-67.0556 v -67.0417 h -67.0417 -67.0694 l 10e-5,67.0417 c 0,37.0417 30.028,67.0556 67.0693,67.0556 z m 37.5695,-92.5557 v 50.9862 h -75.1667 v -50.9861 z" id="elera-fritzing-drv8834-1-path20" fill="#6b6b6b"/>
+    <path gorn="0.1.0.1.0.0.2" d="m 721.18554,448.07652 c 23.6389,-6.3889 37.625,-30.75 31.2639,-54.389 -6.4028,-23.667 -30.7361,-37.667 -54.4028,-31.292 -23.6667,6.41667 -37.6528,30.7639 -31.2639,54.4167 6.389,23.6532 30.7361,37.6671 54.4028,31.2643 z m 3.9722,-54.611 -1.93056,15.6667 -23.4444,6.33333 -9.56944,-12.5556 z" id="elera-fritzing-drv8834-1-path27" fill="#cecece"/>
+    <polygon points="68.0278,120.264 61.8889,97.5694 76.0278,93.7361 82.1667,116.417 " id="elera-fritzing-drv8834-1-rect31" gorn="0.1.0.1.0.0.3.0" transform="rotate(180,388.32887,246.91326)"/>
+    <polygon points="53.4306,84.6944 76.8611,78.3611 86.4444,90.9167 69.125,68.1389 66.0833,56.9167 51.9583,60.7361 54.9583,71.9583 51.5,100.361 " id="elera-fritzing-drv8834-1-polygon33" gorn="0.1.0.1.0.0.3.1" transform="rotate(180,388.32887,246.91326)"/>
+    <polygon points="53.4306,84.6944 35.375,89.5694 39.1806,103.681 51.5,100.361 " id="elera-fritzing-drv8834-1-polygon37" gorn="0.1.0.1.0.0.4.0" transform="rotate(180,388.32887,246.91326)" fill="#4d4d4d"/>
+    <polygon points="94.9306,73.4861 76.8611,78.3611 86.4444,90.9167 98.7361,87.625 " id="elera-fritzing-drv8834-1-polygon39" gorn="0.1.0.1.0.0.4.1" transform="rotate(180,388.32887,246.91326)" fill="#4d4d4d"/>
+    <path enable-background="new    " gorn="0.1.0.1.0.0.5" d="m 647.82474,403.45152 c 0.25,4.125 0.902,8.2917 1.986,12.4306 1.028,3.7083 2.403,7.2083 4.014,10.5416 l 2.902,-0.9861 4.334,5.7639 c 1.25,1.875 2.597,3.6667 4.069,5.375 l 4.556,6.0278 -2.48611,1.86111 c 14.76371,13.56939 35.88871,19.55549 56.69421,13.95829 20.7639,-5.625 36.0139,-21.4444 41.9167,-40.5972 l -3.05556,-0.36111 0.90276,-7.51389 c 0.375,-2.18056 0.66667,-4.41667 0.79167,-6.66667 l 0.86113,-7.19443 3.02776,-0.5972 c -0.29167,-3.70833 -0.875,-7.43056 -1.88889,-11.1528 -1.13887,-4.0969 -2.66667,-8.0139 -4.54167,-11.6949 l -3.18056,2.55556 c -3.68056,-7.52778 -8.91667,-13.875 -15.1667,-18.9306 l 3.18056,-2.52778 c -14.5972,-12.1389 -34.6389,-17.25 -54.3611,-11.9167 -19.7222,5.3333 -34.4444,19.8333 -40.9583,37.6806 l 4.0141,0.56992 c -2.875,7.5 -4.195,15.6389 -3.584,24 z m 50.0691,-41.25 c 20.9445,-5.639 42.5139,6.736 48.1806,27.667 5.63889,20.9722 -6.73611,42.5417 -27.6944,48.1944 -20.9445,5.6525 -42.5003,-6.7364 -48.1663,-27.6808 -5.681,-20.9726 6.7218,-42.5276 27.6801,-48.1806 z" id="elera-fritzing-drv8834-1-path41" opacity="0.3"/>
+    <path gorn="0.1.0.1.0.0.6" d="m 724.31054,459.71542 c 30.1111,-8.11111 47.9167,-39.0972 39.7778,-69.1667 -8.11111,-30.125 -39.0972,-47.9444 -69.2083,-39.8056 -30.0693,8.1394 -47.8893,39.0974 -39.7503,69.2084 8.125,30.0833 39.0836,47.8889 69.1808,39.7639 z m -26.2778,-97.3199 c 23.6667,-6.375 48.0139,7.598 54.4167,31.292 6.38889,23.6667 -7.61111,48.0278 -31.2639,54.4028 -23.6667,6.375 -48.0417,-7.625 -54.4167,-31.2917 -6.3751,-23.6531 7.5969,-48.0141 31.2639,-54.4031 z" id="elera-fritzing-drv8834-1-path43"/>
+    <path gorn="0.1.0.1.0.0.7" d="m 649.29674,408.56262 c 0.222,4.125 0.861,8.2917 2,12.4445 0.98611,3.68056 2.36111,7.19444 3.98611,10.5417 l 2.88889,-0.97222 13,17.13882 -2.5,1.86111 c 14.7638,13.58329 35.8888,19.56939 56.6804,13.95829 20.7917,-5.6111 36.0278,-21.4305 41.9306,-40.5833 l -3.05556,-0.36111 2.55556,-21.3889 3,-0.58329 c -0.27778,-3.70833 -0.875,-7.40278 -1.86111,-11.125 -1.13889,-4.13889 -2.66667,-8.05556 -4.54167,-11.7361 l -8.55556,6.88889 -15.1944,-18.8611 8.58334,-6.93039 c -14.5694,-12.1111 -34.625,-17.2222 -54.3333,-11.9167 -19.7222,5.33333 -34.4861,19.8194 -40.9722,37.6389 l 10.8609,1.6388 -3.56944,23.9444 z m 50.0554,-41.2501 c 20.9584,-5.639 42.5417,6.736 48.1806,27.6946 5.6528,20.9444 -6.7361,42.5 -27.6944,48.1527 -20.9584,5.6528 -42.5,-6.7361 -48.1526,-27.6944 -5.667,-20.9445 6.7359,-42.4999 27.6664,-48.1529 z" id="elera-fritzing-drv8834-1-path45" fill="#1a1a1a"/>
+    <circle enable-background="new    " r="4.5138898" cx="-754.86603" gorn="0.1.0.1.0.0.8" cy="-430.72934" id="elera-fritzing-drv8834-1-circle47" transform="scale(-1)" opacity="0.4" fill="#ffffff"/>
+    <circle enable-background="new    " r="4.5277801" cx="-683.32446" gorn="0.1.0.1.0.0.9" cy="-450.04874" id="elera-fritzing-drv8834-1-circle49" transform="scale(-1)" opacity="0.4" fill="#ffffff"/>
+    <path id="elera-fritzing-drv8834-1-path53" d="m 722.22714,360.56252 1.9028,0.458 -0.45833,1.91667 -1.87497,-0.44367 -0.45833,1.875 -3.81944,-0.88889 3.65278,-15.2778 3.81944,0.875 z" gorn="0.1.0.1.0.0.10.0" fill="#ffffff"/>
+    <path id="elera-fritzing-drv8834-1-path55" d="m 690.99104,349.95152 7.625,-1.91667 0.47222,1.91667 1.90278,-0.48611 2.8889,11.44411 -1.90278,0.48611 0.48618,1.88889 -7.65278,1.90278 -0.45833,-1.875 -1.91667,0.45833 -2.88889,-11.4028 1.94444,-0.48611 z m 2.375,1.472 2.91667,11.375 3.77783,-0.93 -2.875,-11.4444 z" gorn="0.1.0.1.0.0.10.1" fill="#ffffff"/>
+    <path id="elera-fritzing-drv8834-1-path57" d="m 669.99074,370.92352 -1.402,1.375 -1.38889,-1.40278 1.375,-1.38889 -2.75011,-2.76333 2.791,-2.806 2.806,2.75 4.167,-4.139 2.7773,2.82 -1.375,1.34722 2.7361,2.81878 -1.38889,1.38889 -2.76389,-2.76389 1.40278,-1.444 -1.3754,-1.361 -2.80556,2.75 6.91716,6.986 -2.80556,2.77778 z" gorn="0.1.0.1.0.0.10.2" fill="#ffffff"/>
+    <rect id="elera-fritzing-drv8834-1-rect746" width="58.000023" height="58.000023" x="113.4792" y="29.456226" fill="none" stroke="#999999" stroke-width="20"/>
+    <rect id="elera-fritzing-drv8834-1-rect748" width="58.000023" height="58.000023" x="713.47943" y="29.187504" fill="none" stroke="#999999" stroke-width="20"/>
+    <circle id="elera-fritzing-drv8834-1-connector0pin" cx="42.479168" cy="558.18768" r="29" fill="#ffffff" stroke="#999999" stroke-width="20"/>
+    <circle id="elera-fritzing-drv8834-1-connector1pin" cx="142.4792" cy="558.18768" r="29" fill="#ffffff" stroke="#999999" stroke-width="20"/>
+    <circle id="elera-fritzing-drv8834-1-connector2pin" cx="242.47923" cy="558.18768" r="29" fill="#ffffff" stroke="#999999" stroke-width="20"/>
+    <circle id="elera-fritzing-drv8834-1-connector3pin" cx="342.47925" cy="558.18768" r="29" fill="#ffffff" stroke="#999999" stroke-width="20"/>
+    <circle id="elera-fritzing-drv8834-1-connector4pin" cx="442.47928" cy="558.18768" r="29" fill="#ffffff" stroke="#999999" stroke-width="20"/>
+    <circle id="elera-fritzing-drv8834-1-connector5pin" cx="542.47937" cy="558.18768" r="29" fill="#ffffff" stroke="#999999" stroke-width="20"/>
+    <circle id="elera-fritzing-drv8834-1-connector6pin" cx="642.47937" cy="558.18768" r="29" fill="#ffffff" stroke="#999999" stroke-width="20"/>
+    <circle id="elera-fritzing-drv8834-1-connector7pin" cx="742.47943" cy="558.18768" r="29" fill="#ffffff" stroke="#999999" stroke-width="20"/>
+    <circle id="elera-fritzing-drv8834-1-connector8pin" cx="742.47943" cy="58.187496" r="29" fill="#ffffff" stroke="#999999" stroke-width="20"/>
+    <circle id="elera-fritzing-drv8834-1-connector9pin" cx="642.47937" cy="58.187496" r="29" fill="#ffffff" stroke="#999999" stroke-width="20"/>
+    <circle id="elera-fritzing-drv8834-1-connector10pin" cx="542.47937" cy="58.187496" r="29" fill="#ffffff" stroke="#999999" stroke-width="20"/>
+    <circle id="elera-fritzing-drv8834-1-connector11pin" cx="442.47928" cy="58.187496" r="29" fill="#ffffff" stroke="#999999" stroke-width="20"/>
+    <circle id="elera-fritzing-drv8834-1-connector12pin" cx="342.47925" cy="58.187496" r="29" fill="#ffffff" stroke="#999999" stroke-width="20"/>
+    <circle id="elera-fritzing-drv8834-1-connector13pin" cx="242.47923" cy="58.187496" r="29" fill="#ffffff" stroke="#999999" stroke-width="20"/>
+    <circle id="elera-fritzing-drv8834-1-connector14pin" cx="142.4792" cy="58.187496" r="29" fill="#ffffff" stroke="#999999" stroke-width="20"/>
+    <circle id="elera-fritzing-drv8834-1-connector15pin" cx="42.479168" cy="58.187496" r="29" fill="#ffffff" stroke="#999999" stroke-width="20"/>
+  </g>
+</svg>

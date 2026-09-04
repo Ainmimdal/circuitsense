@@ -1,5 +1,4 @@
-export const MM_PER_INCH = 25.4;
-export const BREADBOARD_PITCH_MM = 2.54;
+export { MM_PER_INCH, BREADBOARD_PITCH_MM } from '../core/units.js';
 
 export function normalizeDegrees(value = 0) {
     const normalized = ((Number(value) % 360) + 360) % 360;
@@ -64,4 +63,3 @@ export function distance(a, b) {
 export function pointsEqual(a, b, epsilon = 1e-6) {
     return Boolean(a && b && Math.abs(a.x - b.x) <= epsilon && Math.abs(a.y - b.y) <= epsilon);
 }
-

@@ -1,0 +1,100 @@
+{
+  "format": "elera-fritzing-part-v1",
+  "id": "fritzing-prefix0000-9b7604e7c74acc1a36bb79940b62723b-1",
+  "name": "KY-026",
+  "description": "ky-026 flame sensor module",
+  "category": "sensor",
+  "sourcePart": "part.prefix0000_9b7604e7c74acc1a36bb79940b62723b_1.fzp",
+  "library": {
+    "source": "fritzing",
+    "family": "flame-sensor",
+    "variant": "variant 1",
+    "taxonomy": "part.dip.4.pins",
+    "tags": [
+      "contrib",
+      "sensor",
+      "flame sensor",
+      "ky-026",
+      "fritzing user"
+    ]
+  },
+  "artwork": {
+    "svgUrl": "/converted-parts/fritzing-prefix0000-9b7604e7c74acc1a36bb79940b62723b-1/breadboard.svg",
+    "sourceSize": {
+      "width": 1897.6468,
+      "height": 600.00007
+    },
+    "physicalSizeMm": {
+      "width": 48.200229,
+      "height": 15.240002
+    }
+  },
+  "pins": [
+    {
+      "id": "1",
+      "label": "pin1",
+      "connector": "male",
+      "electricalRole": "ANALOG",
+      "autoWireRequirement": "ANALOG",
+      "capabilities": [
+        "analog"
+      ],
+      "artwork": {
+        "x": 75.251195,
+        "y": 169.967001
+      },
+      "fritzingConnectorId": "connector0"
+    },
+    {
+      "id": "2",
+      "label": "pin2",
+      "connector": "male",
+      "electricalRole": "GND",
+      "autoWireRequirement": "GND",
+      "capabilities": [
+        "ground"
+      ],
+      "artwork": {
+        "x": 75.251195,
+        "y": 270.324811
+      },
+      "fritzingConnectorId": "connector1"
+    },
+    {
+      "id": "3",
+      "label": "pin3",
+      "connector": "male",
+      "electricalRole": "VCC",
+      "autoWireRequirement": "VCC",
+      "capabilities": [
+        "power"
+      ],
+      "artwork": {
+        "x": 75.251195,
+        "y": 370.494552
+      },
+      "fritzingConnectorId": "connector2"
+    },
+    {
+      "id": "4",
+      "label": "pin4",
+      "connector": "male",
+      "electricalRole": "DIGITAL",
+      "autoWireRequirement": "DIGITAL",
+      "capabilities": [
+        "digital"
+      ],
+      "artwork": {
+        "x": 75.492125,
+        "y": 470.492841
+      },
+      "fritzingConnectorId": "connector3"
+    }
+  ],
+  "packages": [],
+  "propertyDefinitions": [],
+  "connectorType": "male",
+  "currentDraw_mA": 0,
+  "breadboardRequired": false,
+  "pinless": false
+}

@@ -1,9 +1,10 @@
 import { applyTransform } from './geometry.js';
 import { componentWorldTransform, resolveConnectionWorldPoint } from './model.js';
 import { getFootprintDefinition } from './footprints.js';
-import { pinExitDirection, routeSegments } from './routing.js';
+import { pinExitDirection, routeSegments, ROUTING_WIRE_SEPARATION } from './routing.js';
 
 const TARGET_ASPECT_RATIO = 1.65;
+const FANOUT_CORRIDOR_PADDING = 2.54;
 const EPSILON = 1e-6;
 
 function stableCompare(left, right) {
@@ -211,11 +212,36 @@ function chunks(items, size) {
     return result;
 }
 
-function placeTopOrBottom(project, controllerBounds, items, direction, spec) {
+function facingLaneDepth(project, componentIds, direction) {
+    let depth = 0;
+    for (const componentId of componentIds) {
+        const lanes = new Set();
+        for (const wire of project.wires) {
+            const ref = endpointForComponent(wire, componentId);
+            if (!ref || pinExitDirection(project, ref) !== direction) continue;
+            const other = otherEndpoint(wire, componentId);
+            const supply = supplyKind(ref.pinId) || supplyKind(other?.pinId);
+            lanes.add(supply ? `supply:${supply}` : `wire:${wire.id}`);
+        }
+        depth = Math.max(depth, Math.max(0, lanes.size - 1) * ROUTING_WIRE_SEPARATION);
+    }
+    return depth;
+}
+
+function fanoutAwareGap(project, controllerId, items, side, configuredGap) {
+    const controllerDirection = { top: 'up', bottom: 'down', left: 'left', right: 'right' }[side];
+    const itemDirection = { top: 'down', bottom: 'up', left: 'right', right: 'left' }[side];
+    const controllerDepth = facingLaneDepth(project, [controllerId], controllerDirection);
+    const itemDepth = facingLaneDepth(project, items.flatMap(item => item.componentIds), itemDirection);
+    return Math.max(configuredGap, controllerDepth + itemDepth + FANOUT_CORRIDOR_PADDING);
+}
+
+function placeTopOrBottom(project, controller, controllerBounds, items, direction, spec) {
     const rows = chunks(ordered(items, direction, spec.orderMode), spec.wrap);
+    const controllerGap = fanoutAwareGap(project, controller.id, items, direction, spec.controllerGap);
     let boundary = direction === 'top'
-        ? controllerBounds.top - spec.controllerGap
-        : controllerBounds.bottom + spec.controllerGap;
+        ? controllerBounds.top - controllerGap
+        : controllerBounds.bottom + controllerGap;
     for (const row of rows) {
         const rowHeight = Math.max(...row.map(item => item.height));
         let cursor = controllerBounds.left + (controllerBounds.right - controllerBounds.left) * spec.topStart;
@@ -228,17 +254,18 @@ function placeTopOrBottom(project, controllerBounds, items, direction, spec) {
     }
 }
 
-function placeLeftOrRight(project, controllerBounds, items, direction, spec) {
+function placeLeftOrRight(project, controller, controllerBounds, items, direction, spec) {
     const shelves = chunks(ordered(items, direction, spec.orderMode), spec.wrap);
     const centerY = (controllerBounds.top + controllerBounds.bottom) / 2;
+    const controllerGap = fanoutAwareGap(project, controller.id, items, direction, spec.controllerGap);
     for (let shelfIndex = 0; shelfIndex < shelves.length; shelfIndex++) {
         const shelf = shelves[shelfIndex];
         const shelfHeight = Math.max(...shelf.map(item => item.height));
         const verticalOffset = shelfIndex === 0 ? 0 : Math.ceil(shelfIndex / 2) * (shelfHeight + spec.bandGap) *
             (shelfIndex % 2 ? 1 : -1);
         let cursor = direction === 'right'
-            ? controllerBounds.right + spec.controllerGap
-            : controllerBounds.left - spec.controllerGap;
+            ? controllerBounds.right + controllerGap
+            : controllerBounds.left - controllerGap;
         for (const item of shelf) {
             const left = direction === 'right' ? cursor : cursor - item.width;
             const top = centerY - item.height / 2 + verticalOffset;
@@ -256,10 +283,10 @@ function placePortFlow(project, controllerId, groups, spec) {
     const controllerBounds = componentBounds(project, controller);
     const metadata = groupMetadata(project, groups);
     for (const side of ['top', 'bottom']) {
-        placeTopOrBottom(project, controllerBounds, metadata.filter(group => group.side === side), side, spec);
+        placeTopOrBottom(project, controller, controllerBounds, metadata.filter(group => group.side === side), side, spec);
     }
     for (const side of ['right', 'left']) {
-        placeLeftOrRight(project, controllerBounds, metadata.filter(group => group.side === side), side, spec);
+        placeLeftOrRight(project, controller, controllerBounds, metadata.filter(group => group.side === side), side, spec);
     }
 }
 

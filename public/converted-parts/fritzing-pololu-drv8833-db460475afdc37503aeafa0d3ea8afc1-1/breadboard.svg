@@ -1,0 +1,360 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+<svg xmlns="http://www.w3.org/2000/svg" id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-svg8" version="1.1" width="0.80052656in" viewBox="0 0 211.80607 132.29169" height="0.49999994in" gorn="0">
+    <desc>
+        <referenceFile>BreadboardView.svg</referenceFile>
+    </desc>
+    <defs id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-defs2"/>
+    
+    <g transform="translate(-1179.7348,-438.89737)">
+        <g>
+            <g id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-layer1" gorn="0.3.0.0">
+                <path d="m 1179.8741,438.89737 c -0.1857,46.0926 -0.1857,86.5151 0,132.2917 h 211.6668 v -132.2917 z" id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-path853" stroke="none" stroke-width="0" fill="#1f7a34" gorn="0.3.0.0.0"/>
+                <g transform="rotate(-90,1392.3899,616.75587)">
+                    <g>
+                        <g id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-g2017" gorn="0.3.0.0.1.0.0">
+                            <g transform="rotate(90)">
+                                <g>
+                                    <rect id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-rect855" stroke="none" width="3.4395845" x="498.31256" y="-1491.1177" stroke-width="0" fill="#8c8c8c" height="10.583338" gorn="0.3.0.0.1.0.0.0.0.0"/>
+                                </g>
+                            </g>
+                            <g transform="rotate(90)">
+                                <g>
+                                    <rect id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-rect857" stroke="none" width="3.4395845" x="504.92715" y="-1491.1177" stroke-width="0" fill="#8c8c8c" height="10.583338" gorn="0.3.0.0.1.0.0.1.0.0"/>
+                                </g>
+                            </g>
+                            <g transform="rotate(90)">
+                                <g>
+                                    <rect id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-rect859" stroke="none" width="3.4395845" x="511.54172" y="-1491.1177" stroke-width="0" fill="#8c8c8c" height="10.583338" gorn="0.3.0.0.1.0.0.2.0.0"/>
+                                </g>
+                            </g>
+                            <g transform="rotate(90)">
+                                <g>
+                                    <rect id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-rect861" stroke="none" width="3.4395845" x="518.15631" y="-1491.1177" stroke-width="0" fill="#8c8c8c" height="10.583338" gorn="0.3.0.0.1.0.0.3.0.0"/>
+                                </g>
+                            </g>
+                            <rect id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-rect863" stroke="none" width="3.4395845" x="1493.6754" y="485.08337" stroke-width="0" fill="#8c8c8c" height="10.583338" gorn="0.3.0.0.1.0.0.4"/>
+                            <rect id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-rect865" stroke="none" width="3.4395845" x="1500.29" y="485.08337" stroke-width="0" fill="#8c8c8c" height="10.583338" gorn="0.3.0.0.1.0.0.5"/>
+                            <rect id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-rect867" stroke="none" width="3.4395845" x="1506.9045" y="485.08337" stroke-width="0" fill="#8c8c8c" height="10.583338" gorn="0.3.0.0.1.0.0.6"/>
+                            <rect id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-rect869" stroke="none" width="3.4395845" x="1513.5192" y="485.08337" stroke-width="0" fill="#8c8c8c" height="10.583338" gorn="0.3.0.0.1.0.0.7"/>
+                            <g transform="scale(-1)">
+                                <g>
+                                    <rect id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-rect871" stroke="none" width="3.4395845" x="-1496.3282" y="-535.90509" stroke-width="0" fill="#8c8c8c" height="10.583338" gorn="0.3.0.0.1.0.0.8.0.0"/>
+                                </g>
+                            </g>
+                            <g transform="scale(-1)">
+                                <g>
+                                    <rect id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-rect873" stroke="none" width="3.4395845" x="-1502.9429" y="-535.90509" stroke-width="0" fill="#8c8c8c" height="10.583338" gorn="0.3.0.0.1.0.0.9.0.0"/>
+                                </g>
+                            </g>
+                            <g transform="scale(-1)">
+                                <g>
+                                    <rect id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-rect875" stroke="none" width="3.4395845" x="-1509.5574" y="-535.90509" stroke-width="0" fill="#8c8c8c" height="10.583338" gorn="0.3.0.0.1.0.0.10.0.0"/>
+                                </g>
+                            </g>
+                            <g transform="scale(-1)">
+                                <g>
+                                    <rect id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-rect877" stroke="none" width="3.4395845" x="-1516.172" y="-535.90509" stroke-width="0" fill="#8c8c8c" height="10.583338" gorn="0.3.0.0.1.0.0.11.0.0"/>
+                                </g>
+                            </g>
+                            <g transform="rotate(90)">
+                                <g>
+                                    <rect id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-rect879" stroke="none" width="3.4395845" x="518.15631" y="-1530.1879" stroke-width="0" fill="#8c8c8c" height="10.583338" gorn="0.3.0.0.1.0.0.12.0.0"/>
+                                </g>
+                            </g>
+                            <g transform="rotate(90)">
+                                <g>
+                                    <rect id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-rect881" stroke="none" width="3.4395845" x="511.54172" y="-1530.1879" stroke-width="0" fill="#8c8c8c" height="10.583338" gorn="0.3.0.0.1.0.0.13.0.0"/>
+                                </g>
+                            </g>
+                            <g transform="rotate(90)">
+                                <g>
+                                    <rect id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-rect883" stroke="none" width="3.4395845" x="504.92715" y="-1530.1879" stroke-width="0" fill="#8c8c8c" height="10.583338" gorn="0.3.0.0.1.0.0.14.0.0"/>
+                                </g>
+                            </g>
+                            <g transform="rotate(90)">
+                                <g>
+                                    <rect id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-rect885" stroke="none" width="3.4395845" x="498.31256" y="-1530.1879" stroke-width="0" fill="#8c8c8c" height="10.583338" gorn="0.3.0.0.1.0.0.15.0.0"/>
+                                </g>
+                            </g>
+                            <g transform="rotate(90)">
+                                <g>
+                                    <rect id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-rect887" stroke="none" width="27.083342" x="496.72507" y="-1518.7302" stroke-width="0" fill="#303030" height="27.083342" gorn="0.3.0.0.1.0.0.16.0.0"/>
+                                </g>
+                            </g>
+                            <g transform="matrix(0,0.97381417,-1.8373849,0,1529.7467,496.51471)">
+                                <g>
+                                    <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon889" points="0.216,6.048 29.016,6.048 28.296,6.768 0.936,6.768 " stroke-width="0" fill="#1f1f1f" gorn="0.3.0.0.1.0.0.17.0.0"/>
+                                </g>
+                            </g>
+                            <g transform="matrix(0,0.97381401,-1.8373849,0,1523.1323,496.51471)">
+                                <g>
+                                    <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon891" points="0.216,17.136 29.016,17.136 28.296,16.416 0.936,16.416 " stroke-width="0" fill="#1f1f1f" gorn="0.3.0.0.1.0.0.18.0.0"/>
+                                </g>
+                            </g>
+                            <g transform="matrix(0,1.8373849,-2.4816663,0,1534.1727,496.32818)">
+                                <g>
+                                    <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon893" points="0.216,6.048 0.216,17.136 0.936,16.416 0.936,6.768 " stroke-width="0" fill="#000000" gorn="0.3.0.0.1.0.0.19.0.0"/>
+                                </g>
+                            </g>
+                            <g transform="rotate(90)">
+                                <g>
+                                    <circle id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-circle897" stroke="none" cy="-1495.6156" stroke-width="0" fill="#1f1f1f" cx="500.69382" gorn="0.3.0.0.1.0.0.20.0.0" r="1.3229172"/>
+                                </g>
+                            </g>
+                            <g transform="matrix(0,1.8373849,-2.5134755,0,1534.3651,471.67782)">
+                                <g>
+                                    <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon895" points="29.016,17.136 28.296,16.416 28.296,6.768 29.016,6.048 " stroke-width="0" fill="#3d3d3d" gorn="0.3.0.0.1.0.0.21.0.0"/>
+                                </g>
+                            </g>
+                        </g>
+                    </g>
+                </g>
+                <g transform="matrix(3.6747699,0,0,3.6747699,1188.8792,553.73977)">
+                    <g>
+                        <g id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-g1082" stroke-width="0" gorn="0.3.0.0.2.0.0">
+                            <g id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-connector0pin" stroke-width="0" gorn="0.3.0.0.2.0.0.0">
+                                <rect id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-rect1069" width="2.29896" x="0" y="0" stroke-width="0" fill="#8d8c8c" height="2.2967999" gorn="0.3.0.0.2.0.0.0.0"/>
+                                <rect id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-connector1pin" width="1.18398" x="0.56098998" y="0.556952" stroke-width="0" fill="#8c8663" height="1.18189" gorn="0.3.0.0.2.0.0.0.1"/>
+                                <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon1073" points="0,2.2968 0.56099,1.73785 0.56099,0.501957 0,0 " stroke-width="0" fill="#b8af82" gorn="0.3.0.0.2.0.0.0.2"/>
+                                <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon1075" points="1.74297,0.558951 0.56899,0.558951 0,0 2.29896,0 " stroke-width="0" fill="#80795b" gorn="0.3.0.0.2.0.0.0.3"/>
+                                <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon1077" points="1.74297,1.73785 1.74297,0.558951 2.29896,0 2.29896,2.2968 " stroke-width="0" fill="#5e5b43" gorn="0.3.0.0.2.0.0.0.4"/>
+                                <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon1079" points="0,2.2968 0.56699,1.73785 1.74297,1.73785 2.29896,2.2968 " stroke-width="0" fill="#9a916c" gorn="0.3.0.0.2.0.0.0.5"/>
+                            </g>
+                        </g>
+                    </g>
+                </g>
+                <g transform="matrix(3.6747699,0,0,3.6747699,1188.6513,448.06457)">
+                    <g>
+                        <g id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-g1097" stroke-width="0" gorn="0.3.0.0.3.0.0">
+                            <g stroke-width="0" gorn="0.3.0.0.3.0.0.0">
+                                <rect id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-rect1084" width="2.29896" x="0" y="0" stroke-width="0" fill="#8d8c8c" height="2.2967999" gorn="0.3.0.0.3.0.0.0.0"/>
+                                <rect id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-connector16pin" width="1.18398" x="0.56098998" y="0.556952" stroke-width="0" fill="#8c8663" height="1.18189" gorn="0.3.0.0.3.0.0.0.1"/>
+                                <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon1088" points="0.56099,0.501957 0,0 0,2.2968 0.56099,1.73785 " stroke-width="0" fill="#b8af82" gorn="0.3.0.0.3.0.0.0.2"/>
+                                <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon1090" points="0,0 2.29896,0 1.74297,0.558951 0.56899,0.558951 " stroke-width="0" fill="#80795b" gorn="0.3.0.0.3.0.0.0.3"/>
+                                <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon1092" points="2.29896,0 2.29896,2.2968 1.74297,1.73785 1.74297,0.558951 " stroke-width="0" fill="#5e5b43" gorn="0.3.0.0.3.0.0.0.4"/>
+                                <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon1094" points="1.74297,1.73785 2.29896,2.2968 0,2.2968 0.56699,1.73785 " stroke-width="0" fill="#9a916c" gorn="0.3.0.0.3.0.0.0.5"/>
+                            </g>
+                        </g>
+                    </g>
+                </g>
+                <g transform="matrix(3.6747699,0,0,3.6747699,1215.3376,553.73977)">
+                    <g>
+                        <g id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-g1112" stroke-width="0" gorn="0.3.0.0.4.0.0">
+                            <g stroke-width="0" gorn="0.3.0.0.4.0.0.0">
+                                <rect id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-rect1099" width="2.29896" x="0" y="0" stroke-width="0" fill="#8d8c8c" height="2.2967999" gorn="0.3.0.0.4.0.0.0.0"/>
+                                <rect id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-connector2pin" width="1.18398" x="0.56098998" y="0.556952" stroke-width="0" fill="#8c8663" height="1.18189" gorn="0.3.0.0.4.0.0.0.1"/>
+                                <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon1103" points="0,2.2968 0.56099,1.73785 0.56099,0.501957 0,0 " stroke-width="0" fill="#b8af82" gorn="0.3.0.0.4.0.0.0.2"/>
+                                <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon1105" points="1.74297,0.558951 0.56899,0.558951 0,0 2.29896,0 " stroke-width="0" fill="#80795b" gorn="0.3.0.0.4.0.0.0.3"/>
+                                <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon1107" points="1.74297,1.73785 1.74297,0.558951 2.29896,0 2.29896,2.2968 " stroke-width="0" fill="#5e5b43" gorn="0.3.0.0.4.0.0.0.4"/>
+                                <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon1109" points="0,2.2968 0.56699,1.73785 1.74297,1.73785 2.29896,2.2968 " stroke-width="0" fill="#9a916c" gorn="0.3.0.0.4.0.0.0.5"/>
+                            </g>
+                        </g>
+                    </g>
+                </g>
+                <g transform="matrix(3.6747699,0,0,3.6747699,1215.1096,448.06457)">
+                    <g>
+                        <g id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-g1127" stroke-width="0" gorn="0.3.0.0.5.0.0">
+                            <g stroke-width="0" gorn="0.3.0.0.5.0.0.0">
+                                <rect id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-rect1114" width="2.29896" x="0" y="0" stroke-width="0" fill="#8d8c8c" height="2.2967999" gorn="0.3.0.0.5.0.0.0.0"/>
+                                <rect id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-connector15pin" width="1.18398" x="0.56098998" y="0.556952" stroke-width="0" fill="#8c8663" height="1.18189" gorn="0.3.0.0.5.0.0.0.1"/>
+                                <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon1118" points="0.56099,0.501957 0,0 0,2.2968 0.56099,1.73785 " stroke-width="0" fill="#b8af82" gorn="0.3.0.0.5.0.0.0.2"/>
+                                <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon1120" points="0,0 2.29896,0 1.74297,0.558951 0.56899,0.558951 " stroke-width="0" fill="#80795b" gorn="0.3.0.0.5.0.0.0.3"/>
+                                <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon1122" points="2.29896,0 2.29896,2.2968 1.74297,1.73785 1.74297,0.558951 " stroke-width="0" fill="#5e5b43" gorn="0.3.0.0.5.0.0.0.4"/>
+                                <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon1124" points="1.74297,1.73785 2.29896,2.2968 0,2.2968 0.56699,1.73785 " stroke-width="0" fill="#9a916c" gorn="0.3.0.0.5.0.0.0.5"/>
+                            </g>
+                        </g>
+                    </g>
+                </g>
+                <g transform="matrix(3.6747699,0,0,3.6747699,1241.7958,553.73977)">
+                    <g>
+                        <g id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-g1142" stroke-width="0" gorn="0.3.0.0.6.0.0">
+                            <g stroke-width="0" gorn="0.3.0.0.6.0.0.0">
+                                <rect id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-rect1129" width="2.29896" x="0" y="0" stroke-width="0" fill="#8d8c8c" height="2.2967999" gorn="0.3.0.0.6.0.0.0.0"/>
+                                <rect id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-connector3pin" width="1.18398" x="0.56098998" y="0.556952" stroke-width="0" fill="#8c8663" height="1.18189" gorn="0.3.0.0.6.0.0.0.1"/>
+                                <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon1133" points="0,2.2968 0.56099,1.73785 0.56099,0.501957 0,0 " stroke-width="0" fill="#b8af82" gorn="0.3.0.0.6.0.0.0.2"/>
+                                <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon1135" points="1.74297,0.558951 0.56899,0.558951 0,0 2.29896,0 " stroke-width="0" fill="#80795b" gorn="0.3.0.0.6.0.0.0.3"/>
+                                <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon1137" points="1.74297,1.73785 1.74297,0.558951 2.29896,0 2.29896,2.2968 " stroke-width="0" fill="#5e5b43" gorn="0.3.0.0.6.0.0.0.4"/>
+                                <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon1139" points="0,2.2968 0.56699,1.73785 1.74297,1.73785 2.29896,2.2968 " stroke-width="0" fill="#9a916c" gorn="0.3.0.0.6.0.0.0.5"/>
+                            </g>
+                        </g>
+                    </g>
+                </g>
+                <g transform="matrix(3.6747699,0,0,3.6747699,1241.5679,448.06457)">
+                    <g>
+                        <g id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-g1157" stroke-width="0" gorn="0.3.0.0.7.0.0">
+                            <g stroke-width="0" gorn="0.3.0.0.7.0.0.0">
+                                <rect id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-rect1144" width="2.29896" x="0" y="0" stroke-width="0" fill="#8d8c8c" height="2.2967999" gorn="0.3.0.0.7.0.0.0.0"/>
+                                <rect id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-connector14pin" width="1.18398" x="0.56098998" y="0.556952" stroke-width="0" fill="#8c8663" height="1.18189" gorn="0.3.0.0.7.0.0.0.1"/>
+                                <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon1148" points="0.56099,0.501957 0,0 0,2.2968 0.56099,1.73785 " stroke-width="0" fill="#b8af82" gorn="0.3.0.0.7.0.0.0.2"/>
+                                <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon1150" points="0,0 2.29896,0 1.74297,0.558951 0.56899,0.558951 " stroke-width="0" fill="#80795b" gorn="0.3.0.0.7.0.0.0.3"/>
+                                <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon1152" points="2.29896,0 2.29896,2.2968 1.74297,1.73785 1.74297,0.558951 " stroke-width="0" fill="#5e5b43" gorn="0.3.0.0.7.0.0.0.4"/>
+                                <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon1154" points="1.74297,1.73785 2.29896,2.2968 0,2.2968 0.56699,1.73785 " stroke-width="0" fill="#9a916c" gorn="0.3.0.0.7.0.0.0.5"/>
+                            </g>
+                        </g>
+                    </g>
+                </g>
+                <g transform="matrix(3.6747699,0,0,3.6747699,1268.2542,553.73977)">
+                    <g>
+                        <g id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-g1172" stroke-width="0" gorn="0.3.0.0.8.0.0">
+                            <g stroke-width="0" gorn="0.3.0.0.8.0.0.0">
+                                <rect id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-rect1159" width="2.29896" x="0" y="0" stroke-width="0" fill="#8d8c8c" height="2.2967999" gorn="0.3.0.0.8.0.0.0.0"/>
+                                <rect id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-connector4pin" width="1.18398" x="0.56098998" y="0.556952" stroke-width="0" fill="#8c8663" height="1.18189" gorn="0.3.0.0.8.0.0.0.1"/>
+                                <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon1163" points="0,2.2968 0.56099,1.73785 0.56099,0.501957 0,0 " stroke-width="0" fill="#b8af82" gorn="0.3.0.0.8.0.0.0.2"/>
+                                <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon1165" points="1.74297,0.558951 0.56899,0.558951 0,0 2.29896,0 " stroke-width="0" fill="#80795b" gorn="0.3.0.0.8.0.0.0.3"/>
+                                <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon1167" points="1.74297,1.73785 1.74297,0.558951 2.29896,0 2.29896,2.2968 " stroke-width="0" fill="#5e5b43" gorn="0.3.0.0.8.0.0.0.4"/>
+                                <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon1169" points="0,2.2968 0.56699,1.73785 1.74297,1.73785 2.29896,2.2968 " stroke-width="0" fill="#9a916c" gorn="0.3.0.0.8.0.0.0.5"/>
+                            </g>
+                        </g>
+                    </g>
+                </g>
+                <g transform="matrix(3.6747699,0,0,3.6747699,1268.0262,448.06457)">
+                    <g>
+                        <g id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-g1187" stroke-width="0" gorn="0.3.0.0.9.0.0">
+                            <g stroke-width="0" gorn="0.3.0.0.9.0.0.0">
+                                <rect id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-rect1174" width="2.29896" x="0" y="0" stroke-width="0" fill="#8d8c8c" height="2.2967999" gorn="0.3.0.0.9.0.0.0.0"/>
+                                <rect id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-connector13pin" width="1.18398" x="0.56098998" y="0.556952" stroke-width="0" fill="#8c8663" height="1.18189" gorn="0.3.0.0.9.0.0.0.1"/>
+                                <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon1178" points="0.56099,0.501957 0,0 0,2.2968 0.56099,1.73785 " stroke-width="0" fill="#b8af82" gorn="0.3.0.0.9.0.0.0.2"/>
+                                <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon1180" points="0,0 2.29896,0 1.74297,0.558951 0.56899,0.558951 " stroke-width="0" fill="#80795b" gorn="0.3.0.0.9.0.0.0.3"/>
+                                <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon1182" points="2.29896,0 2.29896,2.2968 1.74297,1.73785 1.74297,0.558951 " stroke-width="0" fill="#5e5b43" gorn="0.3.0.0.9.0.0.0.4"/>
+                                <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon1184" points="1.74297,1.73785 2.29896,2.2968 0,2.2968 0.56699,1.73785 " stroke-width="0" fill="#9a916c" gorn="0.3.0.0.9.0.0.0.5"/>
+                            </g>
+                        </g>
+                    </g>
+                </g>
+                <g transform="matrix(3.6747699,0,0,3.6747699,1294.7125,553.73977)">
+                    <g>
+                        <g id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-g1202" stroke-width="0" gorn="0.3.0.0.10.0.0">
+                            <g stroke-width="0" gorn="0.3.0.0.10.0.0.0">
+                                <rect id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-rect1189" width="2.29896" x="0" y="0" stroke-width="0" fill="#8d8c8c" height="2.2967999" gorn="0.3.0.0.10.0.0.0.0"/>
+                                <rect id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-connector5pin" width="1.18398" x="0.56098998" y="0.556952" stroke-width="0" fill="#8c8663" height="1.18189" gorn="0.3.0.0.10.0.0.0.1"/>
+                                <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon1193" points="0,2.2968 0.56099,1.73785 0.56099,0.501957 0,0 " stroke-width="0" fill="#b8af82" gorn="0.3.0.0.10.0.0.0.2"/>
+                                <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon1195" points="1.74297,0.558951 0.56899,0.558951 0,0 2.29896,0 " stroke-width="0" fill="#80795b" gorn="0.3.0.0.10.0.0.0.3"/>
+                                <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon1197" points="1.74297,1.73785 1.74297,0.558951 2.29896,0 2.29896,2.2968 " stroke-width="0" fill="#5e5b43" gorn="0.3.0.0.10.0.0.0.4"/>
+                                <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon1199" points="0,2.2968 0.56699,1.73785 1.74297,1.73785 2.29896,2.2968 " stroke-width="0" fill="#9a916c" gorn="0.3.0.0.10.0.0.0.5"/>
+                            </g>
+                        </g>
+                    </g>
+                </g>
+                <g transform="matrix(3.6747699,0,0,3.6747699,1294.4846,448.06457)">
+                    <g>
+                        <g id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-g1217" stroke-width="0" gorn="0.3.0.0.11.0.0">
+                            <g stroke-width="0" gorn="0.3.0.0.11.0.0.0">
+                                <rect id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-rect1204" width="2.29896" x="0" y="0" stroke-width="0" fill="#8d8c8c" height="2.2967999" gorn="0.3.0.0.11.0.0.0.0"/>
+                                <rect id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-connector12pin" width="1.18398" x="0.56098998" y="0.556952" stroke-width="0" fill="#8c8663" height="1.18189" gorn="0.3.0.0.11.0.0.0.1"/>
+                                <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon1208" points="0.56099,0.501957 0,0 0,2.2968 0.56099,1.73785 " stroke-width="0" fill="#b8af82" gorn="0.3.0.0.11.0.0.0.2"/>
+                                <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon1210" points="0,0 2.29896,0 1.74297,0.558951 0.56899,0.558951 " stroke-width="0" fill="#80795b" gorn="0.3.0.0.11.0.0.0.3"/>
+                                <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon1212" points="2.29896,0 2.29896,2.2968 1.74297,1.73785 1.74297,0.558951 " stroke-width="0" fill="#5e5b43" gorn="0.3.0.0.11.0.0.0.4"/>
+                                <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon1214" points="1.74297,1.73785 2.29896,2.2968 0,2.2968 0.56699,1.73785 " stroke-width="0" fill="#9a916c" gorn="0.3.0.0.11.0.0.0.5"/>
+                            </g>
+                        </g>
+                    </g>
+                </g>
+                <g transform="matrix(3.6747699,0,0,3.6747699,1321.1709,553.73977)">
+                    <g>
+                        <g id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-g1232" stroke-width="0" gorn="0.3.0.0.12.0.0">
+                            <g stroke-width="0" gorn="0.3.0.0.12.0.0.0">
+                                <rect id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-rect1219" width="2.29896" x="0" y="0" stroke-width="0" fill="#8d8c8c" height="2.2967999" gorn="0.3.0.0.12.0.0.0.0"/>
+                                <rect id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-connector6pin" width="1.18398" x="0.56098998" y="0.556952" stroke-width="0" fill="#8c8663" height="1.18189" gorn="0.3.0.0.12.0.0.0.1"/>
+                                <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon1223" points="0,2.2968 0.56099,1.73785 0.56099,0.501957 0,0 " stroke-width="0" fill="#b8af82" gorn="0.3.0.0.12.0.0.0.2"/>
+                                <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon1225" points="1.74297,0.558951 0.56899,0.558951 0,0 2.29896,0 " stroke-width="0" fill="#80795b" gorn="0.3.0.0.12.0.0.0.3"/>
+                                <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon1227" points="1.74297,1.73785 1.74297,0.558951 2.29896,0 2.29896,2.2968 " stroke-width="0" fill="#5e5b43" gorn="0.3.0.0.12.0.0.0.4"/>
+                                <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon1229" points="0,2.2968 0.56699,1.73785 1.74297,1.73785 2.29896,2.2968 " stroke-width="0" fill="#9a916c" gorn="0.3.0.0.12.0.0.0.5"/>
+                            </g>
+                        </g>
+                    </g>
+                </g>
+                <g transform="matrix(3.6747699,0,0,3.6747699,1320.9429,448.06457)">
+                    <g>
+                        <g id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-g1247" stroke-width="0" gorn="0.3.0.0.13.0.0">
+                            <g stroke-width="0" gorn="0.3.0.0.13.0.0.0">
+                                <rect id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-rect1234" width="2.29896" x="0" y="0" stroke-width="0" fill="#8d8c8c" height="2.2967999" gorn="0.3.0.0.13.0.0.0.0"/>
+                                <rect id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-connector11pin" width="1.18398" x="0.56098998" y="0.556952" stroke-width="0" fill="#8c8663" height="1.18189" gorn="0.3.0.0.13.0.0.0.1"/>
+                                <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon1238" points="0.56099,0.501957 0,0 0,2.2968 0.56099,1.73785 " stroke-width="0" fill="#b8af82" gorn="0.3.0.0.13.0.0.0.2"/>
+                                <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon1240" points="0,0 2.29896,0 1.74297,0.558951 0.56899,0.558951 " stroke-width="0" fill="#80795b" gorn="0.3.0.0.13.0.0.0.3"/>
+                                <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon1242" points="2.29896,0 2.29896,2.2968 1.74297,1.73785 1.74297,0.558951 " stroke-width="0" fill="#5e5b43" gorn="0.3.0.0.13.0.0.0.4"/>
+                                <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon1244" points="1.74297,1.73785 2.29896,2.2968 0,2.2968 0.56699,1.73785 " stroke-width="0" fill="#9a916c" gorn="0.3.0.0.13.0.0.0.5"/>
+                            </g>
+                        </g>
+                    </g>
+                </g>
+                <g transform="matrix(3.6747699,0,0,3.6747699,1347.6292,553.73977)">
+                    <g>
+                        <g id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-g1262" stroke-width="0" gorn="0.3.0.0.14.0.0">
+                            <g stroke-width="0" gorn="0.3.0.0.14.0.0.0">
+                                <rect id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-rect1249" width="2.29896" x="0" y="0" stroke-width="0" fill="#8d8c8c" height="2.2967999" gorn="0.3.0.0.14.0.0.0.0"/>
+                                <rect id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-connector7pin" width="1.18398" x="0.56098998" y="0.556952" stroke-width="0" fill="#8c8663" height="1.18189" gorn="0.3.0.0.14.0.0.0.1"/>
+                                <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon1253" points="0,2.2968 0.56099,1.73785 0.56099,0.501957 0,0 " stroke-width="0" fill="#b8af82" gorn="0.3.0.0.14.0.0.0.2"/>
+                                <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon1255" points="1.74297,0.558951 0.56899,0.558951 0,0 2.29896,0 " stroke-width="0" fill="#80795b" gorn="0.3.0.0.14.0.0.0.3"/>
+                                <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon1257" points="1.74297,1.73785 1.74297,0.558951 2.29896,0 2.29896,2.2968 " stroke-width="0" fill="#5e5b43" gorn="0.3.0.0.14.0.0.0.4"/>
+                                <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon1259" points="0,2.2968 0.56699,1.73785 1.74297,1.73785 2.29896,2.2968 " stroke-width="0" fill="#9a916c" gorn="0.3.0.0.14.0.0.0.5"/>
+                            </g>
+                        </g>
+                    </g>
+                </g>
+                <g transform="matrix(3.6747699,0,0,3.6747699,1347.4012,448.06457)">
+                    <g>
+                        <g id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-g1277" stroke-width="0" gorn="0.3.0.0.15.0.0">
+                            <g stroke-width="0" gorn="0.3.0.0.15.0.0.0">
+                                <rect id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-rect1264" width="2.29896" x="0" y="0" stroke-width="0" fill="#8d8c8c" height="2.2967999" gorn="0.3.0.0.15.0.0.0.0"/>
+                                <rect id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-connector10pin" width="1.18398" x="0.56098998" y="0.556952" stroke-width="0" fill="#8c8663" height="1.18189" gorn="0.3.0.0.15.0.0.0.1"/>
+                                <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon1268" points="0.56099,0.501957 0,0 0,2.2968 0.56099,1.73785 " stroke-width="0" fill="#b8af82" gorn="0.3.0.0.15.0.0.0.2"/>
+                                <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon1270" points="0,0 2.29896,0 1.74297,0.558951 0.56899,0.558951 " stroke-width="0" fill="#80795b" gorn="0.3.0.0.15.0.0.0.3"/>
+                                <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon1272" points="2.29896,0 2.29896,2.2968 1.74297,1.73785 1.74297,0.558951 " stroke-width="0" fill="#5e5b43" gorn="0.3.0.0.15.0.0.0.4"/>
+                                <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon1274" points="1.74297,1.73785 2.29896,2.2968 0,2.2968 0.56699,1.73785 " stroke-width="0" fill="#9a916c" gorn="0.3.0.0.15.0.0.0.5"/>
+                            </g>
+                        </g>
+                    </g>
+                </g>
+                <g transform="matrix(3.6747699,0,0,3.6747699,1374.0876,553.73977)">
+                    <g>
+                        <g id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-g1292" stroke-width="0" gorn="0.3.0.0.16.0.0">
+                            <g stroke-width="0" gorn="0.3.0.0.16.0.0.0">
+                                <rect id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-rect1279" width="2.29896" x="0" y="0" stroke-width="0" fill="#8d8c8c" height="2.2967999" gorn="0.3.0.0.16.0.0.0.0"/>
+                                <rect id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-connector8pin" width="1.18398" x="0.56098998" y="0.556952" stroke-width="0" fill="#8c8663" height="1.18189" gorn="0.3.0.0.16.0.0.0.1"/>
+                                <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon1283" points="0,2.2968 0.56099,1.73785 0.56099,0.501957 0,0 " stroke-width="0" fill="#b8af82" gorn="0.3.0.0.16.0.0.0.2"/>
+                                <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon1285" points="1.74297,0.558951 0.56899,0.558951 0,0 2.29896,0 " stroke-width="0" fill="#80795b" gorn="0.3.0.0.16.0.0.0.3"/>
+                                <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon1287" points="1.74297,1.73785 1.74297,0.558951 2.29896,0 2.29896,2.2968 " stroke-width="0" fill="#5e5b43" gorn="0.3.0.0.16.0.0.0.4"/>
+                                <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon1289" points="0,2.2968 0.56699,1.73785 1.74297,1.73785 2.29896,2.2968 " stroke-width="0" fill="#9a916c" gorn="0.3.0.0.16.0.0.0.5"/>
+                            </g>
+                        </g>
+                    </g>
+                </g>
+                <g transform="matrix(3.6747699,0,0,3.6747699,1373.8596,448.06457)">
+                    <g>
+                        <g id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-g1307" stroke-width="0" gorn="0.3.0.0.17.0.0">
+                            <g stroke-width="0" gorn="0.3.0.0.17.0.0.0">
+                                <rect id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-rect1294" width="2.29896" x="0" y="0" stroke-width="0" fill="#8d8c8c" height="2.2967999" gorn="0.3.0.0.17.0.0.0.0"/>
+                                <rect id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-connector9pin" width="1.18398" x="0.56098998" y="0.556952" stroke-width="0" fill="#8c8663" height="1.18189" gorn="0.3.0.0.17.0.0.0.1"/>
+                                <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon1298" points="0.56099,0.501957 0,0 0,2.2968 0.56099,1.73785 " stroke-width="0" fill="#b8af82" gorn="0.3.0.0.17.0.0.0.2"/>
+                                <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon1300" points="0,0 2.29896,0 1.74297,0.558951 0.56899,0.558951 " stroke-width="0" fill="#80795b" gorn="0.3.0.0.17.0.0.0.3"/>
+                                <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon1302" points="2.29896,0 2.29896,2.2968 1.74297,1.73785 1.74297,0.558951 " stroke-width="0" fill="#5e5b43" gorn="0.3.0.0.17.0.0.0.4"/>
+                                <polygon id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-polygon1304" points="1.74297,1.73785 2.29896,2.2968 0,2.2968 0.56699,1.73785 " stroke-width="0" fill="#9a916c" gorn="0.3.0.0.17.0.0.0.5"/>
+                            </g>
+                        </g>
+                    </g>
+                </g>
+                <g transform="matrix(0,3.6747699,-3.6747699,0,1180.7631,486.71877)">
+                    <g>
+                        <g id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-g926" stroke-width="0" gorn="0.3.0.0.18.0.0">
+                            <g id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-g924" stroke-width="0" gorn="0.3.0.0.18.0.0.0">
+                                <g transform="rotate(-90)">
+                                    <g>
+                                        <g id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-g922" gorn="0.3.0.0.18.0.0.0.0.0.0">
+                                            <g id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-g920" stroke-width="0" gorn="0.3.0.0.18.0.0.0.0.0.0.0">
+                                                <g id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-text918" stroke="none" style="font-size:5px" stroke-width="0" font-size="9.525" fill="#ffffff" font-family="OCRA" text-anchor="end" gorn="0.3.0.0.18.0.0.0.0.0.0.0.0">
+                                                    <text id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-tspan1065" style="font-size:5px;text-align:center;text-anchor:middle" x="12.089993" y="0" gorn="0.3.0.0.18.0.0.0.0.0.0.0.0.0">POLOLU</text>
+                                                    <text id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-tspan1067" style="font-size:5px;text-align:center;text-anchor:middle" x="12.089993" y="6.25" gorn="0.3.0.0.18.0.0.0.0.0.0.0.0.1">DRV</text>
+                                                    <text id="elera-fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1-tspan1069" style="font-size:5px;text-align:center;text-anchor:middle" x="12.089993" y="12.5" gorn="0.3.0.0.18.0.0.0.0.0.0.0.0.2">8833</text>
+                                                </g>
+                                            </g>
+                                        </g>
+                                    </g>
+                                </g>
+                            </g>
+                        </g>
+                    </g>
+                </g>
+            </g>
+        </g>
+    </g>
+</svg>

@@ -2,6 +2,7 @@ import { getComponentDef } from '../component-library.js';
 import { applyTransform, normalizeDegrees } from './geometry.js';
 import { componentWorldTransform, resolveConnectionWorldPoint } from './model.js';
 import { getFootprintDefinition, projectFootprintPoint } from './footprints.js';
+import { getSurfaceDefinition } from './breadboard.js';
 
 export const ROUTING_COMPONENT_MARGIN = 3;
 export const ROUTING_WIRE_SEPARATION = 1.8;
@@ -152,6 +153,37 @@ export function componentRoutingObstacles(project, { excludeComponentIds = [], m
     return obstacles;
 }
 
+/**
+ * A breadboard is physical infrastructure, not empty canvas. Its body is a
+ * routing keepout for wires that do not terminate on that board. Wires which
+ * do use one of its sockets receive a per-wire exception in routeContext so a
+ * real jumper can still leave the board.
+ */
+export function surfaceRoutingObstacles(project, { excludeSurfaceIds = [], margin = COMPONENT_MARGIN } = {}) {
+    const excluded = new Set(excludeSurfaceIds), obstacles = [];
+    for (const surface of project.surfaces || []) {
+        if (excluded.has(surface.id)) continue;
+        const definition = getSurfaceDefinition(surface);
+        if (!definition) continue;
+        const corners = [
+            applyTransform({ x: 0, y: 0 }, surface.transform),
+            applyTransform({ x: definition.width, y: 0 }, surface.transform),
+            applyTransform({ x: 0, y: definition.height }, surface.transform),
+            applyTransform({ x: definition.width, y: definition.height }, surface.transform),
+        ];
+        obstacles.push({
+            id: `surface:${surface.id}`,
+            surfaceId: surface.id,
+            kind: 'surface',
+            left: Math.min(...corners.map(point => point.x)) - margin,
+            right: Math.max(...corners.map(point => point.x)) + margin,
+            top: Math.min(...corners.map(point => point.y)) - margin,
+            bottom: Math.max(...corners.map(point => point.y)) + margin,
+        });
+    }
+    return obstacles;
+}
+
 export function scoreRoute(points, { obstacles = [], existingRoutes = [], weights = DEFAULT_WEIGHTS } = {}) {
     const segments = routeSegments(points);
     let length = 0, obstacleHits = 0, crossings = 0, crowding = 0;
@@ -254,8 +286,9 @@ function supplyBusKey(project, wire) {
 }
 
 function routingSnapshot(project) {
-    const obstacles = componentRoutingObstacles(project);
-    const obstacleByComponentId = new Map(obstacles.map(obstacle => [obstacle.id, obstacle]));
+    const componentObstacles = componentRoutingObstacles(project);
+    const obstacles = [...componentObstacles, ...surfaceRoutingObstacles(project)];
+    const obstacleByComponentId = new Map(componentObstacles.map(obstacle => [obstacle.id, obstacle]));
     const points = new Map(), directions = new Map(), laneOffsets = new Map(), laneGroups = new Map();
     const pointFor = ref => {
         const key = endpointCacheKey(ref);
@@ -300,6 +333,13 @@ function routingSnapshot(project) {
         directionFor,
         laneFor: (wire, ref) => laneOffsets.get(wireEndpointCacheKey(wire, ref)) || 0,
     };
+}
+
+function surfaceIdForRef(project, ref) {
+    if (ref?.type === 'surface-hole') return ref.surfaceId;
+    if (ref?.type !== 'component-pin') return null;
+    const component = project.components.find(item => item.id === ref.componentId);
+    return component?.placement?.type === 'surface' ? component.placement.surfaceId : null;
 }
 
 function escapeFor(ref, point, obstacle, oppositePoint, direction, lane) {
@@ -351,7 +391,10 @@ function routeContext(project, wire, snapshot = routingSnapshot(project)) {
         : busKey && controllerEscape && ['left', 'right'].includes(controllerDirection)
             ? { direction: 'v', coordinate: controllerEscape.x }
             : null;
-    return { wire, from, to, obstacles: snapshot.obstacles, fromDirection, toDirection,
+    const endpointSurfaceIds = new Set([surfaceIdForRef(project, wire.from), surfaceIdForRef(project, wire.to)].filter(Boolean));
+    const obstacles = snapshot.obstacles.filter(obstacle =>
+        obstacle.kind !== 'surface' || !endpointSurfaceIds.has(obstacle.surfaceId));
+    return { wire, from, to, obstacles, fromDirection, toDirection,
         escape1, escape2, netType: classifyWire(wire), busKey, busLane, controllerIndex };
 }
 

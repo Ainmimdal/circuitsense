@@ -1,5 +1,11 @@
 import { LitElement, html, css } from 'lit';
-import { store } from '../store.js';
+import { physicalCircuitStore } from '../physical/circuit-store.js';
+import {
+    deleteNamedProject,
+    getNamedProjects,
+    loadNamedProject,
+    saveNamedProject,
+} from '../physical/project-repository.js';
 import { faIcon } from '../utils/fa-icons.js';
 
 class ProjectsModal extends LitElement {
@@ -234,12 +240,12 @@ class ProjectsModal extends LitElement {
 
     connectedCallback() {
         super.connectedCallback();
-        store.addEventListener('change', this._storeHandler);
+        physicalCircuitStore.addEventListener('change', this._storeHandler);
     }
 
     disconnectedCallback() {
         super.disconnectedCallback();
-        store.removeEventListener('change', this._storeHandler);
+        physicalCircuitStore.removeEventListener('change', this._storeHandler);
     }
 
     updated(changedProperties) {
@@ -249,7 +255,7 @@ class ProjectsModal extends LitElement {
     }
 
     _refreshProjects() {
-        this._projects = store.getSavedProjects().sort((a, b) => b.updatedAt - a.updatedAt);
+        this._projects = getNamedProjects().sort((a, b) => b.updatedAt - a.updatedAt);
     }
 
     _close() {
@@ -263,14 +269,14 @@ class ProjectsModal extends LitElement {
 
     _saveProject() {
         if (!this._newProjectName.trim()) return;
-        store.saveProjectToAccount(this._newProjectName.trim());
+        saveNamedProject(physicalCircuitStore, this._newProjectName);
         this._newProjectName = '';
         this._refreshProjects();
     }
 
     _loadProject(id) {
         if (confirm('Load this project? Any unsaved changes in your current workspace will be lost.')) {
-            const success = store.loadProjectFromAccount(id);
+            const success = loadNamedProject(physicalCircuitStore, id);
             if (success) {
                 this._close();
             } else {
@@ -281,7 +287,7 @@ class ProjectsModal extends LitElement {
 
     _deleteProject(id) {
         if (confirm('Are you sure you want to delete this project? This cannot be undone.')) {
-            store.deleteProjectFromAccount(id);
+            deleteNamedProject(id);
             this._refreshProjects();
         }
     }
