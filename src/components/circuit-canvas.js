@@ -14,6 +14,7 @@ import { normalizeSelectionRect, rectsIntersect, routeIntersectsRect } from '../
 import { addComponentCommand, addSurfaceCommand, deleteSelectionCommand, deleteSurfaceCommand, mountComponentCommand, moveSelectionCommand, rotateFreeComponentCommand, setComponentPropertyCommand } from '../physical/commands.js';
 import { createComponentInstance, componentPinRef, componentWorldTransform, resolveConnectionWorldPoint, surfaceHoleRef } from '../physical/model.js';
 import { calibrateFreeComponentFootprint, defaultFootprintForComponent, footprintsForComponent, getFootprintDefinition, getPhysicalComponentDefinition, projectFootprintPoint } from '../physical/footprints.js';
+import { BREADBOARD_COLORS, breadboardArtwork } from '../core/breadboard-artwork.js';
 import { createFullBreadboardSurface, createHalfBreadboardSurface, getSurfaceDefinition, holeWorldPosition, holesInElectricalGroup, nearestHole } from '../physical/breadboard.js';
 import { applyTransform, screenToWorld } from '../physical/geometry.js';
 import { pinExitDirection } from '../physical/routing.js';
@@ -789,42 +790,7 @@ class CircuitCanvas extends LitElement {
                 draggable: true,
             });
             group.setAttr('surfaceId', surface.id);
-            const rowA = definition.getHole('A1').y;
-            const rowE = definition.getHole('E1').y;
-            const rowF = definition.getHole('F1').y;
-            const rowJ = definition.getHole('J1').y;
-            const trenchTop = rowE + 1.25;
-            const trenchBottom = rowF - 1.25;
-            group.add(new Konva.Rect({
-                name: 'board-body', x: 0, y: 0, width: definition.width, height: definition.height,
-                cornerRadius: 2.2, fill: '#e4e4e7',
-                stroke: surface.id === this._selectedSurfaceId ? this._themeColor('--primary-hover') : '#a1a1aa',
-                strokeWidth: surface.id === this._selectedSurfaceId ? .8 : .35,
-                shadowColor: '#000', shadowBlur: 2.2, shadowOffsetY: 1.1, shadowOpacity: .34,
-            }));
-            group.add(new Konva.Rect({ x: 2.8, y: rowA - 2.3, width: definition.width - 5.6, height: rowJ - rowA + 4.6, fill: '#f4f4f5', cornerRadius: 1.2, listening: false }));
-            group.add(new Konva.Rect({ x: 2.8, y: trenchTop, width: definition.width - 5.6, height: trenchBottom - trenchTop, fill: '#d4d4d8', listening: false }));
-            group.add(new Konva.Line({ points: [5, definition.getHole('TP1').y, definition.width - 5, definition.getHole('TP1').y], stroke: '#ef4444', strokeWidth: .28, listening: false }));
-            group.add(new Konva.Line({ points: [5, definition.getHole('TN1').y, definition.width - 5, definition.getHole('TN1').y], stroke: this._themeColor('--accent-breadboards'), strokeWidth: .28, listening: false }));
-            group.add(new Konva.Line({ points: [5, definition.getHole('BP1').y, definition.width - 5, definition.getHole('BP1').y], stroke: '#ef4444', strokeWidth: .28, listening: false }));
-            group.add(new Konva.Line({ points: [5, definition.getHole('BN1').y, definition.width - 5, definition.getHole('BN1').y], stroke: this._themeColor('--accent-breadboards'), strokeWidth: .28, listening: false }));
-            group.add(new Konva.Shape({
-                listening: false,
-                sceneFunc: (context, shape) => {
-                    for (const hole of definition.holes) {
-                        context.beginPath();
-                        context.arc(hole.x, hole.y, .58, 0, Math.PI * 2);
-                        context.fillStrokeShape(shape);
-                    }
-                },
-                fill: '#27272a', stroke: '#71717a', strokeWidth: .16,
-            }));
-            for (const column of [1, 5, 10, 15, 20, 25, 30]) {
-                const hole = definition.getHole(`A${column}`);
-                group.add(new Konva.Text({ x: hole.x - 1.8, y: rowA - 3.2, width: 3.6, text: String(column), align: 'center', fontSize: 1.45, fill: '#52525b', listening: false }));
-                group.add(new Konva.Text({ x: hole.x - 1.8, y: rowJ + 1.25, width: 3.6, text: String(column), align: 'center', fontSize: 1.45, fill: '#52525b', listening: false }));
-            }
-            group.add(new Konva.Text({ x: 3.2, y: (trenchTop + trenchBottom) / 2 - .8, text: 'ELERA  •  2.54 mm physical pitch', fontSize: 1.6, fill: '#71717a', listening: false }));
+            this._drawBreadboardFace(group, surface, definition);
 
             let origin = null;
             group.on('dragstart', () => {
@@ -843,6 +809,7 @@ class CircuitCanvas extends LitElement {
                     });
                 }
                 this.componentLayer.batchDraw();
+                this._previewSurfaceWires(surface.id, { x: dx, y: dy });
             });
             group.on('dragend', () => {
                 this.interaction.moveSurface(surface.id, { x: group.x(), y: group.y(), rotation: surface.transform.rotation || 0 });
@@ -861,6 +828,79 @@ class CircuitCanvas extends LitElement {
             this.boardLayer.add(group);
         }
         this.boardLayer.batchDraw();
+    }
+
+    _previewSurfaceWires(surfaceId, delta) {
+        const attached = ref => (ref?.type === 'surface-hole' && ref.surfaceId === surfaceId) ||
+            (ref?.type === 'component-pin' && this.store.project.components.find(item => item.id === ref.componentId)
+                ?.placement?.surfaceId === surfaceId);
+        const shift = point => point && { x: point.x + delta.x, y: point.y + delta.y };
+        for (const wire of this.store.project.wires) {
+            const fromAttached = attached(wire.from);
+            const toAttached = attached(wire.to);
+            if (!fromAttached && !toAttached) continue;
+            const route = this.store.routes.get(wire.id);
+            const line = this.wireLayer.findOne(node => node.id?.() === `wire:${wire.id}`);
+            if (!route || route.length < 2 || !line) continue;
+            const preview = fromAttached && toAttached
+                ? route.map(shift)
+                : moveWireRouteEndpoints(route, {
+                    from: fromAttached ? shift(route[0]) : route[0],
+                    to: toAttached ? shift(route.at(-1)) : route.at(-1),
+                    fromDirection: pinExitDirection(this.store.project, wire.from),
+                    toDirection: pinExitDirection(this.store.project, wire.to),
+                });
+            const points = preview.flatMap(point => [point.x, point.y]);
+            line.points(points);
+            this.wireLayer.findOne(node => node.id?.() === `wire-selection:${wire.id}`)?.points(points);
+        }
+        this.wireLayer.batchDraw();
+    }
+
+    _drawBreadboardFace(group, surface, definition) {
+        const art = breadboardArtwork(definition);
+        const selected = surface.id === this._selectedSurfaceId;
+        group.add(new Konva.Rect({
+            name: 'board-body', x: 0, y: 0, width: art.width, height: art.height,
+            cornerRadius: art.cornerRadius, fill: BREADBOARD_COLORS.body,
+            stroke: selected ? this._themeColor('--primary-hover') : BREADBOARD_COLORS.bodyEdge,
+            strokeWidth: selected ? .7 : .3,
+            shadowColor: '#000', shadowBlur: 2.4, shadowOffsetY: 1, shadowOpacity: .28,
+        }));
+        for (const y of art.seams) {
+            group.add(new Konva.Line({ points: [.6, y, art.width - .6, y], stroke: BREADBOARD_COLORS.seam, strokeWidth: .22, listening: false }));
+        }
+        group.add(new Konva.Rect({
+            x: .6, y: art.channel.y1, width: art.width - 1.2, height: art.channel.y2 - art.channel.y1,
+            cornerRadius: .5, listening: false,
+            fillLinearGradientStartPoint: { x: 0, y: art.channel.y1 },
+            fillLinearGradientEndPoint: { x: 0, y: art.channel.y2 },
+            fillLinearGradientColorStops: [0, BREADBOARD_COLORS.channelShade, .45, BREADBOARD_COLORS.channel, 1, BREADBOARD_COLORS.body],
+        }));
+        for (const stripe of art.railStripes) {
+            group.add(new Konva.Line({
+                points: [stripe.x1, stripe.y, stripe.x2, stripe.y],
+                stroke: stripe.color, strokeWidth: .32, lineCap: 'round', listening: false,
+            }));
+        }
+        const half = art.holeSize / 2;
+        group.add(new Konva.Shape({
+            listening: false,
+            sceneFunc: (context, shape) => {
+                context.beginPath();
+                for (const hole of definition.holes) context.rect(hole.x - half, hole.y - half, art.holeSize, art.holeSize);
+                context.fillStrokeShape(shape);
+            },
+            fill: BREADBOARD_COLORS.hole, stroke: BREADBOARD_COLORS.holeRim, strokeWidth: .14,
+        }));
+        for (const label of art.labels) {
+            const fontSize = label.text === '+' || label.text === '\u2212' ? 1.9 : 1.35;
+            group.add(new Konva.Text({
+                x: label.x - 2, y: label.y - fontSize / 2, width: 4, height: fontSize,
+                text: label.text, align: 'center', verticalAlign: 'middle', fontSize,
+                fontStyle: label.color ? 'bold' : 'normal', fill: label.color || BREADBOARD_COLORS.label, listening: false,
+            }));
+        }
     }
 
     _renderWires() {
@@ -2017,7 +2057,8 @@ class CircuitCanvas extends LitElement {
             return;
         }
         let nextHover = null;
-        for (const surface of this.store.project.surfaces) {
+        // Later surfaces are drawn on top, so they win the hover like they win snapping.
+        for (const surface of [...this.store.project.surfaces].reverse()) {
             const nearest = nearestHole(surface, this._lastPointerWorld, { maxDistance: 1.18 });
             if (nearest) {
                 nextHover = { surfaceId: surface.id, holeId: nearest.hole.id };
@@ -2290,9 +2331,12 @@ class CircuitCanvas extends LitElement {
 
     _addBreadboardSurface(definitionId, position = null) {
         if (!['breadboard-half', 'breadboard-full'].includes(definitionId)) return false;
-        const existing = this.store.project.surfaces.map(surface => getSurfaceDefinition(surface)).filter(Boolean);
-        const x = position?.x ?? (22 + existing.length * 12);
-        const y = position?.y ?? (18 + existing.length * 12);
+        // Stack quick-added boards below the existing ones instead of on top of them.
+        const existing = this.store.project.surfaces.filter(surface => getSurfaceDefinition(surface));
+        const lowest = existing.reduce((bottom, surface) => Math.max(bottom,
+            surface.transform.y + getSurfaceDefinition(surface).height), -Infinity);
+        const x = position?.x ?? (existing.length ? Math.min(...existing.map(surface => surface.transform.x)) : 22);
+        const y = position?.y ?? (existing.length ? lowest + 8 : 18);
         const factory = definitionId === 'breadboard-full' ? createFullBreadboardSurface : createHalfBreadboardSurface;
         const surface = factory({ id: this.store.newSurfaceId(), x, y });
         this.store.execute(addSurfaceCommand(surface));

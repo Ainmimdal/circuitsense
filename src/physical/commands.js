@@ -4,6 +4,11 @@ import { pinExitDirection } from './routing.js';
 import { moveWireRouteEndpoints, translateWireRoute } from './wire-edit.js';
 import { getComponentDef } from '../component-library.js';
 import { canonicalLedColor, recommendedLedResistorOhms } from '../core/led-resistor.js';
+import { getSurfaceDefinition } from './breadboard.js';
+import { surfaceHoleRef } from './model.js';
+import {
+    buildBreadboardHoleStates, freeHoleInPinStrip, HOLE_OCCUPANCY, shiftedHole, shiftMountedPlacements,
+} from './placement.js';
 
 function clone(value) {
     return structuredClone(value);
@@ -94,8 +99,30 @@ export function mountComponentCommand(componentId, candidate) {
                 rotation: candidate.rotation,
                 bindings: clone(candidate.bindings),
             };
+            plugPinWiresIntoStrips(project, componentId);
         },
     };
+}
+
+/**
+ * Once a part is plugged in, its lead fills the socket, so a wire that was
+ * attached to the lead moves to a free hole in the same strip. The electrical
+ * connection is unchanged; without this the hole would hold both a lead and a
+ * jumper, which a real breadboard cannot do.
+ */
+function plugPinWiresIntoStrips(project, componentId) {
+    const holeStates = buildBreadboardHoleStates(project);
+    const reserved = new Set();
+    for (const wire of project.wires) {
+        const ends = ['from', 'to'].filter(end => wire[end]?.type === 'component-pin' && wire[end].componentId === componentId);
+        if (!ends.length || ends.length === 2) continue;
+        const end = ends[0];
+        const target = freeHoleInPinStrip(project, componentId, wire[end].pinId, { reserved, holeStates });
+        if (!target) continue;
+        reserved.add(`${target.surfaceId}:${target.holeId}`);
+        wire[end] = target;
+        wire.route = { mode: 'auto', waypoints: [] };
+    }
 }
 
 export function moveFreeComponentCommand(componentId, position) {
@@ -114,6 +141,30 @@ export function moveFreeComponentCommand(componentId, position) {
     };
 }
 
+/** Move the board ends of selected jumpers by the same whole-pitch step as their surface. */
+function shiftSelectedJumperEnds(project, selectedWires, steps) {
+    const moved = new Set();
+    if (!steps.size || !selectedWires.size) return moved;
+    const holeStates = buildBreadboardHoleStates(project, { excludeWireIds: [...selectedWires] });
+    const taken = new Set();
+    for (const wire of project.wires) {
+        if (!selectedWires.has(wire.id)) continue;
+        for (const end of ['from', 'to']) {
+            const ref = wire[end];
+            const step = ref?.type === 'surface-hole' ? steps.get(ref.surfaceId) : null;
+            if (!step) continue;
+            const surface = project.surfaces.find(item => item.id === ref.surfaceId);
+            const target = shiftedHole(getSurfaceDefinition(surface), ref.holeId, step);
+            const key = target && `${ref.surfaceId}:${target.id}`;
+            if (!target || taken.has(key) || holeStates.get(key)?.state !== HOLE_OCCUPANCY.FREE) continue;
+            taken.add(key);
+            wire[end] = surfaceHoleRef(ref.surfaceId, target.id);
+            moved.add(wire[end]);
+        }
+    }
+    return moved;
+}
+
 export function moveSelectionCommand({ componentIds = [], wireIds = [], delta, routes = {} }) {
     const selectedComponents = new Set(componentIds);
     const selectedWires = new Set(wireIds);
@@ -129,16 +180,24 @@ export function moveSelectionCommand({ componentIds = [], wireIds = [], delta, r
                 if (!component) continue;
                 transforms.set(componentId, componentWorldTransform(project, component));
             }
+            // Parts plugged into a breadboard stay plugged in when the shift lands
+            // on legal holes; only parts that cannot be remounted become free.
+            const shifted = shiftMountedPlacements(project, [...selectedComponents], movement, {
+                movingWireIds: [...selectedWires],
+            });
             for (const [componentId, transform] of transforms) {
                 const component = project.components.find(item => item.id === componentId);
-                component.placement = {
+                const mounted = shifted.placements.get(componentId);
+                component.placement = mounted ? clone(mounted) : {
                     type: 'free',
                     position: { x: transform.x + movement.x, y: transform.y + movement.y },
                     rotation: transform.rotation || 0,
                 };
             }
+            const movedHoleEnds = shiftSelectedJumperEnds(project, selectedWires, shifted.steps);
 
-            const endpointMoves = ref => ref?.type === 'component-pin' && selectedComponents.has(ref.componentId);
+            const endpointMoves = ref => (ref?.type === 'component-pin' && selectedComponents.has(ref.componentId)) ||
+                movedHoleEnds.has(ref);
             for (const wire of project.wires) {
                 const fromMoved = endpointMoves(wire.from);
                 const toMoved = endpointMoves(wire.to);

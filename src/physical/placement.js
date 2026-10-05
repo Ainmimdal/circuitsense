@@ -1,6 +1,7 @@
 import { distance, normalizeDegrees, rotatePoint } from './geometry.js';
 import { footprintsForComponent, getFootprintDefinition, projectFootprintPoint } from './footprints.js';
 import { getSurfaceDefinition, holeWorldPosition, worldToSurfaceLocal } from './breadboard.js';
+import { surfaceHoleRef } from './model.js';
 
 export const HOLE_OCCUPANCY = Object.freeze({
     FREE: 'FREE',
@@ -28,10 +29,13 @@ function physicalHoleForRef(project, ref) {
  */
 export function buildBreadboardHoleStates(project, {
     excludeComponentId = null,
+    excludeComponentIds = [],
     excludeWireIds = [],
     includeMountedPinWireEndpoints = false,
 } = {}) {
     const excludedWires = new Set(excludeWireIds);
+    const excludedComponents = new Set(excludeComponentIds);
+    if (excludeComponentId !== null) excludedComponents.add(excludeComponentId);
     const states = new Map();
     for (const surface of project?.surfaces || []) {
         const definition = getSurfaceDefinition(surface);
@@ -57,7 +61,7 @@ export function buildBreadboardHoleStates(project, {
         if (record.state === HOLE_OCCUPANCY.FREE) record.state = occupant.type;
     };
     for (const component of project?.components || []) {
-        if (component.id === excludeComponentId || component.placement?.type !== 'surface') continue;
+        if (excludedComponents.has(component.id) || component.placement?.type !== 'surface') continue;
         for (const [pinId, holeId] of Object.entries(component.placement.bindings || {})) {
             occupy({ surfaceId: component.placement.surfaceId, holeId }, {
                 type: HOLE_OCCUPANCY.COMPONENT_PIN,
@@ -238,4 +242,110 @@ export class BreadboardSnapSolver {
         if (!candidateSatisfiesBoardRules(footprint, definition, candidate.bindings)) return false;
         return placementBindingsAreAvailable(candidate, buildOccupancyMap(project, { excludeComponentId: component.id }));
     }
+}
+
+/**
+ * A jumper cannot share a socket with a component lead. For a mounted pin,
+ * return the nearest free hole in the same internally connected strip, which
+ * is where a real jumper would be plugged in to reach that pin.
+ */
+export function freeHoleInPinStrip(project, componentId, pinId, {
+    reserved = new Set(),
+    holeStates = buildBreadboardHoleStates(project),
+} = {}) {
+    const component = project?.components?.find(item => item.id === componentId);
+    if (component?.placement?.type !== 'surface') return null;
+    const surface = project.surfaces.find(item => item.id === component.placement.surfaceId);
+    const definition = getSurfaceDefinition(surface);
+    const mountedHole = definition?.getHole(component.placement.bindings?.[pinId]);
+    if (!mountedHole) return null;
+    const holeId = definition.getGroupHoles(mountedHole.electricalGroup)
+        .filter(candidate => {
+            const key = `${surface.id}:${candidate}`;
+            return !reserved.has(key) && holeStates.get(key)?.state === HOLE_OCCUPANCY.FREE;
+        })
+        .sort((a, b) => distance(definition.getHole(a), mountedHole) - distance(definition.getHole(b), mountedHole) ||
+            String(a).localeCompare(String(b), undefined, { numeric: true }))[0];
+    return holeId ? surfaceHoleRef(surface.id, holeId) : null;
+}
+
+/** Find the hole a whole number of pitches away from `holeId` in surface-local space. */
+export function shiftedHole(definition, holeId, steps) {
+    const hole = definition?.getHole(holeId);
+    if (!hole) return null;
+    const target = {
+        x: hole.x + steps.x * definition.pitch,
+        y: hole.y + steps.y * definition.pitch,
+    };
+    const key = coordinateKey(target);
+    return definition.holes.find(candidate => coordinateKey(candidate) === key) || null;
+}
+
+/** Convert a world-space drag into whole-pitch steps on a (possibly rotated) surface. */
+export function surfacePitchSteps(surface, delta) {
+    const definition = getSurfaceDefinition(surface);
+    if (!definition) return null;
+    const local = rotatePoint({ x: Number(delta?.x || 0), y: Number(delta?.y || 0) }, -(surface.transform?.rotation || 0));
+    return {
+        x: Math.round(local.x / definition.pitch) || 0,
+        y: Math.round(local.y / definition.pitch) || 0,
+    };
+}
+
+/**
+ * Move a set of mounted components together by a world-space drag while
+ * keeping them plugged into the board. Each surface is shifted by the nearest
+ * whole number of pitches; if any part on that surface would leave the board
+ * or collide, none of that surface's parts are remounted and null is returned
+ * for them so callers can fall back to free placement.
+ */
+export function shiftMountedPlacements(project, componentIds, delta, {
+    movingWireIds = [],
+    solver = new BreadboardSnapSolver(),
+} = {}) {
+    const moving = project.components.filter(component => componentIds.includes(component.id) &&
+        component.placement?.type === 'surface');
+    const movingIds = new Set(moving.map(component => component.id));
+    const result = new Map();
+    const steps = new Map();
+    const bySurface = new Map();
+    for (const component of moving) {
+        if (!bySurface.has(component.placement.surfaceId)) bySurface.set(component.placement.surfaceId, []);
+        bySurface.get(component.placement.surfaceId).push(component);
+    }
+    // Jumpers that travel with the selection must not block the parts they move with.
+    const planning = {
+        ...project,
+        components: project.components.filter(component => !movingIds.has(component.id)),
+        wires: (project.wires || []).filter(wire => !movingWireIds.includes(wire.id)),
+    };
+    for (const [surfaceId, components] of bySurface) {
+        const surface = project.surfaces.find(item => item.id === surfaceId);
+        const definition = getSurfaceDefinition(surface);
+        const step = surface && surfacePitchSteps(surface, delta);
+        const placed = [];
+        let legal = Boolean(definition && step);
+        for (const component of legal ? components : []) {
+            const bindings = {};
+            for (const [pinId, holeId] of Object.entries(component.placement.bindings || {})) {
+                const target = shiftedHole(definition, holeId, step);
+                if (!target) { legal = false; break; }
+                bindings[pinId] = target.id;
+            }
+            const placement = { type: 'surface', surfaceId, rotation: component.placement.rotation, bindings };
+            const candidate = { valid: true, surfaceId, rotation: placement.rotation, bindings, footprintId: component.footprintId };
+            if (!legal || !solver.validateCandidate(planning, component, candidate)) { legal = false; break; }
+            const mounted = { ...component, placement };
+            planning.components.push(mounted);
+            placed.push(mounted);
+        }
+        if (!legal) {
+            planning.components = planning.components.filter(component => !placed.includes(component));
+            for (const component of components) result.set(component.id, null);
+            continue;
+        }
+        steps.set(surfaceId, step);
+        for (const component of placed) result.set(component.id, component.placement);
+    }
+    return { placements: result, steps };
 }
