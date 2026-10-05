@@ -2,7 +2,7 @@
 
 Status: normative design contract  
 Contract version: 1.1
-Last reconciled with the implementation: 2026-09-01
+Last reconciled with the implementation: 2026-10-05
 
 This document defines the rules and ownership boundaries for Auto Wire, Auto Layout, Clean and Validation. It supersedes descriptive comments inside individual engine files when those comments conflict with this contract.
 
@@ -17,6 +17,10 @@ For an operational flowchart of every engine and a worked diagnosis of non-ortho
 5. If planning or verification fails, restore the snapshot and return an actionable diagnostic.
 
 The contract remains healthy through stable rule IDs, regression evidence, a machine-checked traceability registry and an explicit implementation-drift ledger.
+
+## Implementation scope
+
+The rules apply to whichever engine the editor runs. Today that is the schema-4 physical engine in `src/physical/` (with shared definitions in `src/core/`). Some wording below, such as `physicalPlan`, locked placements and capacity alternatives, comes from the earlier schema-v2 engine (`src/store.js`, `src/services/`, `src/core/breadboard-planner.js`), which is no longer loaded by the app but still has passing tests. Registry rows that cite only legacy files record where the rule was proven, not what users currently run; see [PROJECT_STATUS.md](PROJECT_STATUS.md#two-engines-in-one-repository).
 
 ## Authority and priorities
 
@@ -42,7 +46,7 @@ A lower priority must never be traded for a higher-priority violation. For examp
 | Route geometry | Conductor waypoints and orthogonal mode | No | Clean, route-only operations, and the routing stage of user-facing Auto Layout |
 | View state | Pan, zoom, selection, hover and tooltips | No | Editor UI only |
 
-The DOM, SVG bounding boxes and registered Wokwi pin elements are rendering adapters. They are not the source of logical connectivity or breadboard topology. Pure planners in `src/core` must be runnable without a browser.
+The DOM, SVG bounding boxes and registered Wokwi pin elements are rendering adapters. They are not the source of logical connectivity or breadboard topology. Pure planners in `src/core` and `src/physical` must be runnable without a browser.
 
 Logical endpoints must never be rewritten into breadboard-hole endpoints. A physical contact maps a logical endpoint to a hole; a physical conductor joins contacts or connectors. Internal terminal-strip and rail connectivity comes from the board model and is not represented by fake visible wires.
 
@@ -174,7 +178,7 @@ Routing order is signal, I2C, power, then ground. This lets visually important s
 - **VAL-07 — Postcondition gate.** A newly planned physical result cannot be committed with a new error-level short, overlap, illegal footprint, invalid hole or disconnected required endpoint.
 - **VAL-08 — Exact controller-pin compatibility.** An exact-pin mutation derives the ordinary endpoint's required role from component metadata, checks the selected controller pin's capabilities/constraints, rejects hard incompatibilities transactionally, and returns non-fatal pin concerns as warnings.
 
-Current validation finding IDs are:
+Validation finding IDs in the legacy `validation-engine.js` are listed below. The physical validator uses its own IDs (`missing-footprint`, `invalid-placement`, `occupied`, `broken-wire`, `loop-wire`, `invalid-wire-hole`, `incomplete-net`, `breadboard-net-conflict`, `redundant-wire`, `led-no-resistor`, `no-controller`, `empty-project`), each suffixed with the affected item where relevant.
 
 `no-board`, `led-no-resistor`, `current-overload`, `current-high`, `duplicate-pin`, `servo-serial`, `missing-vcc`, `missing-gnd`, `i2c-wrong-sda`, `i2c-wrong-scl`, `unconnected`, `floating-pin`, `breadboard-required`, `breadboard-useful`, `breadboard-capacity`, `breadboard-invalid-hole`, `breadboard-occupied-hole`, `breadboard-invalid-placement`, `breadboard-placement-overlap`, `breadboard-footprint`, `breadboard-footprint-short`, `breadboard-disconnected-net`, and `breadboard-short`.
 
@@ -256,10 +260,11 @@ These are not accepted exceptions. They are visible work items. Removing a row r
 | Gap | Current drift | Contract to satisfy |
 | --- | --- | --- |
 | `GAP-03` | Auto Wire replaces connectivity with empty waypoints and does not invoke Clean from the toolbar. | The command contract must deliberately choose either immediate baseline routing or an explicit route-dirty state; it must not be accidental. |
-| `GAP-04` | Duplicate Arduino-pin validation does not yet distinguish legal shared I2C bus endpoints from unrelated signals. | `VAL-06`: recognize bus-capable shared nets. |
-| `GAP-05` | Some full-size breadboard validation paths use half-board hole/group lookup helpers. | `VAL-05`: resolve holes and groups through each instance's registered board definition. |
+| `GAP-04` | Legacy `validation-engine.js` duplicate Arduino-pin validation does not yet distinguish legal shared I2C bus endpoints from unrelated signals. | `VAL-06`: recognize bus-capable shared nets. |
+| `GAP-05` | In legacy `validation-engine.js`, some full-size breadboard validation paths use half-board hole/group lookup helpers. | `VAL-05`: resolve holes and groups through each instance's registered board definition. |
 | `GAP-06` | Validation issue codes do not yet each have a focused fixture. | Every `VAL-*` behavior and public finding ID needs direct regression evidence. |
 | `GAP-07` | Browser acceptance is manual; pointer, zoom and final rendered geometry are not in automated CI. | Add browser fixtures for the primary mixed circuit and interaction rollback. |
+| `GAP-09` | The running app validates with `src/physical/validation.js`, which covers placement, occupancy, wire endpoints, net completeness, shared-copper conflicts, redundant jumpers, LED resistors and controller presence only. The other `VAL-04`/`VAL-05` checks exist only in the legacy `validation-engine.js`. | Port the remaining `VAL-04`/`VAL-05` checks into the physical validator with `VAL-06` bus awareness. |
 
 ## Change protocol
 
@@ -268,7 +273,7 @@ Every engine change must follow this sequence:
 1. Name the affected rule IDs in the change description. Add a new ID if no rule covers the behavior.
 2. Add the smallest failing pure-planner fixture first. For command boundaries, also add a store-level integration fixture.
 3. Fingerprint state layers before and after the command. Assert that forbidden columns in the command mutation table are unchanged.
-4. Implement in the owning layer: pure decision in `src/core`, editor adaptation/commit in `src/services`, history in `src/store.js`, presentation in components.
+4. Implement in the owning layer: pure decisions in `src/core` or `src/physical`, store transactions and history in `src/physical/circuit-store.js` and `src/physical/commands.js`, presentation in components. Do not add new behavior to the legacy `src/services` or `src/store.js` path.
 5. Add structured diagnostics for any new failure mode. Do not parse user-facing strings in engine logic.
 6. Update the traceability registry. The next `npm run dev`, `npm test` or `npm run build` synchronizes the generated engine-flow document. If behavior is temporarily incomplete, add a numbered drift row instead of weakening the rule.
 7. Run `npm test`, `npm run build` and `git diff --check`. Run the primary browser fixture for changes affecting geometry or interaction.
