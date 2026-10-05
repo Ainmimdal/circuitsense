@@ -112,9 +112,9 @@ export const HALF_BREADBOARD_DEFINITION = createDefinition({
     width: 83.82,
     columns: 30,
     terminalStartX: 5.08,
-    // 5 clusters of 5 span 29 slots across 30 columns, so the rails sit half a
-    // pitch off the terminal grid, as on common 400-point boards.
-    railSlots: railSlotsFor({ clusters: 5, offset: .5 }),
+    // 5 clusters of 5 span 29 of the 30 columns. Rail holes stay on the
+    // terminal column grid so supply jumpers drop straight into a strip.
+    railSlots: railSlotsFor({ clusters: 5, offset: 0 }),
 });
 
 export const FULL_BREADBOARD_DEFINITION = createDefinition({

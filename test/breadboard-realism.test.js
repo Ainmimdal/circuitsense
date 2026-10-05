@@ -18,6 +18,8 @@ import {
 } from '../src/physical/model.js';
 import { defaultFootprintForComponent } from '../src/physical/footprints.js';
 import { validatePhysicalProject } from '../src/physical/validation.js';
+import { autoWirePhysicalStore } from '../src/physical/automation.js';
+import { realizeAutoWireConnections } from '../src/physical/breadboard-auto-wire.js';
 
 const BOARDS = [HALF_BREADBOARD_DEFINITION, FULL_BREADBOARD_DEFINITION];
 
@@ -64,10 +66,15 @@ test('power rail holes come in clusters of five separated by one-pitch gaps', ()
                 const expected = splitBoundary ? 4 : clusterBoundary ? 2 : 1;
                 assert.ok(close(gap, expected), `${definition.id} ${run[index - 1].id}->${run[index].id} gap ${gap}`);
             }
-            // Rails are centred on the terminal field like a real board.
+            // Rails sit on the terminal column grid, centred to within one pitch.
             const first = definition.getHole('A1').x;
             const last = definition.getHole(`A${definition.columns}`).x;
-            assert.ok(close(run[0].x - first, last - run.at(-1).x), `${definition.id} ${prefix} is centred`);
+            assert.ok(Math.abs((run[0].x - first) - (last - run.at(-1).x)) <= BREADBOARD_PITCH_MM + 1e-6,
+                `${definition.id} ${prefix} is centred`);
+            for (const hole of run) {
+                assert.ok(definition.holes.some(terminal => terminal.zone === 'terminal' && close(terminal.x, hole.x)),
+                    `${hole.id} lines up with a terminal column`);
+            }
         }
     }
 });
@@ -203,4 +210,82 @@ test('legacy pixel registry keeps its original contiguous rail columns', () => {
     assert.equal(half.getHole('TP25').x, half.getHole('A27').x);
     const full = boardRegistry['breadboard-full-830'];
     assert.equal(full.getHole('TP26').x, full.getHole('A39').x);
+});
+
+function mountedLedScene(count = 3) {
+    const surface = createHalfBreadboardSurface();
+    const uno = part('uno', 'arduino-uno', 140, 20);
+    const leds = Array.from({ length: count }, (_, index) => {
+        const led = part(`led${index}`, 'led');
+        led.placement = {
+            type: 'surface', surfaceId: surface.id, rotation: 0,
+            bindings: { C: `C${5 + index * 6}`, A: `C${6 + index * 6}` },
+        };
+        return led;
+    });
+    return { surface, components: [uno, ...leds] };
+}
+
+function holeOf(ref) {
+    return ref.type === 'surface-hole' ? HALF_BREADBOARD_DEFINITION.getHole(ref.holeId) : null;
+}
+
+test('Auto Wire feeds mounted parts from the ground rail instead of chaining strips', () => {
+    const { surface, components } = mountedLedScene();
+    const { store } = boardProject({ surface, components });
+    const result = autoWirePhysicalStore(store, { preferences: { autoWireLedResistors: true } });
+    assert.equal(result.status, 'success');
+
+    const groundWires = store.project.wires.filter(wire => wire.properties?.logicalTerminals
+        ?.some(ref => ref.componentId === 'uno' && ref.pinId.startsWith('GND')));
+    assert.ok(groundWires.length >= 4, 'one jumper per LED plus the controller feeder');
+    for (const wire of groundWires) {
+        const holes = [wire.from, wire.to].map(holeOf).filter(Boolean);
+        assert.ok(holes.some(hole => hole.zone === 'rail' && hole.polarity === 'ground'),
+            `${wire.id} lands on a ground rail`);
+        assert.ok(holes.filter(hole => hole.zone === 'terminal').length <= 1, `${wire.id} is not strip-to-strip`);
+    }
+    const feeder = groundWires.find(wire => [wire.from, wire.to].some(ref => ref.componentId === 'uno'));
+    assert.ok(feeder, 'the controller feeds the rail');
+
+    for (const wire of groundWires.filter(item => item !== feeder)) {
+        const [strip, rail] = [wire.from, wire.to].map(holeOf).sort(a => (a.zone === 'terminal' ? -1 : 1));
+        assert.ok(close(strip.x, rail.x), `${wire.id} drops straight from ${strip.id} to ${rail.id}`);
+    }
+
+    const graph = new ConnectivityResolver(store.project);
+    for (const index of [0, 1, 2]) {
+        assert.ok(graph.areConnected(componentPinRef(`led${index}`, 'C'), componentPinRef('uno', feeder.from.pinId || feeder.to.pinId)));
+    }
+    assert.deepEqual(validatePhysicalProject(store.project).errors, []);
+});
+
+test('separate supply nets claim separate rails and reuse rails already wired by hand', () => {
+    const { surface, components } = mountedLedScene(2);
+    const project = createPhysicalProject({ surfaces: [surface], components, wires: [{
+        id: 'manual-ground', from: componentPinRef('uno', 'GND.2'), to: surfaceHoleRef(surface.id, 'BN3'),
+        route: { mode: 'auto', waypoints: [] },
+    }] });
+    const connections = [
+        { id: 'five', from: componentPinRef('uno', '5V'), to: componentPinRef('led0', 'A') },
+        { id: 'three', from: componentPinRef('uno', '3.3V'), to: componentPinRef('led1', 'A') },
+        { id: 'ground', from: componentPinRef('uno', 'GND.2'), to: componentPinRef('led0', 'C') },
+    ];
+    const result = realizeAutoWireConnections(project, connections, () => '#000');
+    assert.equal(result.status, 'success');
+
+    const railGroupFor = pinId => {
+        const wire = result.wires.find(item => [item.from, item.to].some(ref => ref.pinId === pinId));
+        const rail = [wire.from, wire.to].map(holeOf).find(hole => hole?.zone === 'rail');
+        return rail;
+    };
+    assert.equal(railGroupFor('5V').polarity, 'power');
+    assert.equal(railGroupFor('3.3V').polarity, 'power');
+    assert.notEqual(railGroupFor('5V').electricalGroup, railGroupFor('3.3V').electricalGroup,
+        '5V and 3.3V never share a rail');
+
+    assert.equal(result.wires.some(wire => [wire.from, wire.to].some(ref => ref.pinId === 'GND.2')), false,
+        'the hand-wired ground rail is reused instead of adding a second feeder');
+    const groundJumper = result.wires.find(wire => wire.properties.logicalTerminals.some(ref => ref.pinId === 'GND.2'));
+    assert.equal(holeOf([groundJumper.from, groundJumper.to].find(ref => holeOf(ref)?.zone === 'rail')).electricalGroup, 'rail-BN');
 });
