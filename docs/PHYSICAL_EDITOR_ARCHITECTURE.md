@@ -1,6 +1,6 @@
 # Elera Physical Editor Architecture
 
-Status: active Konva editor with consolidated part/package boundaries, 2026-09-02.
+Status: the editor the application runs; reconciled with the code 2026-10-05.
 
 ## Invariant
 
@@ -14,12 +14,12 @@ The DOM canvas rendered every part as a Lit element and every wire in an SVG ove
 
 The retained router had valuable human-readable behavior: orthogonal geometry, component escape segments, header fan-out, inflated obstacles, bend costs, deterministic net order, parallel-wire separation and short local breadboard jumpers. Its limitation was coupling to the global pixel store and renderer-derived bounds.
 
-Undo/redo used complete snapshots with batching. Persistence already normalized legacy state into schema v2 logical components/nets and physical intent. The repository does not currently contain a live Supabase client; account projects are a localStorage mock despite Supabase being described in report material.
+Undo/redo used complete snapshots with batching. Persistence already normalized legacy state into schema v2 logical components/nets and physical intent. The repository has no backend or Supabase client, although Supabase appears in report material.
 
 ## New subsystem boundaries
 
 ```text
-Physical project (schema 4)
+Physical project (schema 4; schema 3 accepted on load)
   -> breadboard surfaces + footprint definitions
   -> deterministic snap solver + derived occupancy
   -> semantic connection resolver + net graph
@@ -70,7 +70,7 @@ Wires store semantic endpoints separately from route mode/waypoints. Automatic r
 
 Commands cover add/move/mount components, move surfaces, and add/delete wires. The new store executes commands against cloned project state and provides undo/redo. It persists schema-4 semantic project data under a separate localStorage key, leaving schema-v2/legacy projects untouched for a later explicit migration adapter. Named local projects also store and restore schema-4 data through `physical/project-repository.js`.
 
-The Konva host has five layers: background, board, wire, component and interaction. It recreates the scene from project state. A pointer-transparent DOM artwork layer reuses Wokwi or custom visuals for ordinary library parts. The resistor keeps its original Wokwi element in free space; compact-horizontal and upright breadboard packages use dedicated Wokwi-inspired SVG elements whose rendered pin centres are fitted to the authoritative package pins. Standard DIP artwork is procedural Konva presentation driven by the package geometry (body, legs, notch, pin-1 marker and label); it does not define pin positions. Konva remains the interaction and hit-testing owner. A default test IC/LED/wire sample demonstrates the slice. Rigid breadboard parts use the generic snap solver; the wider metadata library receives explicit generated free-space footprints and terminals so boards and modules can be added, moved, wired and deleted. Hole hover highlights the topology-defined strip. Clicking two terminals creates a semantic wire.
+The Konva host has five layers: background, board, wire, component and interaction. It recreates the scene from project state. Automatic routes are computed in a Web Worker (`routing-worker.js`) so dense scenes do not block input. A pointer-transparent DOM artwork layer reuses Wokwi or custom visuals for ordinary library parts. The resistor keeps its original Wokwi element in free space; compact-horizontal and upright breadboard packages use dedicated Wokwi-inspired SVG elements whose rendered pin centres are fitted to the authoritative package pins. Standard DIP artwork is procedural Konva presentation driven by the package geometry (body, legs, notch, pin-1 marker and label); it does not define pin positions. Konva remains the interaction and hit-testing owner. A new browser session starts with a demo half breadboard holding a DIP8 test IC, an LED and a wire (`defaultProject()` in `circuit-store.js`). Rigid breadboard parts use the generic snap solver; the wider metadata library receives explicit generated free-space footprints and terminals so boards and modules can be added, moved, wired and deleted. Hole hover highlights the topology-defined strip. Clicking two terminals creates a semantic wire.
 
 ## Validation bridge
 
@@ -81,11 +81,12 @@ The validation bar now reads the active physical store. Footprint legality, comp
 - All parts declared breadboard-mountable have calibrated rigid package geometry. DIP8 and LED have dedicated procedural artwork in the active renderer; Arduino Uno has a dedicated free-space board visual, while several other parts still use their Wokwi adapter or functional labeled module artwork.
 - Resistors use one electrical type with the unchanged Wokwi free-space visual, compact fixed-body horizontal breadboard packages spanning three through eight pitches, and an upright breadboard package. The preferred compact appearance occupies five hole positions (four pitch intervals) with a separately shortened body. The generic snap solver selects only complete legal variants; the renderer keeps recognizable leads, body and color bands.
 - Auto Wire and Auto Layout mutate the active schema-4 project. Auto Wire reuses metadata-driven pin planning and generated helpers without moving or mounting parts, and realizes only missing physical jumpers. Auto Layout owns positioning, keeps user-placed free components clear of board bodies, and may mount only its own generated series helper beside an already-mounted owner when a legal footprint is available. It prefers compact horizontal placement and uses upright only as a capacity fallback.
-- Route generation is intentionally compact; advanced A*, crossing minimization, editable handles and reserved channels remain future work.
-- Schema-v2 projects are preserved in their old key but are not yet imported into schema 3.
-- The account/projects dialog remains backed by the legacy local mock rather than Supabase.
+- Route generation is intentionally compact. Manual waypoints and segment grips are editable (`wire-edit.js`); advanced A*, global crossing minimization and reserved channels remain future work.
+- Schema-v2 projects are preserved in their old key but are not imported into schema 4.
+- Named projects are stored in `localStorage` through `project-repository.js`; the account panel is a local mock with no backend.
+- Validation covers physical legality and net completeness (`validation.js`) plus electrical checks over the resolved connectivity graph (`electrical-validation.js`): shorts, current budget, pin capabilities and constraints, duplicate pins with shared-bus awareness, supply pins, floating pins and LED resistors.
 - Full-net component highlighting and richer physical-package selection controls remain future work.
 
 ## Recommended next phase
 
-Build a schema-v2-to-schema-3 adapter, then migrate one complete Arduino Uno + LED/resistor circuit through connection planning, terminal selection, validation and route editing. After that, move additional rigid footprint records into the new registry, add flexible two-lead placement, and reconnect project/account persistence.
+Build a schema-v2-to-schema-4 adapter, then migrate one complete Arduino Uno + LED/resistor circuit through connection planning, terminal selection, validation and route editing. After that, move additional rigid footprint records into the new registry, add flexible two-lead placement, and reconnect project/account persistence.

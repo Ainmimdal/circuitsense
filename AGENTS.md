@@ -1,76 +1,53 @@
-# CircuitSense - Codex Project Context
+# Elera: agent context
 
-## Project Type
-Final Year Project (FYP) for IIUM (IT student).
+Guidance for coding agents (Codex, Claude Code and similar) working in this repository. `CLAUDE.md` imports this file.
 
-## Project Purpose
-Elera is an intelligent, web-based Arduino circuit builder inspired by tools like Tinkercad/Wokwi, but focused on smarter guidance instead of only manual design.
+## Project
 
-FYP wants to look more at the software engineering aspect of system development.
+Elera is an IIUM IT Final Year Project: a web-based Arduino circuit builder, in the spirit of Tinkercad and Wokwi, that focuses on guidance rather than manual drawing alone. The FYP is assessed mainly on its software engineering, so architecture, tests and documentation matter as much as features. The repository is named `circuitsense` (an earlier project name); `index.html` still uses that title.
 
-The main FYP objective is to build a system that helps students design valid circuits faster by combining:
-- visual drag-and-drop circuit building,
-- real-time validation and error detection,
-- intelligent auto-wiring,
-- and (later) AI-assisted circuit generation from goals.
+Key ideas: metadata-driven components, rule-based electrical and breadboard validation, transactional Auto Wire and Auto Layout, rigid 2.54 mm breadboard footprints, and an optional bring-your-own-key AI assistant that drives the same engine through tools.
 
-## Why This Project Matters (FYP Value)
-This project is meant to be impressive, practical, and novel enough for FYP evaluation by combining software engineering + hardware domain logic.
+## Commands
 
-Key innovation points:
-- Rule-based electrical validation (not just drawing wires).
-- Smart pin assignment and auto-wiring heuristics.
-- Beginner-friendly feedback for common Arduino mistakes.
-- Extensible architecture for future AI integration.
+```bash
+npm install
+npm run dev      # Vite dev server on http://localhost:5173
+npm test         # node --test; pretest checks the Wokwi manifest and syncs engine docs
+npm run build    # Vite production build
+```
 
-## Current Scope (Implemented/Active)
-Frontend stack:
-- Lit 3
-- Vite
-- @wokwi/elements for component visuals
+There is no lint or type-check script. Run `npm test`, `npm run build` and `git diff --check` before handing work back. One test in `test/physical-wire-edit.test.js` ("a point can be added to the closest segment and removed again") currently fails on `main`.
 
-Implemented core capabilities:
-- Component library with metadata (pin roles, current draw, auto-wire mapping).
-- Canvas placement, manual wiring, pan/zoom, undo/redo and project persistence.
-- Validation engine and validation bar UI.
-- Metadata-driven Auto Wire with nearest-compatible Arduino pin assignment and generated helper components.
-- Separate Auto Layout ownership for direct and breadboard-aware scenes.
-- Obstacle-aware Clean routing with Arduino header fanout and short local breadboard jumpers.
-- Schema v2 logical/physical circuit separation.
-- Half-size 400-point and full-size 830-point breadboards with modeled terminal strips and power rails.
-- Rigid 2.54 mm component footprints, manual hole snapping, legal rotation and capacity alternatives.
+## What actually runs
 
-Active stabilization:
-- Transactional behavior when Auto Wire runs out of compatible pins.
-- Bus-aware and full-size-board validation correctness.
-- Removal of remaining DOM readiness dependency from the Layout toolbar flow.
-- Automated browser acceptance and dense-scene performance profiling.
+`src/index.js` loads `src/circuit-app.js`, which uses only the schema-4 physical engine:
 
-Status source of truth:
-- `docs/PROJECT_STATUS.md`
-- `docs/ENGINE_CONTRACT.md`
-- `REBUILD_SPEC.md`
+- `src/physical/`: project model (`model.js`, schema 4), command store with undo/redo and `localStorage` persistence (`circuit-store.js`, `commands.js`), breadboard surfaces and footprints, snap solver (`placement.js`), connectivity, Auto Wire (`automation.js`, `breadboard-auto-wire.js`), Auto Layout (`automation.js`, `direct-layout-v2.js`), routing (`routing.js`, run in a Web Worker) and validation (`validation.js`).
+- `src/components/circuit-canvas.js`: Konva workspace host; Lit owns the rest of the UI.
+- `src/core/`: renderer-independent definitions shared by both engines (component geometry, part registry, breadboard topology, pin capabilities, the `planAutoWire` pin planner).
+- `src/ai/`: BYOK agent, provider transports and the tool registry that calls into `src/physical/`.
 
-## Planned Scope (Next Phases)
-- FastAPI backend?
-- PostgreSQL project persistence (Supabase)
-- User authentication
-- Save/load/share projects
-- Arduino code generation
-- BOM export
-- Goal-based circuit generation with Bring your own Key AI Model (BYOK Model)
+Legacy schema-v2 engine, not loaded by the app: `src/store.js`, `src/services/*`, `src/components/placed-component.js`, `src/core/circuit-model.js`, `src/core/project-schema.js`, `src/core/breadboard-planner.js`, `src/core/editor-project-adapter.js`, `src/utils/wire-path.js`. Its tests still run and many `docs/ENGINE_CONTRACT.md` traceability rows point at it. Do not wire new UI to it; port behavior into `src/physical/` instead.
 
-## Technical Direction
-- Keep logic modular: services for validation/auto-wire, components for UI.
-- Use metadata-driven rules so adding components does not require hardcoding everywhere.
-- Keep user feedback immediate and readable (error/warning/info).
-- Prefer safe JS syntax and avoid editor-sensitive constructs that previously broke formatting.
+There is no backend. Login is a local mock, named projects live in `localStorage`, and AI calls go straight from the browser to the provider.
 
-## Key Design Principles
-1. Student-first UX: clear, actionable feedback.
-2. Safety-first validation: catch risky wiring early.
-3. Extensibility: new components/rules should be easy to add.
-4. FYP readiness: architecture and documentation should support proposal/demo/report.
+## Where the truth lives
 
-## Short Elevator Pitch
-Elera is an intelligent Arduino circuit design assistant for students: it lets users build circuits visually, automatically checks for wiring mistakes, and can suggest/perform smart connections to reduce trial-and-error.
+- `docs/PROJECT_STATUS.md`: current state, health and priorities. Update it when you change what works.
+- `docs/ENGINE_CONTRACT.md`: normative engine rules, traceability registry and known drift (`GAP-*`). `test/engine-contract.test.js` checks that registry paths exist and that every `GAP-*` is mentioned in the status file.
+- `docs/SELF_HEALING_ENGINE.md`: the block between the `engine-doc-sync` markers is generated from the contract by `npm run docs:sync`; edit the contract, not that block.
+- `src/generated/wokwi-elements-manifest.js` is generated by `npm run components:generate`.
+
+## Conventions
+
+- Keep decisions in pure modules (`src/core/`, `src/physical/`) that run under Node without a DOM; components only render and dispatch.
+- Add components through metadata in `src/component-library.js` and geometry in `src/core/component-geometry.js`, not special cases in engines.
+- Geometry is in millimetres with an exact 2.54 mm pitch. Footprints are rigid; never scale pins independently.
+- Command ownership: Auto Wire never moves parts, Auto Layout owns placement, Clean only touches routes, Validation is read-only. Each toolbar command is one undo step.
+- Validation messages should be short and actionable for students (error, warning, info).
+- Prefer plain, conservative JavaScript syntax; some editor setups have mangled newer constructs before.
+
+## Planned, not built
+
+Backend (possibly FastAPI) with PostgreSQL/Supabase persistence, real authentication, sharing, Arduino code generation, BOM export and goal-based circuit generation.
