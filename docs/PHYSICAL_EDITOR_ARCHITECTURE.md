@@ -84,7 +84,7 @@ The validation bar now reads the active physical store. Footprint legality, comp
 - Route generation is intentionally compact. Manual waypoints and segment grips are editable (`wire-edit.js`); advanced A*, global crossing minimization and reserved channels remain future work.
 - Schema-v2 projects are preserved in their old key but are not imported into schema 4.
 - Named projects are stored in `localStorage` through `project-repository.js`; the account panel is a local mock with no backend.
-- Validation covers physical legality and net completeness only; the wider logical checks are still in the legacy engine (`GAP-09`).
+- Validation covers physical legality and net completeness (`validation.js`) plus electrical checks over the resolved connectivity graph (`electrical-validation.js`): shorts, current budget, pin capabilities and constraints, duplicate pins with shared-bus awareness, supply pins, floating pins and LED resistors.
 - Full-net component highlighting and richer physical-package selection controls remain future work.
 
 ## Recommended next phase

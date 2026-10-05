@@ -178,7 +178,14 @@ Routing order is signal, I2C, power, then ground. This lets visually important s
 - **VAL-07 — Postcondition gate.** A newly planned physical result cannot be committed with a new error-level short, overlap, illegal footprint, invalid hole or disconnected required endpoint.
 - **VAL-08 — Exact controller-pin compatibility.** An exact-pin mutation derives the ordinary endpoint's required role from component metadata, checks the selected controller pin's capabilities/constraints, rejects hard incompatibilities transactionally, and returns non-fatal pin concerns as warnings.
 
-Validation finding IDs in the legacy `validation-engine.js` are listed below. The physical validator uses its own IDs (`missing-footprint`, `invalid-placement`, `occupied`, `broken-wire`, `loop-wire`, `invalid-wire-hole`, `incomplete-net`, `breadboard-net-conflict`, `redundant-wire`, `led-no-resistor`, `no-controller`, `empty-project`), each suffixed with the affected item where relevant.
+The physical validator's finding IDs are suffixed with the affected item where relevant (for example `pin-mismatch:<component>:<pin>`):
+
+- Physical: `missing-footprint`, `invalid-placement`, `occupied`, `broken-wire`, `loop-wire`, `invalid-wire-hole`, `incomplete-net`, `breadboard-net-conflict`, `redundant-wire`, `no-controller`, `empty-project`.
+- Electrical (`src/physical/electrical-validation.js`): `power-short`, `supply-conflict`, `current-overload`, `current-high`, `pin-mismatch`, `pin-constraint`, `duplicate-pin`, `missing-vcc`, `missing-gnd`, `reversed-supply`, `no-supply`, `led-no-resistor`, `floating-pin`, `unconnected`, `breadboard-required`.
+
+Legacy IDs map onto these as follows: `no-board` is `no-controller`; `i2c-wrong-sda`/`i2c-wrong-scl` are `pin-mismatch` on the I2C pin; `servo-serial` is `pin-constraint` for any device on a constrained pin; `breadboard-short` is `power-short`; `breadboard-invalid-hole`, `breadboard-occupied-hole`, `breadboard-invalid-placement`, `breadboard-placement-overlap`, `breadboard-footprint` and `breadboard-footprint-short` are covered by `invalid-wire-hole`, `occupied` and `invalid-placement`; `breadboard-disconnected-net` is covered by `floating-pin` and `unconnected`. `breadboard-useful` is not ported because it fired on most scenes, and `breadboard-capacity` is not a validation finding in the live engine because free-hole counts are not proof of capacity (`CAP-01`); see `GAP-10`.
+
+Finding IDs in the legacy `validation-engine.js`:
 
 `no-board`, `led-no-resistor`, `current-overload`, `current-high`, `duplicate-pin`, `servo-serial`, `missing-vcc`, `missing-gnd`, `i2c-wrong-sda`, `i2c-wrong-scl`, `unconnected`, `floating-pin`, `breadboard-required`, `breadboard-useful`, `breadboard-capacity`, `breadboard-invalid-hole`, `breadboard-occupied-hole`, `breadboard-invalid-placement`, `breadboard-placement-overlap`, `breadboard-footprint`, `breadboard-footprint-short`, `breadboard-disconnected-net`, and `breadboard-short`.
 
@@ -247,7 +254,9 @@ The rows between the markers are parsed by `test/engine-contract.test.js`. Rule 
 | `CL-08` | Route-only operations preserve existing semantic nets | `src/ai/tools.js`, `src/physical/routing.js` | `test/ai-agent.test.js`, `test/physical-interaction.test.js` |
 | `CL-09` | Unrelated automatic wires route around breadboard bodies | `src/physical/routing.js` | `test/physical-core.test.js` |
 | `VAL-01` | Validation distinguishes logical and physical views | `src/services/validation-engine.js` | `test/project-schema.test.js`, `test/breadboard-layout.test.js` |
-| `VAL-05` | Breadboard legality produces validation findings | `src/services/validation-engine.js` | `test/breadboard-layout.test.js`, `test/breadboard-planner.test.js` |
+| `VAL-04` | Logical checks report shorts, current, pin capability, serial, duplicate-pin, supply and floating-pin findings on the live project | `src/physical/electrical-validation.js`, `src/physical/validation.js` | `test/physical-electrical-validation.test.js` |
+| `VAL-05` | Breadboard legality produces validation findings | `src/physical/validation.js`, `src/services/validation-engine.js` | `test/physical-core.test.js`, `test/physical-electrical-validation.test.js`, `test/breadboard-layout.test.js`, `test/breadboard-planner.test.js` |
+| `VAL-06` | Shared I2C buses and pull resistors are not duplicate pin use | `src/physical/electrical-validation.js` | `test/physical-electrical-validation.test.js` |
 | `VAL-08` | Exact controller-pin mutations enforce metadata capabilities transactionally | `src/core/pin-capabilities.js`, `src/ai/tools.js` | `test/ai-agent.test.js` |
 | `INT-01` | Selection and registration cannot move parts | `src/components/placed-component.js`, `src/store.js` | `test/breadboard-layout.test.js` |
 | `INT-03` | Mounted edits rebuild atomically or roll back | `src/components/placed-component.js`, `src/services/breadboard-service.js` | `test/rebuild-integration.test.js`, `test/breadboard-layout.test.js` |
@@ -260,11 +269,9 @@ These are not accepted exceptions. They are visible work items. Removing a row r
 | Gap | Current drift | Contract to satisfy |
 | --- | --- | --- |
 | `GAP-03` | Auto Wire replaces connectivity with empty waypoints and does not invoke Clean from the toolbar. | The command contract must deliberately choose either immediate baseline routing or an explicit route-dirty state; it must not be accidental. |
-| `GAP-04` | Legacy `validation-engine.js` duplicate Arduino-pin validation does not yet distinguish legal shared I2C bus endpoints from unrelated signals. | `VAL-06`: recognize bus-capable shared nets. |
-| `GAP-05` | In legacy `validation-engine.js`, some full-size breadboard validation paths use half-board hole/group lookup helpers. | `VAL-05`: resolve holes and groups through each instance's registered board definition. |
 | `GAP-06` | Validation issue codes do not yet each have a focused fixture. | Every `VAL-*` behavior and public finding ID needs direct regression evidence. |
 | `GAP-07` | Browser acceptance is manual; pointer, zoom and final rendered geometry are not in automated CI. | Add browser fixtures for the primary mixed circuit and interaction rollback. |
-| `GAP-09` | The running app validates with `src/physical/validation.js`, which covers placement, occupancy, wire endpoints, net completeness, shared-copper conflicts, redundant jumpers, LED resistors and controller presence only. The other `VAL-04`/`VAL-05` checks exist only in the legacy `validation-engine.js`. | Port the remaining `VAL-04`/`VAL-05` checks into the physical validator with `VAL-06` bus awareness. |
+| `GAP-10` | Live Auto Layout (`src/physical/automation.js`) fails when a scene does not fit the current breadboard; proven capacity alternatives (add a board, replace with a larger one) exist only in the legacy `src/core/breadboard-planner.js`. | `CAP-02`: offer only alternatives proven by a complete legal plan, from the live engine. |
 
 ## Change protocol
 

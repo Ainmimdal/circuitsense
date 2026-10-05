@@ -19,7 +19,7 @@ This is the current status source of truth. Engine behavior is governed by [ENGI
 
 The application loads only the **schema-4 physical engine** (`src/physical/`, `src/editor/`, the Konva canvas in `src/components/circuit-canvas.js`, and shared definitions in `src/core/`).
 
-The **legacy schema-v2 engine** (`src/store.js`, `src/services/*`, `src/components/placed-component.js`, `src/core/circuit-model.js`, `src/core/project-schema.js`, `src/core/breadboard-planner.js`, `src/core/editor-project-adapter.js`) is not imported by the running app. Its tests still pass and many rows of the engine contract's traceability registry still cite it. Several features described in older documentation, including full logical validation, capacity alternatives (add or replace a breadboard) and locked placements, exist only there. Treat it as a porting reference: new behavior belongs in `src/physical/`.
+The **legacy schema-v2 engine** (`src/store.js`, `src/services/*`, `src/components/placed-component.js`, `src/core/circuit-model.js`, `src/core/project-schema.js`, `src/core/breadboard-planner.js`, `src/core/editor-project-adapter.js`) is not imported by the running app. Its tests still pass and many rows of the engine contract's traceability registry still cite it. Several features described in older documentation, including capacity alternatives (add or replace a breadboard) and locked placements, exist only there. Its logical validation checks have been ported to `src/physical/electrical-validation.js`. Treat it as a porting reference: new behavior belongs in `src/physical/`.
 
 ## Implemented in the running app
 
@@ -51,9 +51,12 @@ The **legacy schema-v2 engine** (`src/store.js`, `src/services/*`, `src/componen
 
 ### Validation
 
-The validation bar runs `validatePhysicalProject` (`src/physical/validation.js`) on every change. It reports: missing footprint, illegal placement, hole collisions, broken or self-looping wires, invalid wire holes, incomplete intended nets, two nets sharing breadboard copper, redundant generated jumpers, LEDs without a resistor, no controller, and an empty project.
+The validation bar runs `validatePhysicalProject` (`src/physical/validation.js`) on every change. Findings come in two groups.
 
-The broader logical checks (current limits, duplicate signal pins, serial-pin conflicts, missing VCC/GND, I2C pin placement, floating pins, breadboard capacity) exist only in the legacy `src/services/validation-engine.js` and are not shown to users (`GAP-09`).
+- **Physical checks:** missing footprint, illegal placement, hole collisions, broken or self-looping wires, invalid wire holes, incomplete intended nets, two nets sharing breadboard copper, redundant generated jumpers, no controller, and an empty project.
+- **Electrical checks** (`src/physical/electrical-validation.js`, ported from the legacy engine): power-to-ground shorts and tied supply pins, the controller's total current budget, signal pins that lack a needed capability (PWM, analog, output, the board's I2C SDA/SCL), serial and boot-strap pin conflicts, two devices on one I/O pin, missing or reversed VCC/GND, supply pins that never reach a controller supply, floating signal pins, unconnected parts, LEDs without a series resistor, and a hint when parts need a breadboard but the scene has none.
+
+The electrical checks read the resolved connectivity graph, so a connection through breadboard strips, rails (including the split rails of the 830-point board) or a part's internal net counts the same as a jumper. Several devices on the board's I2C pins are a legal shared bus, and a resistor sharing a signal pin is not a second device. Controller capabilities, constraints and current limits come from the board pin tables in `src/boards/`. Incomplete wiring is reported as warnings or info, never errors, so the AI assistant's one-connection-at-a-time edits are not rejected for being unfinished.
 
 ### AI assistant
 
@@ -76,12 +79,12 @@ The broader logical checks (current limits, duplicate signal pins, serial-pin co
 
 ## Known gaps and next priorities
 
-Gap definitions and exit conditions live in [ENGINE_CONTRACT.md](ENGINE_CONTRACT.md#known-contract-drift). `GAP-01`, `GAP-02` and `GAP-08` are closed.
+Gap definitions and exit conditions live in [ENGINE_CONTRACT.md](ENGINE_CONTRACT.md#known-contract-drift). `GAP-01`, `GAP-02`, `GAP-04`, `GAP-05`, `GAP-08` and `GAP-09` are closed: the live validator now runs the logical checks with shared-bus awareness and per-board hole lookup.
 
-1. **P0, user-facing validation:** port the logical checks into `src/physical/validation.js` (`GAP-09`). Build in bus awareness for shared I2C (`GAP-04`) and per-board hole lookup for full-size boards (`GAP-05`) while porting, rather than fixing them only in the legacy engine.
-2. **P0, test suite:** fix the failing waypoint insertion test in `test/physical-wire-edit.test.js`.
+1. **P0, test suite:** fix the failing waypoint insertion test in `test/physical-wire-edit.test.js`.
+2. **P1, capacity alternatives:** when a scene does not fit, live Auto Layout fails without offering a proven larger or additional board (`GAP-10`).
 3. **P1, command completion:** decide the Auto Wire route-dirty versus baseline-routing behavior (`GAP-03`).
-4. **P1, regression depth:** one focused fixture per public validation finding (`GAP-06`) and an automated browser fixture for the mixed circuit (`GAP-07`).
+4. **P1, regression depth:** one focused fixture per remaining physical validation finding (`GAP-06`; the electrical findings have them in `test/physical-electrical-validation.test.js`) and an automated browser fixture for the mixed circuit (`GAP-07`).
 5. **P2, cleanup and performance:** retire the legacy engine once its tests are ported to `src/physical/`, re-point the contract registry, profile dense breadboard scenes and split the production bundle.
 
 For every engine change, name the affected contract rule, add the failing test first, and keep the command mutation boundaries.

@@ -8,11 +8,11 @@ This document answers two questions: which engine owns each decision, and how an
 
 "Self-healing" has two precise meanings here. Engine commands use bounded recovery rather than silently redesigning a user's circuit, and this document synchronizes its pipeline, rule ownership, rule text and traceability from the normative contract. `npm run dev`, `npm test` and `npm run build` refresh the generated block before doing their normal work.
 
-The hand-written flowcharts after the generated block were drawn for the legacy schema-v2 engine. The running schema-4 engine in `src/physical/` follows the same ownership boundaries, but it does not yet offer capacity alternatives or locked placements, and its validation is narrower (`GAP-09` in the contract).
+The hand-written flowcharts after the generated block were drawn for the legacy schema-v2 engine. The running schema-4 engine in `src/physical/` follows the same ownership boundaries, but it does not yet offer capacity alternatives (`GAP-10` in the contract) or locked placements.
 
 <!-- engine-doc-sync:start -->
 > Generated from `ENGINE_CONTRACT.md` by `npm run docs:sync`. Do not edit this block.
-> Contract fingerprint: `42d9eb14eeec`
+> Contract fingerprint: `4a2a9443ffbb`
 
 ## Contract-synchronized command pipeline
 
@@ -185,7 +185,9 @@ flowchart LR
 | `CL-08` | Route-only operations preserve existing semantic nets | `src/ai/tools.js`, `src/physical/routing.js` | `test/ai-agent.test.js`, `test/physical-interaction.test.js` |
 | `CL-09` | Unrelated automatic wires route around breadboard bodies | `src/physical/routing.js` | `test/physical-core.test.js` |
 | `VAL-01` | Validation distinguishes logical and physical views | `src/services/validation-engine.js` | `test/project-schema.test.js`, `test/breadboard-layout.test.js` |
-| `VAL-05` | Breadboard legality produces validation findings | `src/services/validation-engine.js` | `test/breadboard-layout.test.js`, `test/breadboard-planner.test.js` |
+| `VAL-04` | Logical checks report shorts, current, pin capability, serial, duplicate-pin, supply and floating-pin findings on the live project | `src/physical/electrical-validation.js`, `src/physical/validation.js` | `test/physical-electrical-validation.test.js` |
+| `VAL-05` | Breadboard legality produces validation findings | `src/physical/validation.js`, `src/services/validation-engine.js` | `test/physical-core.test.js`, `test/physical-electrical-validation.test.js`, `test/breadboard-layout.test.js`, `test/breadboard-planner.test.js` |
+| `VAL-06` | Shared I2C buses and pull resistors are not duplicate pin use | `src/physical/electrical-validation.js` | `test/physical-electrical-validation.test.js` |
 | `VAL-08` | Exact controller-pin mutations enforce metadata capabilities transactionally | `src/core/pin-capabilities.js`, `src/ai/tools.js` | `test/ai-agent.test.js` |
 | `INT-01` | Selection and registration cannot move parts | `src/components/placed-component.js`, `src/store.js` | `test/breadboard-layout.test.js` |
 | `INT-03` | Mounted edits rebuild atomically or roll back | `src/components/placed-component.js`, `src/services/breadboard-service.js` | `test/rebuild-integration.test.js`, `test/breadboard-layout.test.js` |
