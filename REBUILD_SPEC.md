@@ -1,6 +1,6 @@
 # Elera Circuit Core Rebuild Specification
 
-Status: implemented schema v2 baseline. Ongoing engine behavior is governed by `docs/ENGINE_CONTRACT.md`; current health and remaining work are tracked in `docs/PROJECT_STATUS.md`.
+Status: historical design baseline. It was implemented as the schema-v2 engine (`src/store.js`, `src/services/`, `src/core/breadboard-planner.js`), which the app no longer loads; the running editor uses the schema-4 physical model described in `docs/PHYSICAL_EDITOR_ARCHITECTURE.md`. Ongoing engine behavior is governed by `docs/ENGINE_CONTRACT.md`; current health and remaining work are tracked in `docs/PROJECT_STATUS.md`.
 
 ## Scope
 

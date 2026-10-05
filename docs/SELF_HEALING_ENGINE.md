@@ -1,16 +1,18 @@
 # Elera Self-Healing Engine Flow
 
 Status: operational map  
-Last reconciled with implementation: 2026-07-16  
+Last reconciled with implementation: 2026-10-05\
 Normative authority: [ENGINE_CONTRACT.md](ENGINE_CONTRACT.md)
 
 This document answers two questions: which engine owns each decision, and how an automated command recovers when it cannot prove a safe result. If this map and the engine contract disagree, the contract wins.
 
 "Self-healing" has two precise meanings here. Engine commands use bounded recovery rather than silently redesigning a user's circuit, and this document synchronizes its pipeline, rule ownership, rule text and traceability from the normative contract. `npm run dev`, `npm test` and `npm run build` refresh the generated block before doing their normal work.
 
+The hand-written flowcharts after the generated block were drawn for the legacy schema-v2 engine. The running schema-4 engine in `src/physical/` follows the same ownership boundaries, but it does not yet offer capacity alternatives or locked placements, and its validation is narrower (`GAP-09` in the contract).
+
 <!-- engine-doc-sync:start -->
 > Generated from `ENGINE_CONTRACT.md` by `npm run docs:sync`. Do not edit this block.
-> Contract fingerprint: `54f3c44a83ba`
+> Contract fingerprint: `42d9eb14eeec`
 
 ## Contract-synchronized command pipeline
 
@@ -214,7 +216,7 @@ The checks are ordered deliberately: electrical correctness outranks physical le
 
 ```mermaid
 flowchart LR
-    A["Serialize and hydrate schema v2"] --> B["Find eligible components and MCU"]
+    A["Snapshot project"] --> B["Find eligible components and MCU"]
     B --> C["Assign compatible pins deterministically"]
     C --> D{"Every scoped endpoint resolved?"}
     D -->|"No"| E["Reject scope or preserve unresolved previous wiring"]
@@ -310,9 +312,9 @@ A breadboard result is presentation-valid only when all of these hold:
 8. Ground is black, positive supply is red, and signal colors remain distinct where possible.
 9. Among electrically and physically valid options, prefer fewer conductors, shorter length, fewer bends and fewer crossings.
 
-## Why the supplied image is wrong
+## Worked example: overbuilt ground rails
 
-The screenshot is not merely a cosmetic router problem. The old physical planner independently chose the nearest ground rail for each LED group: the upper LED used the top negative rail, the lower LED used the bottom negative rail, and a fourth conductor linked the two rails. Clean then faithfully routed that overbuilt topology as the two large black U-shaped loops.
+A reported two-LED scene drew two large black U-shaped ground loops. That was not merely a cosmetic router problem. The old physical planner independently chose the nearest ground rail for each LED group: the upper LED used the top negative rail, the lower LED used the bottom negative rail, and a fourth conductor linked the two rails. Clean then faithfully routed that overbuilt topology as the two large black U-shaped loops.
 
 For this two-LED half-board scene, the expected topology is:
 
