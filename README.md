@@ -49,6 +49,12 @@ Output: `Elera_FYP1_Report_v4.docx`
 - [Physical editor architecture](docs/PHYSICAL_EDITOR_ARCHITECTURE.md) - millimetre geometry, semantic placement/connectivity, Konva rendering, current limitations and migration plan.
 - [AI agent architecture](docs/AI_AGENT.md) - provider-neutral BYOK transport, tool loop, safety modes, supported providers and extension points.
 
+## Accounts and cloud sync (optional)
+
+Projects are saved on the device (IndexedDB) and Elera works without an account.
+To turn on **Continue with Google** and cloud sync, copy `.env.example` to
+`.env.local` and follow [docs/CLOUD_SYNC_SETUP.md](docs/CLOUD_SYNC_SETUP.md).
+
 ## AI assistant (BYOK)
 
 Open **AI → Settings → AI Keys**, choose DeepSeek, Gemini, OpenAI, OpenRouter, or a custom OpenAI-compatible endpoint, enter a model and API key, and run **Test**. API keys are kept in session storage for the current browser tab; other AI preferences are saved locally.

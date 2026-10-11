@@ -45,6 +45,8 @@ const ICONS = Object.freeze({
     shield: svg`<path d="M12 3 4 6v5c0 5 3 8 8 10 5-2 8-5 8-10V6z"/>`,
     user: svg`<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>`,
     rightToBracket: svg`<path d="M10 4H5v16h5M13 8l4 4-4 4M17 12H8"/>`,
+    google: svg`<path d="M20 12h-8M20 12a8 8 0 1 1-2.34-5.66"/>`,
+    cloud: svg`<path d="M7 18a4 4 0 0 1-.5-8A6 6 0 0 1 18 9a4.5 4.5 0 0 1-.5 9z"/>`,
     rightFromBracket: svg`<path d="M14 4h5v16h-5M11 8l-4 4 4 4M7 12h9"/>`,
 });
 

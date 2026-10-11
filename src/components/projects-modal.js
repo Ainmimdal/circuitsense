@@ -1,18 +1,19 @@
 import { LitElement, html, css } from 'lit';
 import { physicalCircuitStore } from '../physical/circuit-store.js';
-import {
-    deleteNamedProject,
-    getNamedProjects,
-    loadNamedProject,
-    saveNamedProject,
-} from '../physical/project-repository.js';
+import { normalizePersistedProject } from '../physical/model.js';
+import { accountService } from '../persistence/account.js';
+import { projectLibrary } from '../persistence/project-library.js';
 import { faIcon } from '../utils/fa-icons.js';
 
 class ProjectsModal extends LitElement {
     static properties = {
         open: { type: Boolean, reflect: true },
+        promptName: { type: Boolean },
         _projects: { state: true },
-        _newProjectName: { state: true }
+        _newProjectName: { state: true },
+        _currentId: { state: true },
+        _syncStatus: { state: true },
+        _signedIn: { state: true },
     };
 
     static styles = css`
@@ -224,42 +225,67 @@ class ProjectsModal extends LitElement {
         .project-date, .empty-state { color: var(--text-muted); }
         button.btn-action { background: var(--primary); border: 1px solid var(--panel-border); color: var(--text); }
         button.btn-action:hover { background: var(--primary-hover); }
+        .header-text { display: grid; gap: 4px; }
+        .sync-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); }
+        .sync-badge.sync-error { color: var(--accent-ics, #f87171); }
+        .save-hint { margin: -10px 0 0; font-size: 12px; color: var(--text-muted); }
+        .open-tag { margin-left: 8px; padding: 1px 6px; border: 1px solid var(--accent-boards, #22c55e); border-radius: 4px; color: var(--accent-boards, #22c55e); font-size: 10px; font-weight: 600; vertical-align: middle; }
+        .project-item.current { border-color: var(--accent-boards, #22c55e); }
+        .signin-tip { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border: 1px dashed var(--panel-border); border-radius: 4px; font-size: 12px; color: var(--text-muted); }
+        .signin-tip button { flex: 0 0 auto; }
     `;
 
     constructor() {
         super();
         this.open = false;
+        this.promptName = false;
         this._projects = [];
         this._newProjectName = '';
-        this._storeHandler = () => {
-            if (this.open) {
-                this._refreshProjects();
-            }
+        this._currentId = null;
+        this._syncStatus = projectLibrary.status;
+        this._signedIn = Boolean(accountService.user);
+        this._libraryHandler = () => {
+            if (this.open) this._refreshProjects();
+        };
+        this._statusHandler = () => {
+            this._syncStatus = projectLibrary.status;
+            this._signedIn = Boolean(accountService.user);
         };
     }
 
     connectedCallback() {
         super.connectedCallback();
-        physicalCircuitStore.addEventListener('change', this._storeHandler);
+        projectLibrary.addEventListener('change', this._libraryHandler);
+        projectLibrary.addEventListener('status', this._statusHandler);
+        accountService.addEventListener('change', this._statusHandler);
     }
 
     disconnectedCallback() {
         super.disconnectedCallback();
-        physicalCircuitStore.removeEventListener('change', this._storeHandler);
+        projectLibrary.removeEventListener('change', this._libraryHandler);
+        projectLibrary.removeEventListener('status', this._statusHandler);
+        accountService.removeEventListener('change', this._statusHandler);
     }
 
     updated(changedProperties) {
         if (changedProperties.has('open') && this.open) {
+            this._statusHandler();
             this._refreshProjects();
+            projectLibrary.sync();
+            if (this.promptName) {
+                this.updateComplete.then(() => this.renderRoot.querySelector('input')?.focus());
+            }
         }
     }
 
-    _refreshProjects() {
-        this._projects = getNamedProjects().sort((a, b) => b.updatedAt - a.updatedAt);
+    async _refreshProjects() {
+        this._projects = await projectLibrary.list();
+        this._currentId = projectLibrary.getCurrentProjectId();
     }
 
     _close() {
         this.open = false;
+        this.promptName = false;
         this.dispatchEvent(new CustomEvent('close'));
     }
 
@@ -267,66 +293,104 @@ class ProjectsModal extends LitElement {
         this._newProjectName = e.target.value;
     }
 
-    _saveProject() {
-        if (!this._newProjectName.trim()) return;
-        saveNamedProject(physicalCircuitStore, this._newProjectName);
+    async _saveProject() {
+        const name = this._newProjectName.trim();
+        if (!name) return;
+        const existing = this._projects.find(project => project.name === name);
+        if (existing && existing.id !== this._currentId
+            && !confirm(`A project called "${name}" already exists. Replace it with the current circuit?`)) return;
+        physicalCircuitStore.save();
+        const saved = await projectLibrary.saveAs(name, physicalCircuitStore.project);
+        if (!saved) return;
+        projectLibrary.setCurrentProjectId(saved.id);
         this._newProjectName = '';
-        this._refreshProjects();
+        if (this.promptName) {
+            this._close();
+            return;
+        }
+        await this._refreshProjects();
     }
 
-    _loadProject(id) {
-        if (confirm('Load this project? Any unsaved changes in your current workspace will be lost.')) {
-            const success = loadNamedProject(physicalCircuitStore, id);
-            if (success) {
-                this._close();
-            } else {
-                alert('Failed to load project.');
-            }
+    async _loadProject(id) {
+        if (!confirm('Open this project? Changes to the circuit you have open now will be lost unless you save them first.')) return;
+        const record = await projectLibrary.get(id);
+        if (!record) {
+            alert('That project could not be found. It may have been deleted on another device.');
+            await this._refreshProjects();
+            return;
         }
+        try {
+            physicalCircuitStore.importProject(normalizePersistedProject(record.data));
+        } catch (error) {
+            console.error('[Elera] Saved project could not be opened:', error);
+            alert('This project could not be opened. It may be damaged.');
+            return;
+        }
+        projectLibrary.setCurrentProjectId(id);
+        this._close();
     }
 
-    _deleteProject(id) {
-        if (confirm('Are you sure you want to delete this project? This cannot be undone.')) {
-            deleteNamedProject(id);
-            this._refreshProjects();
+    async _deleteProject(project) {
+        const where = this._signedIn ? ' from this device and your account' : '';
+        if (!confirm(`Delete "${project.name}"${where}? This cannot be undone.`)) return;
+        await projectLibrary.remove(project.id);
+        await this._refreshProjects();
+    }
+
+    _renderSyncBadge() {
+        const status = this._syncStatus || {};
+        if (!this._signedIn) {
+            return html`<span class="sync-badge">${faIcon('folder')} Saved on this device</span>`;
         }
+        const icon = status.state === 'synced' ? 'cloud' : status.state === 'error' ? 'triangleExclamation' : 'rotateRight';
+        return html`<span class="sync-badge sync-${status.state}">${faIcon(icon)} ${status.message}</span>`;
     }
 
     render() {
         return html`
             <div class="modal">
                 <div class="header">
-                    <h2>My Projects (Local Mock)</h2>
+                    <div class="header-text">
+                        <h2>My projects</h2>
+                        ${this._renderSyncBadge()}
+                    </div>
                     <button class="close-btn" @click=${this._close}>${faIcon('xmark')}</button>
                 </div>
                 <div class="body">
                     <div class="save-section">
                         <input 
                             type="text" 
-                            placeholder="Project Name..." 
+                            placeholder=${this.promptName ? 'Name this project, e.g. Traffic light' : 'New project name'} 
                             .value=${this._newProjectName}
                             @input=${this._handleInput}
                             @keydown=${(e) => e.key === 'Enter' && this._saveProject()}
                         />
                         <button class="btn-primary" ?disabled=${!this._newProjectName.trim()} @click=${this._saveProject}>
-                            Save Project
+                            Save as new
                         </button>
                     </div>
+                    ${this.promptName ? html`<p class="save-hint">Give your circuit a name so you can find it again later.</p>` : ''}
+                    ${!this._signedIn && accountService.cloudConfigured ? html`
+                        <div class="signin-tip">
+                            <span>Sign in with Google to back up these projects and open them on any computer.</span>
+                            <button class="btn-action" @click=${() => accountService.signInWithGoogle()}>${faIcon('google')} Sign in</button>
+                        </div>
+                    ` : ''}
 
                     <div class="projects-list">
                         ${this._projects.length === 0 ? html`
-                            <div class="empty-state">No projects saved yet.</div>
+                            <div class="empty-state">No saved projects yet. Name your circuit above to save it.</div>
                         ` : ''}
 
                         ${this._projects.map(p => html`
-                            <div class="project-item">
+                            <div class="project-item ${p.id === this._currentId ? 'current' : ''}">
                                 <div class="project-info">
-                                    <span class="project-name">${p.name}</span>
-                                    <span class="project-date">Last updated: ${new Date(p.updatedAt).toLocaleString()}</span>
+                                    <span class="project-name">${p.name}${p.id === this._currentId ? html`<span class="open-tag">Open now</span>` : ''}</span>
+                                    <span class="project-date">Last updated ${new Date(p.updatedAt).toLocaleString()}</span>
                                 </div>
                                 <div class="project-actions">
-                                    <button class="btn-action" @click=${() => this._loadProject(p.id)}>Load</button>
-                                    <button class="btn-danger" @click=${() => this._deleteProject(p.id)}>Delete</button>
+                                    <button class="btn-action" @click=${() => this._loadProject(p.id)}>Open</button>
+                                    <button class="btn-danger" @click=${() => this._deleteProject(p)}>Delete</button>
                                 </div>
                             </div>
                         `)}

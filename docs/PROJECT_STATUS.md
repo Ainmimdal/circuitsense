@@ -33,6 +33,14 @@ The feature work is present in the working tree but has not been committed. The 
 - Provider preferences persist locally while API keys remain in tab-scoped session storage. Production deployment still requires a server-side secret relay and quota controls.
 - Architecture, provider requirements and extension boundaries are recorded in `docs/AI_AGENT.md`; focused regression coverage is in `test/ai-agent.test.js`.
 
+### Projects, accounts and cloud sync
+
+- Local-first project library: named projects live in IndexedDB on the device, and the old `localStorage` library migrates on first load. Elera works fully without an account.
+- Optional Google sign-in through Supabase Auth replaces the old mock login. Signed-in projects sync to a row-level-secured `projects` table, with the newest save winning per project and tombstones carrying deletes. Signing out removes that account's synced copies from the device.
+- The toolbar Save button updates the open project; an unnamed circuit opens My projects to name it.
+- Accounts stay switched off until `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` are set. The schema, Google setup, free-tier notes and the keep-awake workflow are covered in [CLOUD_SYNC_SETUP.md](CLOUD_SYNC_SETUP.md); library and sync coverage is in `test/project-library.test.js`.
+- Not yet built: share links and read-only public projects.
+
 ### Semantic physical editor vertical slice
 
 - Konva now owns the interactive workspace through background, board, wire, component and interaction layers; Lit continues to own the application shell and controls.

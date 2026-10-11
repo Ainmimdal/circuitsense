@@ -15,10 +15,12 @@ class LoginModal extends LitElement {
     static properties = {
         open: { type: Boolean, reflect: true },
         user: { type: Object },
+        cloudConfigured: { type: Boolean },
+        syncStatus: { type: Object },
+        authError: { type: String },
         initialTab: { type: String },
         _activeTab: { state: true },
-        _name: { state: true },
-        _email: { state: true },
+        _signingIn: { state: true },
         _aiSettings: { state: true },
         _testStatus: { state: true },
         _testMessage: { state: true },
@@ -448,6 +450,15 @@ class LoginModal extends LitElement {
         input, select { height: 34px; background: var(--panel); border-color: var(--panel-border); border-radius: 4px; color: var(--text); }
         input:focus, select:focus { border-color: var(--primary-hover); box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 35%, transparent); }
         .helper, .account-meta, .status-row { color: var(--text-muted); }
+        .account { display: grid; gap: 12px; }
+        .intro { margin: 0; color: var(--text); font-size: 13px; line-height: 1.5; }
+        .avatar { overflow: hidden; }
+        .avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .sync-text { display: inline-flex; align-items: center; gap: 8px; line-height: 1.4; }
+        .sync-synced .sync-text svg { color: var(--accent-boards, #22c55e); }
+        .sync-error .sync-text, .sync-error .sync-text svg { color: var(--accent-ics, #f87171); }
+        .btn.btn-google { background: #fff; border-color: #dadce0; color: #1f1f1f; }
+        .btn.btn-google:hover { background: #f1f3f4; border-color: #dadce0; color: #1f1f1f; }
         .btn { height: 34px; border-radius: 4px; border-color: var(--panel-border); background: var(--panel); color: var(--text); }
         .btn:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
         .btn-primary { background: var(--primary); border-color: var(--primary); color: var(--text); }
@@ -481,8 +492,10 @@ class LoginModal extends LitElement {
         this.user = null;
         this.initialTab = 'account';
         this._activeTab = 'account';
-        this._name = '';
-        this._email = '';
+        this.cloudConfigured = false;
+        this.syncStatus = null;
+        this.authError = '';
+        this._signingIn = false;
         this._aiSettings = this._loadAiSettings();
         this._editorPreferences = loadEditorPreferences();
         this._testStatus = 'idle';
@@ -499,7 +512,7 @@ class LoginModal extends LitElement {
     willUpdate(changedProperties) {
         if (changedProperties.has('open') && this.open) {
             this._activeTab = this.initialTab || 'account';
-            this._syncFieldsFromUser();
+            this._signingIn = false;
             this._aiSettings = this._loadAiSettings();
             this._editorPreferences = loadEditorPreferences();
             this._testStatus = 'idle';
@@ -545,11 +558,6 @@ class LoginModal extends LitElement {
 
     _setEditorPreference(key, value) {
         this._editorPreferences = { ...this._editorPreferences, [key]: value };
-    }
-
-    _syncFieldsFromUser() {
-        this._name = this.user?.name || '';
-        this._email = this.user?.email || '';
     }
 
     _close() {
@@ -676,39 +684,13 @@ class LoginModal extends LitElement {
         }
     }
 
-    _submit(e) {
-        e.preventDefault();
-        const name = this._name.trim();
-        const email = this._email.trim();
-        if (!name || !email) return;
-
-        this.dispatchEvent(new CustomEvent('login-success', {
-            detail: {
-                user: {
-                    id: this.user?.id || `mock-${Date.now()}`,
-                    name,
-                    email,
-                    signedInAt: Date.now(),
-                },
-            },
-            bubbles: true,
-            composed: true,
-        }));
+    _signInWithGoogle() {
+        this._signingIn = true;
+        this.dispatchEvent(new CustomEvent('google-sign-in', { bubbles: true, composed: true }));
     }
 
-    _useDemoAccount() {
-        this.dispatchEvent(new CustomEvent('login-success', {
-            detail: {
-                user: {
-                    id: 'mock-demo-student',
-                    name: 'Nur',
-                    email: 'n.izzati@elera.local',
-                    signedInAt: Date.now(),
-                },
-            },
-            bubbles: true,
-            composed: true,
-        }));
+    _syncNow() {
+        this.dispatchEvent(new CustomEvent('sync-now', { bubbles: true, composed: true }));
     }
 
     _logout() {
@@ -762,18 +744,42 @@ class LoginModal extends LitElement {
         `;
     }
 
+    _syncLine() {
+        const status = this.syncStatus || {};
+        const icon = status.state === 'synced' ? 'circleCheck'
+            : status.state === 'error' ? 'triangleExclamation'
+                : status.state === 'offline' ? 'circleInfo' : 'rotateRight';
+        const when = status.state === 'synced' && status.lastSyncedAt
+            ? ` Last sync ${new Date(status.lastSyncedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.`
+            : '';
+        return html`
+            <div class="status-row sync-${status.state || 'local'}">
+                <span class="sync-text">${faIcon(icon)} ${status.message || 'Saved on this device.'}${when}</span>
+                <button class="btn" type="button" ?disabled=${status.state === 'syncing'} @click=${this._syncNow}>
+                    ${faIcon('rotateRight')}
+                    Sync now
+                </button>
+            </div>
+        `;
+    }
+
     _renderAccountTab() {
-        const isSignedIn = Boolean(this.user);
-        if (isSignedIn) {
+        if (this.user) {
             return html`
                 <div class="account">
                     <div class="account-row">
-                        <div class="avatar">${this._initials(this.user.name)}</div>
+                        <div class="avatar">
+                            ${this.user.avatarUrl
+                                ? html`<img src=${this.user.avatarUrl} alt="" referrerpolicy="no-referrer" />`
+                                : this._initials(this.user.name)}
+                        </div>
                         <div>
                             <div class="account-name">${this.user.name}</div>
-                            <div class="account-meta">${this.user.email}</div>
+                            <div class="account-meta">${this.user.email} · Signed in with Google</div>
                         </div>
                     </div>
+                    ${this._syncLine()}
+                    <p class="helper">Your projects are saved on this device and backed up to your account, so you can open them on any computer where you sign in.</p>
                     <div class="actions">
                         <button class="btn" type="button" @click=${() => this._setTab('keys')}>
                             ${faIcon('key')}
@@ -781,48 +787,36 @@ class LoginModal extends LitElement {
                         </button>
                         <button class="btn btn-danger" type="button" @click=${this._logout}>
                             ${faIcon('rightFromBracket')}
-                            Log out
+                            Sign out
                         </button>
                     </div>
                 </div>
             `;
         }
 
+        if (!this.cloudConfigured) {
+            return html`
+                <div class="account">
+                    <div class="status-row">
+                        <span class="sync-text">${faIcon('circleInfo')} Accounts are not set up on this copy of Elera.</span>
+                    </div>
+                    <p class="helper">Everything you build is saved on this device. Use Export in the toolbar to keep a backup file or move a project to another computer.</p>
+                </div>
+            `;
+        }
+
         return html`
-            <form @submit=${this._submit}>
-                <div class="grid">
-                    <label>
-                        Name
-                        <input
-                            type="text"
-                            autocomplete="name"
-                            placeholder="Your name"
-                            .value=${this._name}
-                            @input=${(e) => this._name = e.target.value}
-                        />
-                    </label>
-                    <label>
-                        Email
-                        <input
-                            type="email"
-                            autocomplete="email"
-                            placeholder="you@example.com"
-                            .value=${this._email}
-                            @input=${(e) => this._email = e.target.value}
-                        />
-                    </label>
-                </div>
+            <div class="account">
+                <p class="intro">Sign in to back up your projects and open them on any computer. You can keep using Elera without an account; your work stays on this device.</p>
+                ${this.authError ? html`<div class="status-row sync-error"><span class="sync-text">${faIcon('triangleExclamation')} ${this.authError}</span></div>` : ''}
                 <div class="actions">
-                    <button class="btn" type="button" @click=${this._useDemoAccount}>
-                        ${faIcon('user')}
-                        Demo account
-                    </button>
-                    <button class="btn btn-primary" type="submit" ?disabled=${!this._name.trim() || !this._email.trim()}>
-                        ${faIcon('rightToBracket')}
-                        Continue
+                    <button class="btn btn-google" type="button" ?disabled=${this._signingIn} @click=${this._signInWithGoogle}>
+                        ${faIcon('google')}
+                        ${this._signingIn ? 'Opening Google...' : 'Continue with Google'}
                     </button>
                 </div>
-            </form>
+                <p class="helper">Projects already on this device move into your account the first time you sign in.</p>
+            </div>
         `;
     }
 
@@ -1039,7 +1033,7 @@ class LoginModal extends LitElement {
                         <span class="title-icon">${faIcon(this._activeTab === 'keys' ? 'key' : this._activeTab === 'preferences' ? 'gear' : isSignedIn ? 'user' : 'rightToBracket')}</span>
                         <div>
                             <h2>${title}</h2>
-                            <span class="badge">Local mock</span>
+                            <span class="badge">${this.user ? 'Cloud sync on' : 'Saved on this device'}</span>
                         </div>
                     </div>
                     <button class="close-btn" @click=${this._close} title="Close">${faIcon('xmark')}</button>
