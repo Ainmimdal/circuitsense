@@ -17,7 +17,7 @@ npm test         # node --test; pretest checks the Wokwi manifest and syncs engi
 npm run build    # Vite production build
 ```
 
-There is no lint or type-check script. Run `npm test`, `npm run build` and `git diff --check` before handing work back. One test in `test/physical-wire-edit.test.js` ("a point can be added to the closest segment and removed again") currently fails on `main`.
+There is no lint or type-check script. Run `npm test`, `npm run build` and `git diff --check` before handing work back.
 
 ## What actually runs
 
