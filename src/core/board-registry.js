@@ -9,10 +9,25 @@ import { BREADBOARD_PITCH_MM } from './units.js';
 export const BREADBOARD_PITCH = 10;
 const PIXELS_PER_MM = BREADBOARD_PITCH / BREADBOARD_PITCH_MM;
 
+// The legacy schema-v2 planner was tuned for contiguous rail runs that line up
+// with terminal columns. The live engine now models clustered rails, so this
+// adapter keeps the old rail columns to leave the legacy planner unchanged.
+const LEGACY_RAIL_COLUMN = Object.freeze({
+    [HALF_BREADBOARD_DEFINITION.id]: index => index + 2,
+    [FULL_BREADBOARD_DEFINITION.id]: index => (index < 25 ? index : index + 13),
+});
+
+function legacyHoleX(definition, hole) {
+    if (hole.zone !== 'rail') return hole.x;
+    const firstColumnX = definition.getHole('A1').x;
+    const railIndex = Number(hole.id.slice(2)) - 1;
+    return firstColumnX + LEGACY_RAIL_COLUMN[definition.id](railIndex) * BREADBOARD_PITCH_MM;
+}
+
 function createLegacyBoard(definition, id) {
     const holes = definition.holes.map(hole => Object.freeze({
         id: hole.id,
-        x: hole.x * PIXELS_PER_MM,
+        x: legacyHoleX(definition, hole) * PIXELS_PER_MM,
         y: hole.y * PIXELS_PER_MM,
         zone: hole.zone,
         bank: hole.bank,
