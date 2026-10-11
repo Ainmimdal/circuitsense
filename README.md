@@ -24,7 +24,7 @@ npm run preview   # serve the production build
 - Konva 9 for the interactive circuit workspace
 - `@wokwi/elements` 1.9 for most component artwork
 - Vite 6, plain JavaScript ES modules, Node's built-in test runner
-- No backend: projects, preferences and the "account" are stored in the browser's `localStorage`
+- Local-first: projects are stored on the device (IndexedDB); optional Google sign-in and cloud sync through Supabase
 
 ## Repository layout
 
@@ -78,3 +78,9 @@ python scripts/build_elera_full_report.py
 ```
 
 This writes `report/drafts/Elera_FYP1_Report_v6_formatted.docx` and `report/elera_full_report_ch1_to_ch3_formatted.md` from the BIT FYP template. The older `report/tools/build_report.py` reads chapter files from a hard-coded path on the author's machine and will not run elsewhere.
+
+## Accounts and cloud sync (optional)
+
+Projects are saved on the device (IndexedDB) and Elera works without an account.
+To turn on **Continue with Google** and cloud sync, copy `.env.example` to
+`.env.local` and follow [docs/CLOUD_SYNC_SETUP.md](docs/CLOUD_SYNC_SETUP.md).

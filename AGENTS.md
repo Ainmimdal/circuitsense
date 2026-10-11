@@ -30,7 +30,7 @@ There is no lint or type-check script. Run `npm test`, `npm run build` and `git 
 
 The legacy schema-v2 engine (`src/store.js`, `src/services/*` and related core modules) and its tests were removed on 2026-10-11; the last commit containing it is `a59b779`. Rules proven only there are tracked as `GAP-11` in `docs/ENGINE_CONTRACT.md`; port them into `src/physical/`.
 
-There is no backend. Login is a local mock, named projects live in `localStorage`, and AI calls go straight from the browser to the provider.
+Named projects live in IndexedDB on the device. Optional Google sign-in and cloud sync go through Supabase and stay off until `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` are set (see `docs/CLOUD_SYNC_SETUP.md`). AI calls go straight from the browser to the provider.
 
 ## Where the truth lives
 
@@ -50,4 +50,4 @@ There is no backend. Login is a local mock, named projects live in `localStorage
 
 ## Planned, not built
 
-Backend (possibly FastAPI) with PostgreSQL/Supabase persistence, real authentication, sharing, Arduino code generation, BOM export and goal-based circuit generation.
+Share links and read-only public projects, Arduino code generation, BOM export and goal-based circuit generation.

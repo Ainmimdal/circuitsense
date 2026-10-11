@@ -30,8 +30,12 @@ The **legacy schema-v2 engine** (`src/store.js`, `src/services/*`, `src/componen
 - Free-space placement, breadboard mounting through the generic snap solver, rotation, selection, multi-select, delete with connected-wire cleanup, pan and zoom.
 - Manual wiring in orthogonal or freestyle mode with optional pitch snap, editable waypoints and segment grips, and per-net inspection.
 - Half-size (400-point) and full-size (830-point) breadboard surfaces from one millimetre topology in `src/core/breadboard-topology.js`.
-- Undo/redo through command transactions. The current project autosaves to `localStorage`; named projects, JSON export and import are available from the toolbar and the Projects dialog.
-- The account panel is a local mock. There is no backend or real authentication.
+- Undo/redo through command transactions. The current project autosaves locally; JSON export and import are available from the toolbar and the Projects dialog.
+- Local-first project library: named projects live in IndexedDB on the device, and the old `localStorage` library migrates on first load. Elera works fully without an account.
+- Optional Google sign-in through Supabase Auth replaces the old mock login. Signed-in projects sync to a row-level-secured `projects` table, with the newest save winning per project and tombstones carrying deletes. Signing out removes that account's synced copies from the device.
+- The toolbar Save button updates the open project; an unnamed circuit opens My projects to name it.
+- Accounts stay switched off until `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` are set. The schema, Google setup, free-tier notes and the keep-awake workflow are covered in [CLOUD_SYNC_SETUP.md](CLOUD_SYNC_SETUP.md); library and sync coverage is in `test/project-library.test.js`.
+- Not yet built: share links and read-only public projects.
 
 ### Physical model
 

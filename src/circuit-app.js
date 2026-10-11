@@ -1,11 +1,12 @@
 import { LitElement, html, css } from 'lit';
 import { physicalCircuitStore } from './physical/circuit-store.js';
 import { autoLayoutPhysicalStore, autoWirePhysicalStore } from './physical/automation.js';
+import { accountService } from './persistence/account.js';
+import { projectLibrary } from './persistence/project-library.js';
 import { faIcon } from './utils/fa-icons.js';
 import './components/component-builder-modal.js';
 import './components/login-modal.js';
 
-const MOCK_USER_STORAGE_KEY = 'elera_mock_user';
 const ELERA_LOGO_URL = new URL('../diagram images/eleraLogo.svg', import.meta.url).href;
 
 class CircuitApp extends LitElement {
@@ -14,7 +15,11 @@ class CircuitApp extends LitElement {
         _builderOpen: { state: true },
         _builderComponentId: { state: true },
         _loginOpen: { state: true },
-        _mockUser: { state: true },
+        _user: { state: true },
+        _syncStatus: { state: true },
+        _authError: { state: true },
+        _saveLabel: { state: true },
+        _currentProjectName: { state: true },
         _settingsInitialTab: { state: true },
         _manualWireMode: { state: true },
         _manualWireSnap: { state: true },
@@ -162,6 +167,8 @@ class CircuitApp extends LitElement {
         cursor: pointer;
       }
       .avatar:hover { background: var(--primary); border-color: var(--primary-hover); }
+      .avatar { overflow: hidden; }
+      .avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
       .main { position: relative; display: flex; flex: 1; min-height: 0; overflow: hidden; }
       .sidebar-shell { width: 276px; flex: 0 0 276px; min-width: 0; z-index: 40; }
@@ -245,7 +252,21 @@ class CircuitApp extends LitElement {
         this._aiOpen = false;
         this._builderOpen = false;
         this._loginOpen = false;
-        this._mockUser = this._loadMockUser();
+        this._user = accountService.user;
+        this._syncStatus = accountService.syncStatus;
+        this._authError = accountService.authError;
+        this._saveLabel = 'Save';
+        this._currentProjectName = '';
+        this._accountHandler = () => {
+            this._user = accountService.user;
+            this._syncStatus = accountService.syncStatus;
+            this._authError = accountService.authError;
+            if (this._authError && this._authError !== this._shownAuthError) {
+                this._shownAuthError = this._authError;
+                this._openLogin('account');
+            }
+        };
+        this._libraryHandler = () => this._refreshCurrentProjectName();
         this._settingsInitialTab = 'account';
         this._manualWireMode = physicalCircuitStore.manualWireMode;
         this._manualWireSnap = physicalCircuitStore.manualWireSnap;
@@ -262,12 +283,24 @@ class CircuitApp extends LitElement {
         super.connectedCallback();
         physicalCircuitStore.addEventListener('settings-change', this._settingsHandler);
         window.addEventListener('elera-open-ai-settings', this._aiSettingsHandler);
+        accountService.addEventListener('change', this._accountHandler);
+        projectLibrary.addEventListener('change', this._libraryHandler);
+        accountService.init().then(this._accountHandler);
+        this._refreshCurrentProjectName();
     }
 
     disconnectedCallback() {
         super.disconnectedCallback();
         physicalCircuitStore.removeEventListener('settings-change', this._settingsHandler);
         window.removeEventListener('elera-open-ai-settings', this._aiSettingsHandler);
+        accountService.removeEventListener('change', this._accountHandler);
+        projectLibrary.removeEventListener('change', this._libraryHandler);
+    }
+
+    async _refreshCurrentProjectName() {
+        const id = projectLibrary.getCurrentProjectId();
+        const record = id ? await projectLibrary.get(id) : null;
+        this._currentProjectName = record?.name || '';
     }
 
     _toggleManualWireMode() {
@@ -281,12 +314,26 @@ class CircuitApp extends LitElement {
     _clearProject() {
         if (confirm('Clear all components and wires? This cannot be undone.')) {
             physicalCircuitStore.clear();
+            projectLibrary.setCurrentProjectId(null);
         }
     }
 
     _undoAction() { physicalCircuitStore.undo(); }
     _redoAction() { physicalCircuitStore.redo(); }
-    _saveProject() { physicalCircuitStore.save(); }
+    // Save updates the open project in the library; a circuit that was never
+    // named opens the Projects dialog so the student can give it a name.
+    async _saveProject() {
+        physicalCircuitStore.save();
+        const id = projectLibrary.getCurrentProjectId();
+        const saved = id ? await projectLibrary.update(id, physicalCircuitStore.project) : null;
+        if (!saved) {
+            this._openProjects({ promptName: true });
+            return;
+        }
+        this._saveLabel = 'Saved';
+        clearTimeout(this._saveLabelTimer);
+        this._saveLabelTimer = setTimeout(() => { this._saveLabel = 'Save'; }, 1600);
+    }
     async _cleanupWires() {
         physicalCircuitStore.transaction('clean-wire-routes', project => {
             for (const wire of project.wires) wire.route = { mode: 'auto', waypoints: [] };
@@ -363,6 +410,7 @@ class CircuitApp extends LitElement {
             reader.onload = event => {
                 try {
                     physicalCircuitStore.importProject(event.target.result);
+                    projectLibrary.setCurrentProjectId(null);
                 } catch {
                     alert('Failed to load project file. It may be corrupted or invalid.');
                 }
@@ -370,14 +418,6 @@ class CircuitApp extends LitElement {
             reader.readAsText(file);
         };
         input.click();
-    }
-
-    _loadMockUser() {
-        try {
-            return JSON.parse(localStorage.getItem(MOCK_USER_STORAGE_KEY)) || null;
-        } catch {
-            return null;
-        }
     }
 
     _openLogin(tab = 'account') {
@@ -397,21 +437,23 @@ class CircuitApp extends LitElement {
         this._loginOpen = false;
     }
 
-    _handleLogin(e) {
-        this._mockUser = e.detail.user;
-        localStorage.setItem(MOCK_USER_STORAGE_KEY, JSON.stringify(this._mockUser));
-        this._loginOpen = false;
+    _handleSignIn() {
+        accountService.signInWithGoogle();
     }
 
-    _handleLogout() {
-        this._mockUser = null;
-        localStorage.removeItem(MOCK_USER_STORAGE_KEY);
+    async _handleLogout() {
         this._loginOpen = false;
+        await accountService.signOut();
     }
 
-    _openProjects() {
+    _handleSyncNow() {
+        accountService.syncNow();
+    }
+
+    _openProjects({ promptName = false } = {}) {
         const modal = this.shadowRoot.querySelector('projects-modal');
         if (modal) {
+            modal.promptName = promptName === true;
             modal.open = true;
         }
     }
@@ -465,7 +507,7 @@ class CircuitApp extends LitElement {
           <div class="tool-cluster history" aria-label="History and project actions">
             <button class="toolbar-btn btn-action icon-only" @click=${this._undoAction} title="Undo (Ctrl+Z)" aria-label="Undo"><span class="icon">${faIcon('undo')}</span></button>
             <button class="toolbar-btn btn-action icon-only" @click=${this._redoAction} title="Redo (Ctrl+Y)" aria-label="Redo"><span class="icon">${faIcon('redo')}</span></button>
-            <button class="toolbar-btn btn-action" @click=${this._saveProject} title="Save project"><span class="icon">${faIcon('save')}</span>Save</button>
+            <button class="toolbar-btn btn-action" @click=${this._saveProject} title=${this._currentProjectName ? `Save "${this._currentProjectName}"` : 'Save as a new project'}><span class="icon">${faIcon(this._saveLabel === 'Saved' ? 'check' : 'save')}</span>${this._saveLabel}</button>
           </div>
           <div class="tool-cluster secondary" aria-label="File actions">
             <button class="toolbar-btn btn-action" @click=${this._exportProject} title="Export project"><span class="icon">${faIcon('download')}</span>Export</button>
@@ -505,10 +547,12 @@ class CircuitApp extends LitElement {
         <div class="account-cluster" aria-label="Account controls">
           <button class="toolbar-btn btn-action projects-btn" @click=${this._openProjects} title="Projects"><span class="icon">${faIcon('folder')}</span>Projects</button>
           <button class="toolbar-btn btn-action icon-only" @click=${this._openPreferences} title="Preferences" aria-label="Preferences"><span class="icon">${faIcon('gear')}</span></button>
-          <button class="avatar" @click=${this._openLogin} title=${this._mockUser ? this._mockUser.name : 'Account'} aria-label=${this._mockUser ? `Account: ${this._mockUser.name}` : 'Open account'}>
-            ${this._mockUser
-              ? this._mockUser.name.split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase()
-              : faIcon('user')}
+          <button class="avatar" @click=${this._openLogin} title=${this._user ? `${this._user.name} (${this._syncStatus.message})` : 'Sign in'} aria-label=${this._user ? `Account: ${this._user.name}` : 'Sign in'}>
+            ${this._user?.avatarUrl
+              ? html`<img src=${this._user.avatarUrl} alt="" referrerpolicy="no-referrer" />`
+              : this._user
+                ? this._user.name.split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase()
+                : faIcon('user')}
           </button>
         </div>
       </header>
@@ -527,10 +571,14 @@ class CircuitApp extends LitElement {
       <projects-modal></projects-modal>
       <login-modal
         .open=${this._loginOpen}
-        .user=${this._mockUser}
+        .user=${this._user}
+        .cloudConfigured=${accountService.cloudConfigured}
+        .syncStatus=${this._syncStatus}
+        .authError=${this._authError}
         .initialTab=${this._settingsInitialTab}
         @close=${this._closeLogin}
-        @login-success=${this._handleLogin}
+        @google-sign-in=${this._handleSignIn}
+        @sync-now=${this._handleSyncNow}
         @logout=${this._handleLogout}
       ></login-modal>
       <component-builder-modal
