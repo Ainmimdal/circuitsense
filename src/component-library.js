@@ -8,6 +8,7 @@
  */
 
 import { normalizeContentBounds } from './core/image-content-bounds.js';
+import { deriveAutoWirePins, derivePinExitOverride, getBoardPinTable } from './core/board-pins.js';
 
 // ─── Pin-type constants ────────────────────────────────
 export const PIN = {
@@ -40,95 +41,16 @@ export const PIN_ALIASES = {
     'AGND': 'GND',
 };
 
-// ─── Arduino Uno pin catalog (used by auto-wire) ──────
-export const ARDUINO_PINS = {
-    logicVoltage: 5,
-    digital: ['2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13'],
-    pwm: ['3', '5', '6', '9', '10', '11'],
-    analog: ['A0', 'A1', 'A2', 'A3', 'A4', 'A5'],
-    i2c: { sda: 'A4', scl: 'A5' },
-    power: ['5V', '3.3V'],
-    ground: ['GND.1', 'GND.2', 'GND.3'],
-    uart: { rx: ['0'], tx: ['1'] },
-    constraints: {
-        '0': [{ type: 'serial_reserved', severity: 'warning' }],
-        '1': [{ type: 'serial_reserved', severity: 'warning' }],
-    },
-    maxCurrent_mA: 500,
-    pinMaxCurrent_mA: 40,
-};
+// ─── Controller pin inventories (used by auto-wire) ────
+// Authored per pin in src/boards/<id>.json; see src/core/board-pins.js.
+const boardPins = id => deriveAutoWirePins(getBoardPinTable(id));
 
-export const ARDUINO_NANO_PINS = {
-    ...ARDUINO_PINS,
-    analog: ['A0', 'A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7'],
-    ground: ['GND.1', 'GND.2'],
-};
-
-export const ARDUINO_MEGA_PINS = {
-    logicVoltage: 5,
-    digital: Array.from({ length: 52 }, (_, index) => String(index + 2)),
-    pwm: ['2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '44', '45', '46'],
-    analog: Array.from({ length: 16 }, (_, index) => `A${index}`),
-    i2c: { sda: 'SDA', scl: 'SCL' },
-    power: ['5V', '3.3V'],
-    ground: ['GND.1', 'GND.2', 'GND.3', 'GND.4', 'GND.5'],
-    uart: { rx: ['0', '15', '17', '19'], tx: ['1', '14', '16', '18'] },
-    constraints: Object.fromEntries(['0', '1'].map(pin => [pin, [{ type: 'serial_reserved', severity: 'warning' }]])),
-    maxCurrent_mA: 500,
-    pinMaxCurrent_mA: 40,
-};
-
-export const NANO_RP2040_PINS = {
-    logicVoltage: 3.3,
-    digital: ['D2', 'D3', 'D4', 'D5', 'D6', 'D7', 'D8', 'D9', 'D10', 'D11', 'D12', 'D13'],
-    pwm: ['D2', 'D3', 'D4', 'D5', 'D6', 'D7', 'D8', 'D9', 'D10', 'D11', 'D12'],
-    analog: ['A0', 'A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7'],
-    i2c: { sda: 'A4', scl: 'A5' },
-    power: ['3.3V', '5V'],
-    ground: ['GND.1', 'GND.2'],
-    uart: { rx: ['RX'], tx: ['TX'] },
-    constraints: {
-        RX: [{ type: 'serial_reserved', severity: 'warning' }],
-        TX: [{ type: 'serial_reserved', severity: 'warning' }],
-    },
-    maxCurrent_mA: 500,
-    pinMaxCurrent_mA: 12,
-};
-
-export const ESP32_DEVKIT_PINS = {
-    logicVoltage: 3.3,
-    digital: ['D4', 'D13', 'D14', 'D18', 'D19', 'D21', 'D22', 'D23', 'D25', 'D26', 'D27', 'D32', 'D33'],
-    pwm: ['D4', 'D13', 'D14', 'D18', 'D19', 'D21', 'D22', 'D23', 'D25', 'D26', 'D27', 'D32', 'D33'],
-    analog: ['VP', 'VN', 'D34', 'D35', 'D32', 'D33'],
-    i2c: { sda: 'D21', scl: 'D22' },
-    power: ['3V3'],
-    ground: ['GND.1', 'GND.2'],
-    uart: { rx: ['RX0', 'RX2'], tx: ['TX0', 'TX2'] },
-    constraints: {
-        VP: [{ type: 'input_only', severity: 'error' }],
-        VN: [{ type: 'input_only', severity: 'error' }],
-        D34: [{ type: 'input_only', severity: 'error' }],
-        D35: [{ type: 'input_only', severity: 'error' }],
-        D4: [{ type: 'boot_strap', severity: 'warning' }],
-        RX0: [{ type: 'serial_reserved', severity: 'warning' }],
-        TX0: [{ type: 'serial_reserved', severity: 'warning' }],
-    },
-    maxCurrent_mA: 500,
-    pinMaxCurrent_mA: 20,
-};
-
-export const FRANZININHO_PINS = {
-    logicVoltage: 5,
-    digital: ['PB0', 'PB1', 'PB2', 'PB3', 'PB4'],
-    pwm: ['PB0', 'PB1', 'PB4'],
-    analog: ['PB5', 'PB2', 'PB4', 'PB3'],
-    i2c: { sda: 'PB0', scl: 'PB2' },
-    power: ['VCC.1', 'VCC.2'],
-    ground: ['GND.1', 'GND.2'],
-    uart: { rx: [], tx: [] },
-    maxCurrent_mA: 500,
-    pinMaxCurrent_mA: 20,
-};
+export const ARDUINO_PINS = boardPins('arduino-uno');
+export const ARDUINO_NANO_PINS = boardPins('arduino-nano');
+export const ARDUINO_MEGA_PINS = boardPins('arduino-mega');
+export const NANO_RP2040_PINS = boardPins('nano-rp2040-connect');
+export const ESP32_DEVKIT_PINS = boardPins('esp32-devkit-v1');
+export const FRANZININHO_PINS = boardPins('franzininho');
 
 // ─── Component definitions ─────────────────────────────
 export const componentLibrary = {
@@ -179,14 +101,7 @@ export const componentLibrary = {
         autoWirePins: ARDUINO_PINS,
         connectorType: 'female',
         breadboard: { mountable: false, reason: 'The Uno exposes female sockets and connects to a breadboard with male jumpers.' },
-        pinExitOverride: {
-            '5V': 'down', '3.3V': 'down', 'GND.1': 'down', 'GND.2': 'down',
-            'VIN': 'down', 'IOREF': 'down', 'RESET': 'down',
-            'A0': 'down', 'A1': 'down', 'A2': 'down', 'A3': 'down', 'A4': 'down', 'A5': 'down',
-            'GND.3': 'up', 'AREF': 'up',
-            '0': 'up', '1': 'up', '2': 'up', '3': 'up', '4': 'up', '5': 'up', '6': 'up',
-            '7': 'up', '8': 'up', '9': 'up', '10': 'up', '11': 'up', '12': 'up', '13': 'up'
-        }
+        pinExitOverride: derivePinExitOverride(getBoardPinTable('arduino-uno')),
     },
 
     'led': {

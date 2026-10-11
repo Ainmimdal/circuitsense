@@ -1,0 +1,20 @@
+{
+  "format": "elera-board-pins-v1",
+  "id": "franzininho",
+  "name": "Franzininho",
+  "logicVoltage": 5,
+  "maxCurrent_mA": 500,
+  "pinMaxCurrent_mA": 20,
+  "pins": [
+    {"name": "PB0", "capabilities": ["digital", "pwm", "i2c_sda"]},
+    {"name": "PB1", "capabilities": ["digital", "pwm"]},
+    {"name": "PB2", "capabilities": ["digital", "analog", "i2c_scl"]},
+    {"name": "PB3", "capabilities": ["digital", "analog"]},
+    {"name": "PB4", "capabilities": ["digital", "pwm", "analog"]},
+    {"name": "PB5", "capabilities": ["analog"]},
+    {"name": "VCC.1", "capabilities": ["power"]},
+    {"name": "VCC.2", "capabilities": ["power"]},
+    {"name": "GND.1", "capabilities": ["ground"]},
+    {"name": "GND.2", "capabilities": ["ground"]}
+  ]
+}
