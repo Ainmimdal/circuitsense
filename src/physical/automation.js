@@ -805,7 +805,7 @@ function alignGeneratedGroundBusPinsToLayout(project) {
         const componentPoint = resolveConnectionWorldPoint(project, componentRef);
         if (!componentPoint) continue;
         if (!buses.has(controller.id)) buses.set(controller.id, { controller, groundPins, connections: [] });
-        buses.get(controller.id).connections.push({ controllerRef, componentPoint });
+        buses.get(controller.id).connections.push({ wireId: wire.id, controllerRef, componentPoint });
     }
     for (const { controller, groundPins, connections } of buses.values()) {
         const bounds = componentBounds(project, controller);
@@ -843,12 +843,13 @@ function alignGeneratedGroundBusPinsToLayout(project) {
                 const previousPin = connection.controllerRef.pinId;
                 connection.controllerRef.pinId = sharedPin;
                 // Header-bus alignment is a physical pin assignment decision,
-                // so keep the stable logical intent in sync with that choice.
-                for (const intent of project.properties?.netlistIntent || []) {
-                    for (const ref of [intent.from, intent.to]) {
-                        if (ref?.type === 'component-pin' && ref.componentId === controller.id && ref.pinId === previousPin) {
-                            ref.pinId = sharedPin;
-                        }
+                // so keep this wire's logical intent in sync with that choice.
+                // Match by wire id: matching by pin would also rewrite other
+                // wires' intents that share the old pin but sit on another side.
+                const intent = (project.properties?.netlistIntent || []).find(item => item.id === connection.wireId);
+                for (const ref of [intent?.from, intent?.to]) {
+                    if (ref?.type === 'component-pin' && ref.componentId === controller.id && ref.pinId === previousPin) {
+                        ref.pinId = sharedPin;
                     }
                 }
             }
