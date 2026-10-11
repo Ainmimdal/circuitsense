@@ -37,7 +37,6 @@ npm run preview   # serve the production build
 | `src/core/` | Shared, renderer-independent definitions: component geometry, part registry, breadboard topology, pin capabilities, the Auto Wire pin planner, Fritzing part contract |
 | `src/ai/` | BYOK AI agent: provider transports, tool registry, settings |
 | `src/component-library.js` | Component catalog with electrical and Auto Wire metadata |
-| `src/store.js`, `src/services/`, `src/components/placed-component.js` | Legacy schema-v2 editor engine. Not loaded by the running app; kept for its regression tests and as a porting reference |
 | `public/converted-parts/` | Parts converted from Fritzing `.fzpz` archives, loaded at startup |
 | `scripts/` | Wokwi manifest generator, Fritzing converter, docs sync, FYP report builder |
 | `test/` | `node --test` suites |

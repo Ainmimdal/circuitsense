@@ -1,7 +1,7 @@
 # Elera Project Status
 
 Snapshot date: 2026-10-05
-Phase: schema-4 physical editor is the running application; legacy schema-v2 engine retained for tests and porting
+Phase: schema-4 physical editor is the running application; legacy schema-v2 engine removed
 Base revision: `main` at `a59b779`
 
 This is the current status source of truth. Engine behavior is governed by [ENGINE_CONTRACT.md](ENGINE_CONTRACT.md), whose rules are mirrored into the generated block of [SELF_HEALING_ENGINE.md](SELF_HEALING_ENGINE.md). The original schema-v2 design is recorded in [REBUILD_SPEC.md](../REBUILD_SPEC.md).
@@ -19,7 +19,7 @@ This is the current status source of truth. Engine behavior is governed by [ENGI
 
 The application loads only the **schema-4 physical engine** (`src/physical/`, `src/editor/`, the Konva canvas in `src/components/circuit-canvas.js`, and shared definitions in `src/core/`).
 
-The **legacy schema-v2 engine** (`src/store.js`, `src/services/*`, `src/components/placed-component.js`, `src/core/circuit-model.js`, `src/core/project-schema.js`, `src/core/breadboard-planner.js`, `src/core/editor-project-adapter.js`) is not imported by the running app. Its tests still pass and many rows of the engine contract's traceability registry still cite it. Several features described in older documentation, including capacity alternatives (add or replace a breadboard) and locked placements, exist only there. Its logical validation checks have been ported to `src/physical/electrical-validation.js`. Treat it as a porting reference: new behavior belongs in `src/physical/`.
+The **legacy schema-v2 engine** (`src/store.js`, `src/services/*`, `src/components/placed-component.js`, `src/core/circuit-model.js`, `src/core/project-schema.js`, `src/core/breadboard-planner.js`, `src/core/editor-project-adapter.js`) and its tests were removed on 2026-10-11 because the app no longer loaded it; the last commit containing it is `a59b779`. Its logical validation checks were ported to `src/physical/electrical-validation.js`. Rules that were proven only there, including capacity alternatives (add or replace a breadboard), are listed as `GAP-11` in the contract. New behavior belongs in `src/physical/`.
 
 ## Implemented in the running app
 
@@ -91,7 +91,8 @@ Gap definitions and exit conditions live in [ENGINE_CONTRACT.md](ENGINE_CONTRACT
 3. **P1, capacity alternatives:** when a scene does not fit, live Auto Layout fails without offering a proven larger or additional board (`GAP-10`).
 4. **P1, command completion:** decide the Auto Wire route-dirty versus baseline-routing behavior (`GAP-03`).
 5. **P1, regression depth:** one focused fixture per remaining physical validation finding (`GAP-06`; the electrical findings have them in `test/physical-electrical-validation.test.js`) and an automated browser fixture for the mixed circuit (`GAP-07`).
-6. **P2, cleanup and performance:** retire the legacy engine once its tests are ported to `src/physical/`, re-point the contract registry, profile dense breadboard scenes and split the production bundle.
+6. **P1, legacy rule parity:** the unused schema-v2 engine and its tests were removed; port the rules listed in `GAP-11` to the physical engine, each with a regression test.
+7. **P2, performance:** profile dense breadboard scenes and split the production bundle.
 
 For every engine change, name the affected contract rule, add the failing test first, and keep the command mutation boundaries.
 

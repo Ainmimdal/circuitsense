@@ -25,10 +25,10 @@ There is no lint or type-check script. Run `npm test`, `npm run build` and `git 
 
 - `src/physical/`: project model (`model.js`, schema 4), command store with undo/redo and `localStorage` persistence (`circuit-store.js`, `commands.js`), breadboard surfaces and footprints, snap solver (`placement.js`), connectivity, Auto Wire (`automation.js`, `breadboard-auto-wire.js`), Auto Layout (`automation.js`, `direct-layout-v2.js`), routing (`routing.js`, run in a Web Worker) and validation (`validation.js`).
 - `src/components/circuit-canvas.js`: Konva workspace host; Lit owns the rest of the UI.
-- `src/core/`: renderer-independent definitions shared by both engines (component geometry, part registry, breadboard topology, pin capabilities, the `planAutoWire` pin planner).
+- `src/core/`: renderer-independent definitions shared across the app (component geometry, part registry, breadboard topology, pin capabilities, the `planAutoWire` pin planner).
 - `src/ai/`: BYOK agent, provider transports and the tool registry that calls into `src/physical/`.
 
-Legacy schema-v2 engine, not loaded by the app: `src/store.js`, `src/services/*`, `src/components/placed-component.js`, `src/core/circuit-model.js`, `src/core/project-schema.js`, `src/core/breadboard-planner.js`, `src/core/editor-project-adapter.js`, `src/utils/wire-path.js`. Its tests still run and many `docs/ENGINE_CONTRACT.md` traceability rows point at it. Do not wire new UI to it; port behavior into `src/physical/` instead.
+The legacy schema-v2 engine (`src/store.js`, `src/services/*` and related core modules) and its tests were removed on 2026-10-11; the last commit containing it is `a59b779`. Rules proven only there are tracked as `GAP-11` in `docs/ENGINE_CONTRACT.md`; port them into `src/physical/`.
 
 There is no backend. Login is a local mock, named projects live in `localStorage`, and AI calls go straight from the browser to the provider.
 

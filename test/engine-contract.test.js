@@ -27,7 +27,7 @@ test('engine contract keeps unique rule IDs and live implementation/test referen
     assert.equal(new Set(ids).size, ids.length, 'registry rule IDs must be unique');
 
     const prefixes = new Set(ids.map(id => id.split('-')[0]));
-    for (const required of ['CORE', 'AW', 'AL', 'BB', 'CAP', 'CL', 'VAL', 'INT']) {
+    for (const required of ['CORE', 'AW', 'AL', 'BB', 'CL', 'VAL', 'INT']) {
         assert.equal(prefixes.has(required), true, `registry must cover ${required} rules`);
     }
 

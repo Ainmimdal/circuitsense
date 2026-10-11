@@ -100,7 +100,7 @@ flowchart TD
 
 This section records why the first physical port regressed; it is kept as history.
 
-The toolbar no longer executes the historical pipeline. It calls `src/physical/automation.js`, while the proven pre-Konva placement and routing logic remains in the legacy `src/services` path. The first physical replacement reduced the old per-component header alignment into a board-first scene and packed remaining free parts beside it. That changed the algorithm, not merely its rendering, and is why repeated cosmetic routing changes could not reproduce old Elera.
+The current toolbar no longer executes the historical pipeline. It calls `src/physical/automation.js`, while the proven pre-Konva placement and routing logic lived in the legacy `src/services` path, which was removed on 2026-10-11; the last commit containing it is `a59b779`. The first physical replacement reduced the old per-component header alignment into a board-first scene and packed remaining free parts beside it. That changed the algorithm, not merely its rendering, and is why repeated cosmetic routing changes could not reproduce old Elera.
 
 The physical implementation is correct only when the direct branch reproduces the old per-component header layout and the breadboard branch adds a rigid board cluster without replacing that direct placement behavior for free components.
 

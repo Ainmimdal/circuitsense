@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { boardRegistry } from '../src/core/board-registry.js';
 import { fullBreadboardPinInfo } from '../src/components/elera-full-breadboard.js';
 
-test('full breadboard visual exposes all registry holes as placed-component pinInfo', () => {
+test('full breadboard visual exposes all registry holes as renderer pinInfo', () => {
     const board = boardRegistry['breadboard-full-830'];
     assert.equal(fullBreadboardPinInfo.length, 830);
 

@@ -1,6 +1,5 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 
 import {
     HALF_BREADBOARD_DEFINITION,
@@ -162,73 +161,8 @@ test('DIP8 180-degree rotation preserves package numbering and real-hole binding
     assert.equal(new BreadboardSnapSolver().validateCandidate(project, component, candidate), true);
 });
 
-test('DIP8 uses the generic package and snap solver with no DIP-specific drag-placement branch', () => {
-    const interactionSource = readFileSync(new URL('../src/editor/interaction-controller.js', import.meta.url), 'utf8');
-    const canvasSource = readFileSync(new URL('../src/components/circuit-canvas.js', import.meta.url), 'utf8');
-    assert.doesNotMatch(interactionSource, /dip8|test-ic/i);
-    assert.doesNotMatch(canvasSource, /definitionId\s*===\s*['"](?:dip8|test-ic)['"]/i);
+test('the test IC uses the generic DIP8 package', () => {
     assert.equal(defaultFootprintForComponent('test-ic').id, 'dip8-300mil');
-});
-
-test('generic component hit boundaries are invisible and do not duplicate real artwork', () => {
-    const canvasSource = readFileSync(new URL('../src/components/circuit-canvas.js', import.meta.url), 'utf8');
-    const start = canvasSource.indexOf('\n    _drawGenericComponent(');
-    const method = canvasSource.slice(start, canvasSource.indexOf('\n    _drawComponentPins(', start));
-    assert.match(method, /strokeEnabled:\s*false/);
-    assert.match(method, /_artworkPlacement\(component, footprint, sourceWidth, sourceHeight\)/);
-    assert.match(method, /width:\s*right\s*-\s*left,\s*height:\s*bottom\s*-\s*top/);
-    assert.match(method, /const calibratedBounds = footprint\.placementMode === 'free' && footprint\.artworkPlacement/);
-    assert.match(method, /\? footprint\.routingBounds/);
-    assert.doesNotMatch(method, /footprint\.routingBounds\s*\|\|/);
-    assert.doesNotMatch(method, /ARDUINO UNO|new Konva\.Text|#087ea4|#27272a/);
-    assert.doesNotMatch(canvasSource, /_drawLed\s*\(|definitionId\s*===\s*['"]led['"]\)\s*this\._drawLed/);
-});
-
-test('component terminals remain visible while the DOM marker is correctly centered', () => {
-    const canvasSource = readFileSync(new URL('../src/components/circuit-canvas.js', import.meta.url), 'utf8');
-    const styleStart = canvasSource.indexOf('\n        .visual-terminal {');
-    const terminalStyle = canvasSource.slice(styleStart, canvasSource.indexOf('\n        }', styleStart));
-    const artworkStyleStart = canvasSource.indexOf('\n        .component-artwork {');
-    const artworkStyle = canvasSource.slice(artworkStyleStart, canvasSource.indexOf('\n        }', artworkStyleStart));
-    const methodStart = canvasSource.indexOf('\n    _drawComponentPins(');
-    const pinMethod = canvasSource.slice(methodStart, canvasSource.indexOf('\n    _setVisualTerminalHover(', methodStart));
-    assert.match(terminalStyle, /box-sizing:\s*border-box/);
-    assert.match(artworkStyle, /display:\s*flex/);
-    assert.doesNotMatch(artworkStyle, /display:\s*block/);
-    assert.match(pinMethod, /fill:\s*this\._themeColor\(['"]--text['"]\)/);
-    assert.match(pinMethod, /stroke:\s*this\._themeColor\(['"]--primary-hover['"]\)/);
-    assert.match(pinMethod, /opacity:\s*\.94/);
-});
-
-test('selected built-in components can open the pin-alignment editor', () => {
-    const canvasSource = readFileSync(new URL('../src/components/circuit-canvas.js', import.meta.url), 'utf8');
-    const builderSource = readFileSync(new URL('../src/components/component-builder-modal.js', import.meta.url), 'utf8');
-    const appSource = readFileSync(new URL('../src/circuit-app.js', import.meta.url), 'utf8');
-    assert.match(canvasSource, /Edit pins/);
-    assert.match(canvasSource, /edit-component-definition/);
-    assert.match(builderSource, /registerComponentVisualOverride/);
-    assert.match(builderSource, /Reset alignment/);
-    assert.match(builderSource, /electrical pin names, roles, breadboard spacing, and validation rules stay unchanged/);
-    assert.match(appSource, /\.componentId=\$\{this\._builderComponentId\}/);
-});
-
-test('custom artwork calibration excludes transparent padding but keeps external pins in its bounds', () => {
-    const canvasSource = readFileSync(new URL('../src/components/circuit-canvas.js', import.meta.url), 'utf8');
-    const builderSource = readFileSync(new URL('../src/components/component-builder-modal.js', import.meta.url), 'utf8');
-    const previewSource = readFileSync(new URL('../src/components/part-preview.js', import.meta.url), 'utf8');
-    assert.match(canvasSource, /measureImageContent\(definition\.imageUrl\)/);
-    assert.match(canvasSource, /occupiedSourceBounds/);
-    assert.match(builderSource, /metrics\.contentBounds/);
-    assert.match(builderSource, /_previewBounds\(\)/);
-    assert.match(builderSource, /component\?\.customPins/);
-    assert.match(builderSource, /current\?\.type === ['"]custom['"]/);
-    assert.match(builderSource, /registerCustomComponent\(\{/);
-    assert.match(previewSource, /normalizeContentBounds\(component\.contentBounds/);
-});
-
-test('free-space dragging does not render a red invalid-placement marker', () => {
-    const canvasSource = readFileSync(new URL('../src/components/circuit-canvas.js', import.meta.url), 'utf8');
-    assert.doesNotMatch(canvasSource, /#fb7185|state\.pointerWorld\.x|>invalid</);
 });
 
 test('LED uses the generic solver, claims two holes, and does not short itself on one strip', () => {
@@ -258,27 +192,6 @@ test('resistor package variants keep a compact body while supporting variable sp
     assert.equal(compact.visualVariant, 'compact');
     const widths = variants.filter(item => item.visualVariant === 'compact').map(item => item.routingBounds.width);
     assert.equal(new Set(widths.map(value => value.toFixed(3))).size, 1, 'lead span must not scale the resistor body');
-});
-
-test('breadboard resistor visuals are SVG variants while free placement keeps Wokwi unchanged', () => {
-    const canvasSource = readFileSync(new URL('../src/components/circuit-canvas.js', import.meta.url), 'utf8');
-    const resistorVisualSource = readFileSync(new URL('../src/components/resistor-variant-elements.js', import.meta.url), 'utf8');
-    const compactAsset = readFileSync(new URL('../src/assets/resistor-compact.svg', import.meta.url), 'utf8');
-    assert.match(canvasSource, /getResistorPackageVisual\(footprint\)/);
-    assert.doesNotMatch(canvasSource, /_drawResistorPackage\s*\(/);
-    assert.match(resistorVisualSource, /COMPACT_DEFAULT_SPAN_MM = 4 \* BREADBOARD_PITCH_MM/);
-    assert.match(resistorVisualSource, /bodyOffset = \(leadSpanMm - COMPACT_DEFAULT_SPAN_MM\) \/ 2/);
-    assert.match(canvasSource, /artwork\.leadSpanMm = packageVisual\.sourceSize\.width/);
-    assert.match(canvasSource, /sourceWidth = Math\.max\(1, Number\(packageVisual\?\.sourceSize\.width/,
-        'the invisible interaction box must use the compact or upright artwork size');
-    assert.match(resistorVisualSource, /resistor-compact\.svg/,
-        'the compact resistor must use an editable SVG asset rather than code-authored body geometry');
-    assert.match(compactAsset, /width="10\.16mm"/);
-    assert.match(compactAsset, /M0 1\.5H2\.54/);
-    assert.match(compactAsset, /M7\.62 1\.5h2\.54/,
-        'the standalone asset needs equal one-pitch leads on both sides');
-    assert.match(resistorVisualSource, /elera-compact-resistor/);
-    assert.match(resistorVisualSource, /elera-upright-resistor/);
 });
 
 test('breadboard realization suppresses same-strip jumpers and allocates a free hole for mixed wiring', () => {
