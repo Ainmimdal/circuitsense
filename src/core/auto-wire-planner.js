@@ -1,5 +1,6 @@
 import { PIN, getComponentDef } from '../component-library.js';
 import { canonicalLedColor, recommendedLedResistorOhms } from './led-resistor.js';
+import { PIN_CAPABILITY, requiredControllerCapabilities, supplyPinVoltage } from './pin-capabilities.js';
 
 const clone = value => typeof structuredClone === 'function'
     ? structuredClone(value)
@@ -38,15 +39,24 @@ function hasI2cRole(component) {
         .some(type => type === PIN.I2C_SDA || type === PIN.I2C_SCL);
 }
 
-function boardPinFor(type, used, i2cUsed, avoided, sourcePosition, boardId, pinPositionFor, pins) {
+function boardPinFor(type, used, i2cUsed, avoided, sourcePosition, boardId, pinPositionFor, pins, supplyRange = null) {
     const i2cPins = Object.values(pins.i2c || {}).filter(Boolean);
     const withoutReservedI2c = candidates => (candidates || []).filter(pin => !i2cUsed || !i2cPins.includes(pin));
     const avoid = new Set(avoided || []);
+    // Pins with board constraints (serial, boot strapping, input-only) are used
+    // only when no unconstrained pin of the same role is free.
+    const constraintRank = pin => {
+        const constraints = pins.constraints?.[pin] || [];
+        if (!constraints.length) return 0;
+        return constraints.some(constraint => constraint.severity === 'error') ? 2 : 1;
+    };
     const closestFree = candidates => {
         const available = (candidates || []).filter(pin => !used.has(pin) && !avoid.has(pin));
         if (!available.length) return null;
-        if (!sourcePosition || !pinPositionFor) return available[0];
-        return available
+        const bestRank = Math.min(...available.map(constraintRank));
+        const preferred = available.filter(pin => constraintRank(pin) === bestRank);
+        if (!sourcePosition || !pinPositionFor) return preferred[0];
+        return preferred
             .map(pin => ({ pin, position: pinPositionFor(boardId, pin) }))
             .sort((a, b) => {
                 const distance = item => item.position
@@ -55,7 +65,18 @@ function boardPinFor(type, used, i2cUsed, avoided, sourcePosition, boardId, pinP
                 return distance(a) - distance(b) || stableCompare(a.pin, b.pin);
             })[0].pin;
     };
-    if (type === PIN.VCC) return pins.power?.[0] || null;
+    if (type === PIN.VCC) {
+        // Prefer a supply rail inside the part's operating range (a 5 V sensor
+        // on a board whose first rail is 3.3 V).
+        // A part that sends signals back to the board stays at the board's
+        // logic level, so its outputs cannot exceed what the pins accept.
+        const fitting = supplyRange && (pins.power || []).find(pin => {
+            const voltage = supplyPinVoltage(pin, pins.logicVoltage);
+            if (voltage === null || voltage < supplyRange.min || voltage > supplyRange.max) return false;
+            return !supplyRange.drivesController || voltage <= Number(pins.logicVoltage || 5) + 0.5;
+        });
+        return fitting || pins.power?.[0] || null;
+    }
     if (type === PIN.GND) return closestFree(pins.ground) || pins.ground?.[0] || null;
     if (type === PIN.I2C_SDA) return pins.i2c?.sda || null;
     if (type === PIN.I2C_SCL) return pins.i2c?.scl || null;
@@ -119,6 +140,16 @@ function remainingCapacity(state) {
     return new Set(dedicated.filter(pin => !state.used.has(pin))).size;
 }
 
+function supplyRangeFor(component, definition) {
+    if (!definition.supplyVoltage) return null;
+    const probe = { definitionId: component.componentId };
+    const drivesController = Object.entries(definition.autoWire || {}).some(([pinId, type]) =>
+        type === PIN.I2C_SDA || type === PIN.I2C_SCL ||
+        requiredControllerCapabilities(probe, pinId).some(capability =>
+            capability === PIN_CAPABILITY.DIGITAL_INPUT || capability === PIN_CAPABILITY.ANALOG));
+    return { ...definition.supplyVoltage, drivesController };
+}
+
 function simulateComponentAssignment(component, state, pinPositionFor) {
     const definition = getComponentDef(component.componentId);
     const used = new Set(state.used);
@@ -128,7 +159,7 @@ function simulateComponentAssignment(component, state, pinPositionFor) {
     for (const [pinId, type] of Object.entries(definition.autoWire || {})) {
         const sourcePosition = pinPositionFor?.(component.id, pinId) || null;
         const boardPin = boardPinFor(type, used, i2cUsed, definition.avoidPins || [], sourcePosition,
-            state.controller.id, pinPositionFor, state.pins);
+            state.controller.id, pinPositionFor, state.pins, supplyRangeFor(component, definition));
         if (!boardPin) return null;
         assignments.push({ pinId, type, boardPin });
         if (!pinRoleIsShared(type)) used.add(boardPin);

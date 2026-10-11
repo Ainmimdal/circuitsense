@@ -1,6 +1,7 @@
 import { connectionRefKey, componentPinRef, surfaceHoleRef } from './model.js';
 import { getSurfaceDefinition } from './breadboard.js';
 import { getFootprintDefinition } from './footprints.js';
+import { getComponentDef } from '../component-library.js';
 
 export class UnionFind {
     constructor() {
@@ -63,7 +64,12 @@ export class ConnectivityResolver {
 
         for (const component of this.project.components || []) {
             const footprint = getFootprintDefinition(component.footprintId);
-            for (const internalNet of footprint?.internalNets || []) {
+            // Free-space footprints generated from the catalog carry no internal
+            // nets, so fall back to the part's declared pin groups.
+            const internalNets = footprint?.internalNets?.length
+                ? footprint.internalNets
+                : (getComponentDef(component.definitionId)?.pinGroups || []).map(pins => ({ pins }));
+            for (const internalNet of internalNets) {
                 const pins = internalNet.pins || [];
                 for (let index = 1; index < pins.length; index++) {
                     this.graph.union(

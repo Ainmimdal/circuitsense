@@ -176,6 +176,8 @@ export const componentLibrary = {
         ],
         autoWire: { '1.l': PIN.DIGITAL, '2.l': PIN.GND },
         needsPullup: true,
+        // Terminal pairs the switch connects when operated (validation: switch-short).
+        switchContacts: [['1.l', '2.l']],
         connectorType: 'male',
         breadboard: { mountable: true, required: true, footprintId: 'tactile-3x2' },
         codeTemplate: 'digitalRead(${pin})',
@@ -213,6 +215,8 @@ export const componentLibrary = {
         size: { width: 170, height: 90 },
         snapAnchor: { x: 65, y: 30 },
         currentDraw_mA: 15,
+        // Operating supply range in volts (validation: under-voltage, signal-over-voltage).
+        supplyVoltage: { min: 4.5, max: 5.5 },
         pinMeta: {
             'VCC': PIN.VCC,
             'TRIG': PIN.TRIGGER,
@@ -240,6 +244,7 @@ export const componentLibrary = {
         size: { width: 170, height: 80 },
         snapAnchor: { x: 50, y: 70 },
         currentDraw_mA: 200,
+        supplyVoltage: { min: 4.8, max: 6 },
         pinMeta: {
             'PWM': PIN.PWM,
             'V+': PIN.VCC,
@@ -308,6 +313,9 @@ export const componentLibrary = {
         size: { width: 302, height: 136 },
         snapAnchor: { x: 151, y: 68 },
         currentDraw_mA: 25,
+        supplyVoltage: { min: 4.5, max: 5.5 },
+        // Default I2C address of the PCF8574 backpack (validation: i2c-address-conflict).
+        i2cAddress: 0x27,
         pinMeta: {
             'VCC': PIN.VCC,
             'GND': PIN.GND,
@@ -329,6 +337,7 @@ export const componentLibrary = {
         size: { width: 90, height: 90 }, // Adjusted to prevent bounding box cutoff
         snapAnchor: { x: 60, y: 130 },
         currentDraw_mA: 5,
+        supplyVoltage: { min: 4.5, max: 20 },
         pinMeta: {
             'VCC': PIN.VCC,
             'OUT': PIN.SIGNAL,
@@ -371,6 +380,7 @@ export const componentLibrary = {
         size: { width: 40, height: 40 },
         snapAnchor: { x: 20, y: 20 },
         currentDraw_mA: 60,
+        supplyVoltage: { min: 3.5, max: 5.3 },
         pinMeta: {
             // wokwi-neopixel reports its power pin as 'VDD' — kept here as canonical
             'VDD': PIN.VCC,
@@ -400,6 +410,7 @@ export const componentLibrary = {
             '3': PIN.SIGNAL,
         },
         autoWire: { '1': PIN.VCC, '2': PIN.DIGITAL, '3': PIN.GND },
+        switchContacts: [['1', '2'], ['2', '3']],
         codeTemplate: 'int state = digitalRead(${pin});',
         connectorType: 'male',
         breadboard: { mountable: true, required: true, footprintId: 'spdt-linear-3' },
@@ -480,6 +491,9 @@ const defineWokwiComponent = definition => {
     {
         id: 'biaxial-stepper', name: 'Biaxial Stepper', tag: 'wokwi-biaxial-stepper', category: 'actuator',
         size: { width: 212, height: 255 },
+        pinMeta: Object.fromEntries(['A1-', 'A1+', 'B1+', 'B1-', 'A2-', 'A2+', 'B2+', 'B2-'].map(pin => [pin, PIN.SIGNAL])),
+        // Coil pins a controller pin must never drive directly (validation: needs-driver).
+        needsDriver: { kind: 'stepper', pins: ['A1-', 'A1+', 'B1+', 'B1-', 'A2-', 'A2+', 'B2+', 'B2-'] },
     },
     {
         id: 'big-sound-sensor', name: 'Big Sound Sensor', tag: 'wokwi-big-sound-sensor', category: 'sensor',
@@ -494,6 +508,7 @@ const defineWokwiComponent = definition => {
     {
         id: 'ds1307', name: 'DS1307 RTC', tag: 'wokwi-ds1307', category: 'sensor',
         size: { width: 98, height: 84 }, currentDraw_mA: 2,
+        supplyVoltage: { min: 4.5, max: 5.5 }, i2cAddress: 0x68,
         autoWire: { GND: PIN.GND, '5V': PIN.VCC, SDA: PIN.I2C_SDA, SCL: PIN.I2C_SCL },
     },
     {
@@ -542,6 +557,7 @@ const defineWokwiComponent = definition => {
         id: 'relay-dpdt', name: 'DPDT Relay', tag: 'wokwi-ks2e-m-dc5', category: 'actuator',
         size: { width: 80, height: 38 },
         breadboard: { mountable: true, required: true, footprintId: 'relay-dpdt-8' },
+        needsDriver: { kind: 'relay', pins: ['COIL1', 'COIL2'] },
     },
     {
         id: 'rotary-encoder', name: 'KY-040 Encoder', tag: 'wokwi-ky-040', category: 'input',
@@ -551,6 +567,7 @@ const defineWokwiComponent = definition => {
     {
         id: 'lcd2004', name: 'LCD 20x4 (I2C)', tag: 'wokwi-lcd2004', category: 'output',
         size: { width: 356, height: 180 }, attrs: { pins: 'i2c' }, currentDraw_mA: 30,
+        supplyVoltage: { min: 4.5, max: 5.5 }, i2cAddress: 0x27,
         autoWire: { GND: PIN.GND, VCC: PIN.VCC, SDA: PIN.I2C_SDA, SCL: PIN.I2C_SCL },
     },
     {
@@ -561,6 +578,7 @@ const defineWokwiComponent = definition => {
     {
         id: 'led-ring', name: 'NeoPixel Ring 16', tag: 'wokwi-led-ring', category: 'output',
         size: { width: 142, height: 154 }, attrs: { pixels: '16' }, currentDraw_mA: 960,
+        supplyVoltage: { min: 3.5, max: 5.3 },
         autoWire: { GND: PIN.GND, VCC: PIN.VCC, DIN: PIN.DIGITAL },
     },
     {
@@ -573,7 +591,7 @@ const defineWokwiComponent = definition => {
     },
     {
         id: 'mpu6050', name: 'MPU6050 IMU', tag: 'wokwi-mpu6050', category: 'sensor',
-        size: { width: 82, height: 62 }, currentDraw_mA: 4,
+        size: { width: 82, height: 62 }, currentDraw_mA: 4, i2cAddress: 0x68,
         autoWire: { SDA: PIN.I2C_SDA, SCL: PIN.I2C_SCL, GND: PIN.GND, VCC: PIN.VCC },
     },
     {
@@ -586,6 +604,7 @@ const defineWokwiComponent = definition => {
     {
         id: 'neopixel-matrix', name: 'NeoPixel Matrix 8x8', tag: 'wokwi-neopixel-matrix', category: 'output',
         size: { width: 198, height: 178 }, attrs: { rows: '8', cols: '8' }, currentDraw_mA: 3840,
+        supplyVoltage: { min: 3.5, max: 5.3 },
         autoWire: { GND: PIN.GND, VCC: PIN.VCC, DIN: PIN.DIGITAL },
     },
     {
@@ -604,6 +623,7 @@ const defineWokwiComponent = definition => {
         pinMeta: { '1.l': PIN.SIGNAL, '2.l': PIN.SIGNAL, '1.r': PIN.SIGNAL, '2.r': PIN.SIGNAL },
         pinGroups: [['1.l', '1.r'], ['2.l', '2.r']],
         autoWire: { '1.l': PIN.DIGITAL, '2.l': PIN.GND }, needsPullup: true,
+        switchContacts: [['1.l', '2.l']],
     },
     {
         id: 'rgb-led', name: 'RGB LED', tag: 'wokwi-rgb-led', category: 'output',
@@ -628,12 +648,14 @@ const defineWokwiComponent = definition => {
     },
     {
         id: 'ssd1306', name: 'SSD1306 OLED', tag: 'wokwi-ssd1306', category: 'output',
-        size: { width: 150, height: 116 }, currentDraw_mA: 20,
+        size: { width: 150, height: 116 }, currentDraw_mA: 20, i2cAddress: 0x3c,
         autoWire: { DATA: PIN.I2C_SDA, CLK: PIN.I2C_SCL, VIN: PIN.VCC, GND: PIN.GND },
     },
     {
         id: 'stepper-motor', name: 'Stepper Motor', tag: 'wokwi-stepper-motor', category: 'actuator',
         size: { width: 221, height: 236 },
+        pinMeta: { 'A-': PIN.SIGNAL, 'A+': PIN.SIGNAL, 'B+': PIN.SIGNAL, 'B-': PIN.SIGNAL },
+        needsDriver: { kind: 'stepper', pins: ['A-', 'A+', 'B+', 'B-'] },
     },
     {
         id: 'tilt-switch', name: 'Tilt Switch', tag: 'wokwi-tilt-switch', category: 'sensor',

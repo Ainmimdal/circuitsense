@@ -91,7 +91,8 @@ test('auto-wire uses an Arduino Nano when it is the available MCU', () => {
 test('auto-wire uses each MCU own voltage and pin names', () => {
     const expected = {
         'arduino-mega': ['5V', '2', 'GND.1'],
-        'esp32-devkit-v1': ['3V3', 'D4', 'GND.1'],
+        // D4 is a boot strapping pin, so the first unconstrained digital pin wins.
+        'esp32-devkit-v1': ['3V3', 'D13', 'GND.1'],
         franzininho: ['VCC.1', 'PB0', 'GND.1'],
         'nano-rp2040-connect': ['3.3V', 'D2', 'GND.1'],
     };
@@ -180,4 +181,17 @@ test('multiple controller supply domains are never joined automatically', () => 
     assert.equal(result.connections.some(connection =>
         new Set([connection.from.componentId, connection.to.componentId]).has('uno') &&
         new Set([connection.from.componentId, connection.to.componentId]).has('esp')), false);
+});
+
+test('auto-wire powers output-only 5 V parts from a 5 V rail but keeps sensors at logic level', () => {
+    const supplyPin = componentId => planAutoWire({
+        components: [{ id: 'mcu', componentId: 'nano-rp2040-connect' }, { id: 'part', componentId }],
+        connections: [],
+    }).connections.find(connection => [connection.from, connection.to].some(end => end.componentId === 'part' &&
+        ['V+', 'VCC'].includes(end.pinId)));
+    const mcuEnd = connection => [connection.from, connection.to].find(end => end.componentId === 'mcu').pinId;
+    // The servo only receives a PWM signal, so 5 V is safe and in its range.
+    assert.equal(mcuEnd(supplyPin('servo')), '5V');
+    // The HC-SR04 echo would carry 5 V into a 3.3 V pin, so it stays on 3.3 V.
+    assert.equal(mcuEnd(supplyPin('hc-sr04')), '3.3V');
 });

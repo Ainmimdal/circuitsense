@@ -3,6 +3,7 @@ import { componentPinRef, connectionRefKey, resolveConnectionWorldPoint } from '
 import { BreadboardSnapSolver, buildBreadboardHoleStates, HOLE_OCCUPANCY } from './placement.js';
 import { getFootprintDefinition } from './footprints.js';
 import { ConnectivityResolver } from './connectivity.js';
+import { validateElectrical } from './electrical-validation.js';
 
 export const PHYSICAL_SEVERITY = Object.freeze({ ERROR: 'error', WARNING: 'warning', INFO: 'info' });
 
@@ -130,18 +131,7 @@ export function validatePhysicalProject(project) {
         }
     }
 
-    for (const component of project.components || []) {
-        if (component.definitionId !== 'led') continue;
-        const anodeNet = connectivity.netFor(componentPinRef(component.id, 'A'));
-        if (anodeNet.length < 2) continue;
-        const hasSeriesResistor = anodeNet.some(ref => ref.type === 'component-pin' && ref.componentId !== component.id &&
-            project.components.find(item => item.id === ref.componentId)?.definitionId === 'resistor');
-        if (!hasSeriesResistor) {
-            all.push(issue(`led-no-resistor:${component.id}`, PHYSICAL_SEVERITY.WARNING,
-                `${getComponentDef('led')?.name || 'LED'} ${component.id} is wired without a current-limiting resistor.`,
-                component.id, 'triangleExclamation'));
-        }
-    }
+    all.push(...validateElectrical(project, connectivity));
 
     const hasController = project.components.some(component => getComponentDef(component.definitionId)?.autoWirePins);
     const needsController = project.components.some(component => getComponentDef(component.definitionId)?.autoWire);
