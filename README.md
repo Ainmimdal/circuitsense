@@ -6,6 +6,18 @@ The repository is named `circuitsense`, which was the project's earlier name; th
 
 ## Quickstart
 
+### Easiest: double-click a launcher
+
+You need [Node.js](https://nodejs.org) (the LTS version) installed once. Then open the project folder and double-click:
+
+- **Windows:** `start-elera.bat`
+- **macOS:** `start-elera.command` (the first time, macOS may block it: right-click it, choose **Open**, then **Open** again)
+- **Linux:** `start-elera.sh` (or run `./start-elera.sh` in a terminal)
+
+The first launch installs everything Elera needs, which takes a minute. After that, Elera opens in your browser at `http://localhost:5173`. Keep the launcher window open while you use Elera; close it to stop.
+
+### From a terminal
+
 Requires Node.js 18 or newer.
 
 ```bash
