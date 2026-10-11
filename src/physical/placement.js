@@ -104,6 +104,48 @@ export function placementBindingsAreAvailable(candidate, occupancy) {
         !occupancy.has(`${candidate.surfaceId}:${holeId}`));
 }
 
+/**
+ * True when a candidate mount would put any of the component's leads on a
+ * strip that already holds another part's lead or a wire end. Quick-add uses
+ * this so a new part never silently joins an existing circuit node.
+ */
+export function candidateJoinsUsedStrip(project, componentId, candidate, {
+    holeStates = buildBreadboardHoleStates(project, { excludeComponentId: componentId }),
+} = {}) {
+    const surface = project?.surfaces?.find(item => item.id === candidate?.surfaceId);
+    const definition = getSurfaceDefinition(surface);
+    if (!definition) return false;
+    const usedGroups = new Set();
+    for (const state of holeStates.values()) {
+        if (state.surfaceId === surface.id && state.state !== HOLE_OCCUPANCY.FREE) usedGroups.add(state.electricalGroup);
+    }
+    return Object.values(candidate.bindings || {}).some(holeId =>
+        usedGroups.has(definition.getHole(holeId)?.electricalGroup));
+}
+
+/**
+ * The first legal terminal-strip mount, scanning holes in board order, whose
+ * strips hold nothing yet. Returns null when the board has no such spot.
+ */
+export function firstIsolatedMount(project, component, surface, solver = new BreadboardSnapSolver()) {
+    const definition = getSurfaceDefinition(surface);
+    if (!definition || !component) return null;
+    const holeStates = buildBreadboardHoleStates(project, { excludeComponentId: component.id });
+    for (const hole of definition.holes) {
+        if (hole.zone !== 'terminal') continue;
+        const candidate = solver.solve({
+            project,
+            component,
+            pointerWorld: holeWorldPosition(surface, hole.id),
+            surfaceId: surface.id,
+            preferredRotation: component.placement?.rotation,
+        });
+        if (candidate && solver.validateCandidate(project, component, candidate) &&
+            !candidateJoinsUsedStrip(project, component.id, candidate, { holeStates })) return candidate;
+    }
+    return null;
+}
+
 function candidateMatchesFootprintGeometry(footprint, definition, candidate) {
     const anchorPin = footprint.pins.find(pin => pin.pinId === footprint.anchorPinId);
     const anchorHoleId = candidate.bindings?.[footprint.anchorPinId];

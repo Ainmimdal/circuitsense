@@ -10,6 +10,7 @@ import { applyVisualProperties, createPartVisualElement } from '../core/visual-a
 import { getResistorPackageVisual } from './resistor-variant-elements.js';
 import { physicalCircuitStore } from '../physical/circuit-store.js';
 import { InteractionController } from '../editor/interaction-controller.js';
+import { firstIsolatedMount } from '../physical/placement.js';
 import { normalizeSelectionRect, rectsIntersect, routeIntersectsRect } from '../editor/selection.js';
 import { addComponentCommand, addSurfaceCommand, deleteSelectionCommand, deleteSurfaceCommand, mountComponentCommand, moveSelectionCommand, rotateFreeComponentCommand, setComponentPropertyCommand } from '../physical/commands.js';
 import { createComponentInstance, componentPinRef, componentWorldTransform, resolveConnectionWorldPoint, surfaceHoleRef } from '../physical/model.js';
@@ -2268,22 +2269,16 @@ class CircuitCanvas extends LitElement {
             this.requestUpdate();
             return;
         }
-        this.interaction.beginComponentDrag(component.id);
-
-        let pointer = fallback;
-        if (board) {
-            const holes = getSurfaceDefinition(board).holes.filter(hole => hole.zone === 'terminal');
-            for (const hole of holes) {
-                pointer = holeWorldPosition(board, hole.id);
-                if (this.interaction.updateComponentDrag(pointer)) break;
-            }
-        }
-        this.interaction.commitComponentDrag(pointer);
+        // Only use strips that are still empty, so a quick-added part is never
+        // connected to an earlier part through shared breadboard copper.
+        const placed = this.store.project.components.find(item => item.id === component.id);
+        const candidate = board ? firstIsolatedMount(this.store.project, placed, board, this.interaction.solver) : null;
+        if (candidate) this.store.execute(mountComponentCommand(component.id, candidate));
         const mounted = this.store.project.components.find(item => item.id === component.id)?.placement.type === 'surface';
         this._selectComponent(component.id);
             this._status = mounted
                 ? `${getPhysicalComponentDefinition(definitionId).name} snapped into the next available breadboard position.`
-                : `No valid breadboard space was available. Move ${getPhysicalComponentDefinition(definitionId).name} beside the board or make room.`;
+                : `The breadboard has no empty columns left, so ${getPhysicalComponentDefinition(definitionId).name} was placed beside it.`;
         this._renderComponentVisuals();
         this.requestUpdate();
     }
