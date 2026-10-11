@@ -206,47 +206,38 @@ The rows between the markers are parsed by `test/engine-contract.test.js`. Rule 
 <!-- engine-contract:start -->
 | Rule | Requirement | Implementation | Regression evidence |
 | --- | --- | --- | --- |
-| `CORE-01` | Logical and physical connectivity remain separate | `src/core/circuit-model.js`, `src/core/editor-project-adapter.js` | `test/editor-project-adapter.test.js`, `test/project-schema.test.js` |
-| `CORE-02` | Planning and net colors are deterministic | `src/core/auto-wire-planner.js`, `src/services/auto-wire-engine.js` | `test/auto-wire-planner.test.js`, `test/rebuild-integration.test.js` |
-| `CORE-03` | Planning is atomic and one command is one history action | `src/services/auto-wire-engine.js`, `src/store.js` | `test/rebuild-integration.test.js`, `test/breadboard-planner.test.js` |
+| `CORE-01` | Logical and physical connectivity remain separate | `src/physical/model.js`, `src/physical/connectivity.js` | `test/physical-core.test.js`, `test/physical-interaction.test.js` |
+| `CORE-02` | Auto Wire planning is deterministic | `src/core/auto-wire-planner.js` | `test/auto-wire-planner.test.js` |
+| `CORE-03` | Planning is atomic and one command is one history action | `src/physical/automation.js`, `src/physical/circuit-store.js` | `test/physical-automation.test.js` |
 | `CORE-04` | Footprints use rigid 2.54 mm geometry | `src/core/component-geometry.js`, `src/core/part-registry.js` | `test/component-geometry.test.js`, `test/part-registry.test.js` |
-| `CORE-06` | Planning does not wait for DOM registration | `src/circuit-app.js`, `src/core/component-geometry.js` | `test/component-geometry.test.js`, `test/rebuild-integration.test.js` |
+| `CORE-06` | Planning does not wait for DOM registration | `src/circuit-app.js`, `src/core/component-geometry.js` | `test/component-geometry.test.js` |
 | `CORE-08` | Controller pin capabilities have one component-metadata source | `src/component-library.js`, `src/core/pin-capabilities.js` | `test/ai-agent.test.js` |
 | `AW-02` | Pin roles select compatible active-MCU headers | `src/core/auto-wire-planner.js` | `test/auto-wire-planner.test.js` |
 | `AW-03` | Signals choose the nearest compatible header | `src/core/auto-wire-planner.js` | `test/auto-wire-planner.test.js` |
-| `AW-04` | Supply domains are shared | `src/core/auto-wire-planner.js`, `src/core/circuit-model.js` | `test/auto-wire-planner.test.js`, `test/circuit-model.test.js` |
+| `AW-04` | Supply domains are shared | `src/core/auto-wire-planner.js` | `test/auto-wire-planner.test.js` |
 | `AW-05` | Generated resistors are deterministic and idempotent | `src/core/auto-wire-planner.js` | `test/auto-wire-planner.test.js` |
-| `AW-06` | Auto Wire preserves mounted footprints | `src/services/auto-wire-engine.js` | `test/rebuild-integration.test.js` |
-| `AW-08` | Net colors are stable and signals remain distinguishable | `src/services/auto-wire-engine.js` | `test/rebuild-integration.test.js` |
+| `AW-06` | Auto Wire preserves mounted footprints | `src/physical/automation.js`, `src/physical/breadboard-auto-wire.js` | `test/physical-automation.test.js` |
 | `AW-09` | Components keep stable controller ownership and independent controller budgets | `src/core/auto-wire-planner.js`, `src/physical/automation.js` | `test/auto-wire-planner.test.js`, `test/physical-automation.test.js` |
 | `AW-10` | Mounted nets collapse fixed groups and reserve only required jumper holes | `src/physical/breadboard-auto-wire.js`, `src/physical/automation.js` | `test/physical-core.test.js`, `test/physical-automation.test.js` |
-| `AL-01` | Direct and breadboard scenes use separate layout branches | `src/services/auto-wire-engine.js` | `test/breadboard-layout.test.js` |
-| `AL-02` | Breadboard placement follows active header affinity | `src/services/auto-wire-engine.js` | `test/breadboard-layout.test.js` |
-| `AL-04` | Constrained footprints are placed before flexible ones | `src/core/breadboard-planner.js` | `test/breadboard-planner.test.js` |
+| `AL-01` | Direct and breadboard scenes use separate layout branches | `src/physical/automation.js`, `src/physical/direct-layout-v2.js` | `test/physical-automation.test.js` |
+| `AL-02` | Placement follows active header affinity | `src/physical/automation.js` | `test/physical-automation.test.js` |
 | `AL-05` | Multiple controllers use independently laid-out non-overlapping clusters | `src/physical/automation.js` | `test/physical-automation.test.js` |
 | `AL-06` | The physical-only arrangement stage preserves semantic wires and route intent | `src/physical/automation.js`, `src/ai/tools.js` | `test/physical-automation.test.js`, `test/ai-agent.test.js` |
 | `AL-07` | Free components remain clear of owned breadboard bodies | `src/physical/automation.js` | `test/physical-automation.test.js` |
 | `AL-08` | Combined Auto Layout may legally mount only its generated helper and then re-realize connectivity | `src/physical/automation.js`, `src/physical/breadboard-auto-wire.js` | `test/physical-automation.test.js` |
 | `BB-01` | One canonical board registry models terminal, trench and rail topology | `src/core/breadboard-topology.js`, `src/core/board-registry.js` | `test/board-registry.test.js`, `test/physical-core.test.js` |
-| `BB-02` | Leads and jumper endpoints have exclusive holes | `src/core/breadboard-planner.js`, `src/services/breadboard-service.js` | `test/breadboard-layout.test.js`, `test/breadboard-planner.test.js` |
-| `BB-04` | Same-strip connectivity suppresses drawn jumpers | `src/core/breadboard-planner.js` | `test/breadboard-planner.test.js` |
-| `BB-05` | Rails use one feeder and unique local branches | `src/core/breadboard-planner.js` | `test/breadboard-layout.test.js`, `test/breadboard-planner.test.js` |
-| `BB-07` | Jumper gender follows connector types | `src/breadboard-model.js` | `test/breadboard-model.test.js` |
-| `BB-09` | Pushbuttons use legal trench-straddling footprints | `src/core/component-geometry.js` | `test/component-geometry.test.js`, `test/breadboard-layout.test.js` |
+| `BB-02` | Leads and jumper endpoints have exclusive holes | `src/physical/placement.js` | `test/physical-core.test.js` |
+| `BB-04` | Same-strip connectivity suppresses drawn jumpers | `src/physical/breadboard-auto-wire.js` | `test/physical-core.test.js`, `test/physical-automation.test.js` |
+| `BB-09` | Pushbuttons use legal trench-straddling footprints | `src/core/component-geometry.js` | `test/component-geometry.test.js` |
 | `BB-10` | Stable holes expose exclusive derived occupancy | `src/physical/placement.js`, `src/editor/interaction-controller.js` | `test/physical-core.test.js` |
 | `BB-11` | Resistors support compact variable-span and upright physical variants | `src/core/component-geometry.js`, `src/components/circuit-canvas.js` | `test/physical-core.test.js` |
-| `CAP-01` | Capacity requires a complete legal placement | `src/core/breadboard-planner.js` | `test/breadboard-planner.test.js` |
-| `CAP-02` | Capacity alternatives are proven before offering them | `src/core/breadboard-planner.js` | `test/breadboard-planner.test.js`, `test/rebuild-integration.test.js` |
-| `CL-02` | Non-board pins escape before turning | `src/services/routing-engine.js` | `test/breadboard-layout.test.js` |
-| `CL-03` | Header wires fan into distinct lanes | `src/services/routing-engine.js` | `test/breadboard-layout.test.js` |
-| `CL-05` | Same-board jumpers use short body-clear local routes | `src/services/routing-engine.js` | `test/breadboard-layout.test.js` |
+| `CL-02` | Non-board pins escape before turning | `src/physical/routing.js` | `test/physical-automation.test.js` |
+| `CL-03` | Header wires fan into distinct lanes | `src/physical/routing.js` | `test/physical-automation.test.js` |
 | `CL-08` | Route-only operations preserve existing semantic nets | `src/ai/tools.js`, `src/physical/routing.js` | `test/ai-agent.test.js`, `test/physical-interaction.test.js` |
 | `CL-09` | Unrelated automatic wires route around breadboard bodies | `src/physical/routing.js` | `test/physical-core.test.js` |
-| `VAL-01` | Validation distinguishes logical and physical views | `src/services/validation-engine.js` | `test/project-schema.test.js`, `test/breadboard-layout.test.js` |
-| `VAL-05` | Breadboard legality produces validation findings | `src/services/validation-engine.js` | `test/breadboard-layout.test.js`, `test/breadboard-planner.test.js` |
+| `VAL-05` | Breadboard legality produces validation findings | `src/physical/validation.js` | `test/physical-core.test.js` |
 | `VAL-08` | Exact controller-pin mutations enforce metadata capabilities transactionally | `src/core/pin-capabilities.js`, `src/ai/tools.js` | `test/ai-agent.test.js` |
-| `INT-01` | Selection and registration cannot move parts | `src/components/placed-component.js`, `src/store.js` | `test/breadboard-layout.test.js` |
-| `INT-03` | Mounted edits rebuild atomically or roll back | `src/components/placed-component.js`, `src/services/breadboard-service.js` | `test/rebuild-integration.test.js`, `test/breadboard-layout.test.js` |
+| `INT-03` | Mounted edits rebuild atomically or roll back | `src/editor/interaction-controller.js`, `src/physical/commands.js` | `test/physical-interaction.test.js` |
 <!-- engine-contract:end -->
 
 ## Known contract drift
@@ -260,6 +251,7 @@ These are not accepted exceptions. They are visible work items. Removing a row r
 | `GAP-05` | Some full-size breadboard validation paths use half-board hole/group lookup helpers. | `VAL-05`: resolve holes and groups through each instance's registered board definition. |
 | `GAP-06` | Validation issue codes do not yet each have a focused fixture. | Every `VAL-*` behavior and public finding ID needs direct regression evidence. |
 | `GAP-07` | Browser acceptance is manual; pointer, zoom and final rendered geometry are not in automated CI. | Add browser fixtures for the primary mixed circuit and interaction rollback. |
+| `GAP-11` | The schema-v2 engine was removed (2026-10-11) because the app no longer loaded it. These rules were proven only there and have no live regression evidence yet: `AW-08` (one color per net), `AL-04` (constrained footprints first), `BB-05` (one rail feeder, unique branches), `BB-07` (jumper gender), `CAP-01` and `CAP-02` (proven capacity and recovery alternatives), `CL-05` (breadboard-local jumper routes), `VAL-01` (read-only logical/physical validation layers) and `INT-01` (click cannot move parts). | Implement each rule in `src/physical/` with a regression test and restore its registry row. |
 
 ## Change protocol
 
@@ -268,7 +260,7 @@ Every engine change must follow this sequence:
 1. Name the affected rule IDs in the change description. Add a new ID if no rule covers the behavior.
 2. Add the smallest failing pure-planner fixture first. For command boundaries, also add a store-level integration fixture.
 3. Fingerprint state layers before and after the command. Assert that forbidden columns in the command mutation table are unchanged.
-4. Implement in the owning layer: pure decision in `src/core`, editor adaptation/commit in `src/services`, history in `src/store.js`, presentation in components.
+4. Implement in the owning layer: pure decisions in `src/core` or `src/physical`, store transactions and history in `src/physical/circuit-store.js` and `src/physical/commands.js`, presentation in components.
 5. Add structured diagnostics for any new failure mode. Do not parse user-facing strings in engine logic.
 6. Update the traceability registry. The next `npm run dev`, `npm test` or `npm run build` synchronizes the generated engine-flow document. If behavior is temporarily incomplete, add a numbered drift row instead of weakening the rule.
 7. Run `npm test`, `npm run build` and `git diff --check`. Run the primary browser fixture for changes affecting geometry or interaction.

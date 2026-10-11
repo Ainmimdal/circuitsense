@@ -119,7 +119,8 @@ The numbered definitions and exit conditions live in [ENGINE_CONTRACT.md](ENGINE
 1. **P0 - validation correctness:** close `GAP-04` and `GAP-05` by recognizing legal shared I2C buses and resolving full-board holes through the correct board definition.
 2. **P1 - command completion:** decide and implement the explicit Auto Wire route-dirty/baseline-routing behavior in `GAP-03`.
 3. **P1 - regression depth:** add one focused fixture per public validation finding (`GAP-06`) and automate the mixed browser interaction fixture (`GAP-07`).
-4. **P2 - performance:** profile dense breadboard scenes and split the production bundle after correctness is stable.
+4. **P1 - legacy rule parity:** the unused schema-v2 engine and its tests were removed; port the rules listed in `GAP-11` to the physical engine, each with a regression test.
+5. **P2 - performance:** profile dense breadboard scenes and split the production bundle after correctness is stable.
 
 For every engine change, name the affected contract rule, add the failing planner/integration test first, fingerprint forbidden state layers, and preserve the command mutation boundaries.
 

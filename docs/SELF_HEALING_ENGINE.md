@@ -10,7 +10,7 @@ This document answers two questions: which engine owns each decision, and how an
 
 <!-- engine-doc-sync:start -->
 > Generated from `ENGINE_CONTRACT.md` by `npm run docs:sync`. Do not edit this block.
-> Contract fingerprint: `54f3c44a83ba`
+> Contract fingerprint: `89cf27b0f4b4`
 
 ## Contract-synchronized command pipeline
 
@@ -146,47 +146,38 @@ flowchart LR
 
 | Rule | Requirement | Implementation | Regression evidence |
 | --- | --- | --- | --- |
-| `CORE-01` | Logical and physical connectivity remain separate | `src/core/circuit-model.js`, `src/core/editor-project-adapter.js` | `test/editor-project-adapter.test.js`, `test/project-schema.test.js` |
-| `CORE-02` | Planning and net colors are deterministic | `src/core/auto-wire-planner.js`, `src/services/auto-wire-engine.js` | `test/auto-wire-planner.test.js`, `test/rebuild-integration.test.js` |
-| `CORE-03` | Planning is atomic and one command is one history action | `src/services/auto-wire-engine.js`, `src/store.js` | `test/rebuild-integration.test.js`, `test/breadboard-planner.test.js` |
+| `CORE-01` | Logical and physical connectivity remain separate | `src/physical/model.js`, `src/physical/connectivity.js` | `test/physical-core.test.js`, `test/physical-interaction.test.js` |
+| `CORE-02` | Auto Wire planning is deterministic | `src/core/auto-wire-planner.js` | `test/auto-wire-planner.test.js` |
+| `CORE-03` | Planning is atomic and one command is one history action | `src/physical/automation.js`, `src/physical/circuit-store.js` | `test/physical-automation.test.js` |
 | `CORE-04` | Footprints use rigid 2.54 mm geometry | `src/core/component-geometry.js`, `src/core/part-registry.js` | `test/component-geometry.test.js`, `test/part-registry.test.js` |
-| `CORE-06` | Planning does not wait for DOM registration | `src/circuit-app.js`, `src/core/component-geometry.js` | `test/component-geometry.test.js`, `test/rebuild-integration.test.js` |
+| `CORE-06` | Planning does not wait for DOM registration | `src/circuit-app.js`, `src/core/component-geometry.js` | `test/component-geometry.test.js` |
 | `CORE-08` | Controller pin capabilities have one component-metadata source | `src/component-library.js`, `src/core/pin-capabilities.js` | `test/ai-agent.test.js` |
 | `AW-02` | Pin roles select compatible active-MCU headers | `src/core/auto-wire-planner.js` | `test/auto-wire-planner.test.js` |
 | `AW-03` | Signals choose the nearest compatible header | `src/core/auto-wire-planner.js` | `test/auto-wire-planner.test.js` |
-| `AW-04` | Supply domains are shared | `src/core/auto-wire-planner.js`, `src/core/circuit-model.js` | `test/auto-wire-planner.test.js`, `test/circuit-model.test.js` |
+| `AW-04` | Supply domains are shared | `src/core/auto-wire-planner.js` | `test/auto-wire-planner.test.js` |
 | `AW-05` | Generated resistors are deterministic and idempotent | `src/core/auto-wire-planner.js` | `test/auto-wire-planner.test.js` |
-| `AW-06` | Auto Wire preserves mounted footprints | `src/services/auto-wire-engine.js` | `test/rebuild-integration.test.js` |
-| `AW-08` | Net colors are stable and signals remain distinguishable | `src/services/auto-wire-engine.js` | `test/rebuild-integration.test.js` |
+| `AW-06` | Auto Wire preserves mounted footprints | `src/physical/automation.js`, `src/physical/breadboard-auto-wire.js` | `test/physical-automation.test.js` |
 | `AW-09` | Components keep stable controller ownership and independent controller budgets | `src/core/auto-wire-planner.js`, `src/physical/automation.js` | `test/auto-wire-planner.test.js`, `test/physical-automation.test.js` |
 | `AW-10` | Mounted nets collapse fixed groups and reserve only required jumper holes | `src/physical/breadboard-auto-wire.js`, `src/physical/automation.js` | `test/physical-core.test.js`, `test/physical-automation.test.js` |
-| `AL-01` | Direct and breadboard scenes use separate layout branches | `src/services/auto-wire-engine.js` | `test/breadboard-layout.test.js` |
-| `AL-02` | Breadboard placement follows active header affinity | `src/services/auto-wire-engine.js` | `test/breadboard-layout.test.js` |
-| `AL-04` | Constrained footprints are placed before flexible ones | `src/core/breadboard-planner.js` | `test/breadboard-planner.test.js` |
+| `AL-01` | Direct and breadboard scenes use separate layout branches | `src/physical/automation.js`, `src/physical/direct-layout-v2.js` | `test/physical-automation.test.js` |
+| `AL-02` | Placement follows active header affinity | `src/physical/automation.js` | `test/physical-automation.test.js` |
 | `AL-05` | Multiple controllers use independently laid-out non-overlapping clusters | `src/physical/automation.js` | `test/physical-automation.test.js` |
 | `AL-06` | The physical-only arrangement stage preserves semantic wires and route intent | `src/physical/automation.js`, `src/ai/tools.js` | `test/physical-automation.test.js`, `test/ai-agent.test.js` |
 | `AL-07` | Free components remain clear of owned breadboard bodies | `src/physical/automation.js` | `test/physical-automation.test.js` |
 | `AL-08` | Combined Auto Layout may legally mount only its generated helper and then re-realize connectivity | `src/physical/automation.js`, `src/physical/breadboard-auto-wire.js` | `test/physical-automation.test.js` |
 | `BB-01` | One canonical board registry models terminal, trench and rail topology | `src/core/breadboard-topology.js`, `src/core/board-registry.js` | `test/board-registry.test.js`, `test/physical-core.test.js` |
-| `BB-02` | Leads and jumper endpoints have exclusive holes | `src/core/breadboard-planner.js`, `src/services/breadboard-service.js` | `test/breadboard-layout.test.js`, `test/breadboard-planner.test.js` |
-| `BB-04` | Same-strip connectivity suppresses drawn jumpers | `src/core/breadboard-planner.js` | `test/breadboard-planner.test.js` |
-| `BB-05` | Rails use one feeder and unique local branches | `src/core/breadboard-planner.js` | `test/breadboard-layout.test.js`, `test/breadboard-planner.test.js` |
-| `BB-07` | Jumper gender follows connector types | `src/breadboard-model.js` | `test/breadboard-model.test.js` |
-| `BB-09` | Pushbuttons use legal trench-straddling footprints | `src/core/component-geometry.js` | `test/component-geometry.test.js`, `test/breadboard-layout.test.js` |
+| `BB-02` | Leads and jumper endpoints have exclusive holes | `src/physical/placement.js` | `test/physical-core.test.js` |
+| `BB-04` | Same-strip connectivity suppresses drawn jumpers | `src/physical/breadboard-auto-wire.js` | `test/physical-core.test.js`, `test/physical-automation.test.js` |
+| `BB-09` | Pushbuttons use legal trench-straddling footprints | `src/core/component-geometry.js` | `test/component-geometry.test.js` |
 | `BB-10` | Stable holes expose exclusive derived occupancy | `src/physical/placement.js`, `src/editor/interaction-controller.js` | `test/physical-core.test.js` |
 | `BB-11` | Resistors support compact variable-span and upright physical variants | `src/core/component-geometry.js`, `src/components/circuit-canvas.js` | `test/physical-core.test.js` |
-| `CAP-01` | Capacity requires a complete legal placement | `src/core/breadboard-planner.js` | `test/breadboard-planner.test.js` |
-| `CAP-02` | Capacity alternatives are proven before offering them | `src/core/breadboard-planner.js` | `test/breadboard-planner.test.js`, `test/rebuild-integration.test.js` |
-| `CL-02` | Non-board pins escape before turning | `src/services/routing-engine.js` | `test/breadboard-layout.test.js` |
-| `CL-03` | Header wires fan into distinct lanes | `src/services/routing-engine.js` | `test/breadboard-layout.test.js` |
-| `CL-05` | Same-board jumpers use short body-clear local routes | `src/services/routing-engine.js` | `test/breadboard-layout.test.js` |
+| `CL-02` | Non-board pins escape before turning | `src/physical/routing.js` | `test/physical-automation.test.js` |
+| `CL-03` | Header wires fan into distinct lanes | `src/physical/routing.js` | `test/physical-automation.test.js` |
 | `CL-08` | Route-only operations preserve existing semantic nets | `src/ai/tools.js`, `src/physical/routing.js` | `test/ai-agent.test.js`, `test/physical-interaction.test.js` |
 | `CL-09` | Unrelated automatic wires route around breadboard bodies | `src/physical/routing.js` | `test/physical-core.test.js` |
-| `VAL-01` | Validation distinguishes logical and physical views | `src/services/validation-engine.js` | `test/project-schema.test.js`, `test/breadboard-layout.test.js` |
-| `VAL-05` | Breadboard legality produces validation findings | `src/services/validation-engine.js` | `test/breadboard-layout.test.js`, `test/breadboard-planner.test.js` |
+| `VAL-05` | Breadboard legality produces validation findings | `src/physical/validation.js` | `test/physical-core.test.js` |
 | `VAL-08` | Exact controller-pin mutations enforce metadata capabilities transactionally | `src/core/pin-capabilities.js`, `src/ai/tools.js` | `test/ai-agent.test.js` |
-| `INT-01` | Selection and registration cannot move parts | `src/components/placed-component.js`, `src/store.js` | `test/breadboard-layout.test.js` |
-| `INT-03` | Mounted edits rebuild atomically or roll back | `src/components/placed-component.js`, `src/services/breadboard-service.js` | `test/rebuild-integration.test.js`, `test/breadboard-layout.test.js` |
+| `INT-03` | Mounted edits rebuild atomically or roll back | `src/editor/interaction-controller.js`, `src/physical/commands.js` | `test/physical-interaction.test.js` |
 <!-- engine-doc-sync:end -->
 
 ## Guarded recovery loop
