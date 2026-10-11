@@ -3,7 +3,7 @@ import { planAutoWire } from '../core/auto-wire-planner.js';
 import { loadEditorPreferences } from '../core/editor-preferences.js';
 import { applyTransform, normalizeDegrees, rotatePoint } from './geometry.js';
 import { createComponentInstance, componentPinRef, componentWorldTransform, resolveConnectionWorldPoint } from './model.js';
-import { defaultFootprintForComponent, getFootprintDefinition, projectFootprintPoint } from './footprints.js';
+import { defaultFootprintForComponent, footprintsForComponent, getFootprintDefinition, projectFootprintPoint } from './footprints.js';
 import { getSurfaceDefinition, holeWorldPosition } from './breadboard.js';
 import { BreadboardSnapSolver } from './placement.js';
 import { layoutDirectClusterV2 } from './direct-layout-v2.js';
@@ -537,24 +537,40 @@ function mountGeneratedHelperBesideOwner(project, controller, surface, owner, li
     // breadboard island with no legal geometric endpoint.
     if (!controllerPoint) return false;
     const candidates = new Map();
+    // A helper lead must not land in a strip another part already uses, or the
+    // two nets would be shorted by the breadboard's own copper.
+    const foreignGroups = new Set(project.components
+        .filter(component => component.id !== helper.id && component.placement?.type === 'surface' &&
+            component.placement.surfaceId === surface.id)
+        .flatMap(component => Object.values(component.placement.bindings || {}))
+        .map(holeId => definition.getHole(holeId)?.electricalGroup)
+        .filter(group => group && group !== targetGroup));
 
+    const ownerHole = definition.getHole(ownerHoleId);
+    const helperFootprints = footprintsForComponent(helper.definitionId)
+        .filter(footprint => footprint.placementMode === 'breadboard-rigid');
+    const maxReach = Math.max(...helperFootprints.map(footprint => Number(footprint.leadSpan || 1))) * definition.pitch + .01;
     for (const anchorHole of definition.holes) {
         if (anchorHole.zone !== 'terminal' || !anchorHole.canOccupy) continue;
-        // Ask the generic solver for each legal orientation. Filtering by the
-        // owner strip after a single solve would otherwise hide the reversed
-        // horizontal candidate needed for a monotonic series chain.
-        for (const preferredRotation of [0, 180, 90, 270]) {
-            const candidate = solver.solve({
-                project: planningProject,
-                component: helper,
-                pointerWorld: holeWorldPosition(surface, anchorHole.id),
-                surfaceId: surface.id,
-                preferredRotation,
-                preferredFootprintId: 'axial-4',
-            });
-            if (!candidate) continue;
+        // One lead must share the owner's strip, so far-away anchors cannot work.
+        if (Math.abs(anchorHole.x - ownerHole.x) > maxReach) continue;
+        // Ask the generic solver for each legal orientation and lead span.
+        // Filtering by the owner strip (or by other parts' strips) after a
+        // single solve would otherwise hide the alternatives, such as a shorter
+        // span that fits between two neighbouring LEDs.
+        const anchorCandidates = solver.solveAll({
+            project: planningProject,
+            component: helper,
+            pointerWorld: holeWorldPosition(surface, anchorHole.id),
+            surfaceId: surface.id,
+            preferredRotation: 0,
+            preferredFootprintId: 'axial-4',
+        });
+        for (const candidate of anchorCandidates) {
             const ownerFacingHole = definition.getHole(candidate.bindings?.[link.helperOwnerRef.pinId]);
             if (ownerFacingHole?.electricalGroup !== targetGroup) continue;
+            if (Object.values(candidate.bindings).some(holeId =>
+                foreignGroups.has(definition.getHole(holeId)?.electricalGroup))) continue;
             const key = `${candidate.footprintId}:${candidate.rotation}:${JSON.stringify(candidate.bindings)}`;
             if (candidates.has(key)) continue;
             const placed = {

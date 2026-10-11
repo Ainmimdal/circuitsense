@@ -101,3 +101,40 @@ export function inspectWireNet(project, wireId) {
         .filter((ref, index, all) => all.findIndex(item => connectionRefKey(item) === connectionRefKey(ref)) === index);
     return { wireId, wireIds, terminals, contacts, label: labelFor(terminals) };
 }
+
+/**
+ * Everything electrically joined to one terminal (a pin, a hole or a wire end):
+ * the wires, the parts with a pin in the net and every breadboard hole that
+ * shares it. Used to light up a whole connection while hovering.
+ */
+export function inspectNetAt(project, ref) {
+    if (!ref) return null;
+    const graph = buildGraph(project);
+    const keys = connectedKeys(graph, connectionRefKey(ref));
+    const wireIds = (project.wires || []).filter(wire =>
+        keys.has(connectionRefKey(wire.from)) || keys.has(connectionRefKey(wire.to))).map(wire => wire.id);
+    const terminals = [];
+    for (const component of project.components || []) {
+        const footprint = getFootprintDefinition(component.footprintId);
+        for (const pin of footprint?.pins || []) {
+            if (keys.has(connectionRefKey(componentPinRef(component.id, pin.pinId)))) {
+                terminals.push({ componentId: component.id, pinId: pin.pinId });
+            }
+        }
+    }
+    const holes = [];
+    for (const surface of project.surfaces || []) {
+        for (const hole of getSurfaceDefinition(surface)?.holes || []) {
+            if (keys.has(connectionRefKey(surfaceHoleRef(surface.id, hole.id)))) holes.push({ surfaceId: surface.id, holeId: hole.id });
+        }
+    }
+    return {
+        wireIds,
+        terminals,
+        componentIds: [...new Set(terminals.map(terminal => terminal.componentId))],
+        holes,
+        label: labelFor(terminals),
+        // A lone pin or an empty strip has nothing to trace.
+        connected: wireIds.length > 0 || terminals.length > 1,
+    };
+}

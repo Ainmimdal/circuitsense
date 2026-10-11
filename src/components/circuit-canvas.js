@@ -19,7 +19,7 @@ import { createFullBreadboardSurface, createHalfBreadboardSurface, getSurfaceDef
 import { applyTransform, screenToWorld } from '../physical/geometry.js';
 import { pinExitDirection } from '../physical/routing.js';
 import { editableWirePoints, insertWireWaypoint, moveWireRouteEndpoints, moveWireSegment, moveWireWaypoint, removeWireWaypoint, translateWireRoute } from '../physical/wire-edit.js';
-import { inspectWireNet } from '../physical/net-inspector.js';
+import { inspectNetAt, inspectWireNet } from '../physical/net-inspector.js';
 import { faIcon } from '../utils/fa-icons.js';
 
 const CAMERA = Object.freeze({ pixelsPerMillimetre: 5.2, minZoom: 0.42, maxZoom: 2.5 });
@@ -108,6 +108,9 @@ class CircuitCanvas extends LitElement {
             pointer-events: none !important;
             user-select: none;
         }
+
+        .component-visual { transition: opacity 120ms ease; }
+        .component-visual.net-dimmed { opacity: .28; }
 
         .component-visual.selected .component-artwork {
             filter: drop-shadow(0 0 5px var(--primary-hover)) drop-shadow(0 0 1px var(--text));
@@ -724,6 +727,7 @@ class CircuitCanvas extends LitElement {
         this._renderBoards();
         this._renderWires();
         this._renderComponents();
+        this._applyNetHover();
         this._renderInteractionLayer();
     }
 
@@ -922,8 +926,14 @@ class CircuitCanvas extends LitElement {
                 shadowOpacity: .7,
         hitStrokeWidth: 'auto',
             });
-            line.on('mouseenter', () => { this.stage.container().style.cursor = 'pointer'; });
-            line.on('mouseleave', () => { this.stage.container().style.cursor = ''; });
+            line.on('mouseenter', () => {
+                this.stage.container().style.cursor = 'pointer';
+                this._setHoverNet(wire.from);
+            });
+            line.on('mouseleave', () => {
+                this.stage.container().style.cursor = '';
+                this._setHoverNet(this._hoverNetFallbackRef());
+            });
             line.draggable(true);
             line.on('dragstart', event => this._beginWireDrag(event, line, wire.id));
             line.on('dragmove', event => this._updateGroupDrag(event));
@@ -948,7 +958,7 @@ class CircuitCanvas extends LitElement {
             this.wireLayer.add(line);
         }
         this._refreshWireSelectionVisuals();
-        this.wireLayer.batchDraw();
+        this._applyNetHover();
     }
 
     _selectedItemCount() {
@@ -1365,6 +1375,7 @@ class CircuitCanvas extends LitElement {
             this._positionComponentVisual(component.id);
             this._queueArtworkPinCalibration(component.id);
         }
+        this._applyNetHover();
     }
 
     _fitArtworkPlacement(footprint, sourceWidth, sourceHeight, sourceBounds = null) {
@@ -1662,6 +1673,7 @@ class CircuitCanvas extends LitElement {
                 this._hoveredTerminalRef = ref;
                 this._setHoveredPinView(ref);
                 this._setVisualTerminalHover(ref, true);
+                this._setHoverNet(ref);
                 circle.setAttrs({
                     radius: 1.14,
                     fill: this._themeColor('--primary-hover'),
@@ -1691,6 +1703,7 @@ class CircuitCanvas extends LitElement {
                 this._setHoveredPinView(this._hoveredHole
                     ? surfaceHoleRef(this._hoveredHole.surfaceId, this._hoveredHole.holeId)
                     : null);
+                this._setHoverNet(this._hoverNetFallbackRef());
                 this.stage.container().style.cursor = '';
                 if (this.interaction.state.type === 'drawing-wire') this._renderInteractionLayer();
             });
@@ -1961,6 +1974,43 @@ class CircuitCanvas extends LitElement {
         this.wireLayer.batchDraw();
     }
 
+    _hoverNetFallbackRef() {
+        if (this._hoveredTerminalRef) return this._hoveredTerminalRef;
+        return this._hoveredHole ? surfaceHoleRef(this._hoveredHole.surfaceId, this._hoveredHole.holeId) : null;
+    }
+
+    /**
+     * Light up everything electrically joined to the hovered wire, pin or hole
+     * and dim the rest, so a beginner can trace one connection in a busy circuit.
+     */
+    _setHoverNet(ref) {
+        const busy = this.interaction?.state?.type !== 'idle' || this._groupDrag || this._marquee?.active || this._panning;
+        const net = ref && !busy ? inspectNetAt(this.store.project, ref) : null;
+        const next = net?.connected ? net : null;
+        const key = next ? JSON.stringify([next.wireIds, next.componentIds, next.holes.length]) : null;
+        if (key === this._hoverNetKey) return;
+        this._hoverNetKey = key;
+        this._hoverNet = next;
+        this._applyNetHover();
+        this._renderInteractionLayer();
+    }
+
+    _applyNetHover() {
+        const net = this._hoverNet;
+        const wireIds = new Set(net?.wireIds || []);
+        const componentIds = new Set(net?.componentIds || []);
+        for (const node of this.wireLayer?.getChildren() || []) {
+            const id = node.id?.() || '';
+            const wireId = id.startsWith('wire:') ? id.slice(5) : id.startsWith('wire-selection:') ? id.slice(15) : null;
+            if (wireId === null) continue;
+            node.opacity(!net || wireIds.has(wireId) ? 1 : .16);
+        }
+        this.wireLayer?.batchDraw();
+        for (const wrapper of this.visualLayer?.children || []) {
+            wrapper.classList.toggle('net-dimmed', Boolean(net) && !componentIds.has(wrapper.dataset.componentId));
+        }
+    }
+
     _renderInteractionLayer() {
         if (!this.interactionLayer) return;
         this.interactionLayer.destroyChildren();
@@ -1983,6 +2033,15 @@ class CircuitCanvas extends LitElement {
                 stroke: selectionColor, strokeWidth: .42 / this.camera.zoom, dash: [1.4, .8],
                 listening: false,
             }));
+        }
+        if (this._hoverNet) {
+            const netColor = this._themeColor('--primary');
+            for (const hole of this._hoverNet.holes) {
+                const surface = this.store.project.surfaces.find(item => item.id === hole.surfaceId);
+                const point = surface && holeWorldPosition(surface, hole.holeId);
+                if (!point) continue;
+                this.interactionLayer.add(new Konva.Circle({ x: point.x, y: point.y, radius: .95, fill: netColor, opacity: .42, listening: false }));
+            }
         }
         if (this._hoveredHole) {
             const surface = this.store.project.surfaces.find(item => item.id === this._hoveredHole.surfaceId);
@@ -2071,12 +2130,14 @@ class CircuitCanvas extends LitElement {
             this._setHoveredPinView(nextHover
                 ? surfaceHoleRef(nextHover.surfaceId, nextHover.holeId)
                 : null);
+            this._setHoverNet(this._hoverNetFallbackRef());
         }
         if (changed || this.interaction.state.type === 'drawing-wire') this._renderInteractionLayer();
         this.stage.container().style.cursor = nextHover || this._hoveredTerminalRef ? 'crosshair' : '';
     }
 
     _onStageDown(event) {
+        this._setHoverNet(null);
         const button = event.evt?.button;
         if (button === 1) {
             event.evt.preventDefault();

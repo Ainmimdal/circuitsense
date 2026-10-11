@@ -18,7 +18,8 @@ import {
 } from '../src/physical/model.js';
 import { defaultFootprintForComponent } from '../src/physical/footprints.js';
 import { validatePhysicalProject } from '../src/physical/validation.js';
-import { autoWirePhysicalStore } from '../src/physical/automation.js';
+import { autoLayoutPhysicalStore, autoWirePhysicalStore } from '../src/physical/automation.js';
+import { inspectNetAt } from '../src/physical/net-inspector.js';
 import { realizeAutoWireConnections } from '../src/physical/breadboard-auto-wire.js';
 
 const BOARDS = [HALF_BREADBOARD_DEFINITION, FULL_BREADBOARD_DEFINITION];
@@ -288,4 +289,42 @@ test('separate supply nets claim separate rails and reuse rails already wired by
         'the hand-wired ground rail is reused instead of adding a second feeder');
     const groundJumper = result.wires.find(wire => wire.properties.logicalTerminals.some(ref => ref.pinId === 'GND.2'));
     assert.equal(holeOf([groundJumper.from, groundJumper.to].find(ref => holeOf(ref)?.zone === 'rail')).electricalGroup, 'rail-BN');
+});
+
+test('hovering any terminal traces its whole connection, including strips and rails', () => {
+    const { surface, components } = mountedLedScene();
+    const { store } = boardProject({ surface, components });
+    autoWirePhysicalStore(store, { preferences: { autoWireLedResistors: true } });
+
+    const net = inspectNetAt(store.project, surfaceHoleRef(surface.id, 'TN20'));
+    assert.equal(net.connected, true);
+    assert.ok(['led0', 'led1', 'led2', 'uno'].every(id => net.componentIds.includes(id)), 'ground reaches every LED and the Uno');
+    assert.equal(net.componentIds.some(id => id.startsWith('generated-resistor')), false, 'series resistors are not on ground');
+    const holes = new Set(net.holes.map(hole => hole.holeId));
+    assert.ok(holes.has('TN1') && holes.has('TN25'), 'the whole rail lights up');
+    assert.ok(holes.has('A5') && holes.has('E5'), 'the cathode strip lights up');
+    assert.equal(holes.has('C6'), false, 'the anode strip is a different net');
+
+    const lonely = inspectNetAt(store.project, surfaceHoleRef(surface.id, 'J30'));
+    assert.equal(lonely.connected, false, 'an empty strip has nothing to trace');
+});
+
+test('Auto Layout fits series resistors between LEDs placed close together', () => {
+    const surface = createHalfBreadboardSurface();
+    const uno = part('uno', 'arduino-uno', 140, 20);
+    const leds = [0, 1, 2].map(index => {
+        const led = part(`led${index}`, 'led');
+        led.placement = {
+            type: 'surface', surfaceId: surface.id, rotation: 0,
+            bindings: { C: `C${3 + index * 5}`, A: `C${4 + index * 5}` },
+        };
+        return led;
+    });
+    const { store } = boardProject({ surface, components: [uno, ...leds] });
+    const result = autoLayoutPhysicalStore(store);
+    assert.equal(result.status, 'success', JSON.stringify(result.diagnostics));
+    const helpers = store.project.components.filter(component => component.definitionId === 'resistor');
+    assert.equal(helpers.length, 3);
+    assert.ok(helpers.every(helper => helper.placement.type === 'surface'), 'every resistor is plugged in');
+    assert.deepEqual(validatePhysicalProject(store.project).errors, []);
 });

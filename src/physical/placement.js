@@ -151,13 +151,18 @@ export class BreadboardSnapSolver {
         this.acquisitionRadius = acquisitionRadius;
     }
 
-    solve({ project, component, pointerWorld, surfaceId, preferredRotation, preferredFootprintId = null } = {}) {
+    solve(options = {}) {
+        return this.solveAll(options)[0] || null;
+    }
+
+    /** Every legal placement near the pointer, best first. */
+    solveAll({ project, component, pointerWorld, surfaceId, preferredRotation, preferredFootprintId = null } = {}) {
         const surface = (project?.surfaces || []).find(item => item.id === surfaceId);
         const definition = getSurfaceDefinition(surface);
         const currentFootprint = getFootprintDefinition(component?.footprintId);
         const footprints = footprintsForComponent(component?.definitionId)
             .filter(footprint => footprint.placementMode === 'breadboard-rigid');
-        if (!surface || !definition || !currentFootprint || !footprints.length) return null;
+        if (!surface || !definition || !currentFootprint || !footprints.length) return [];
 
         const requestedFootprintId = preferredFootprintId || component.footprintId;
         const resolvedPreferredFootprintId = footprints.some(footprint => footprint.id === requestedFootprintId)
@@ -227,7 +232,7 @@ export class BreadboardSnapSolver {
 
         candidates.sort((a, b) => a.score - b.score ||
             a.anchorHoleId.localeCompare(b.anchorHoleId, undefined, { numeric: true }) || a.rotation - b.rotation);
-        return candidates[0] || null;
+        return candidates;
     }
 
     validateCandidate(project, component, candidate) {
