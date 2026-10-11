@@ -16,6 +16,19 @@ export const PIN_CAPABILITY = Object.freeze({
 
 export const PIN_CAPABILITY_VALUES = Object.freeze(Object.values(PIN_CAPABILITY));
 
+/**
+ * Voltage of a controller supply pin, read from its name ("5V", "3.3V",
+ * "3V3"). Pins without a voltage in the name (VCC.1) use `fallback`.
+ */
+export function supplyPinVoltage(pinId, fallback = null) {
+    const name = String(pinId).toUpperCase();
+    const plain = name.match(/^(\d+(?:\.\d+)?)V$/);
+    if (plain) return Number(plain[1]);
+    const split = name.match(/^(\d+)V(\d+)$/);
+    if (split) return Number(`${split[1]}.${split[2]}`);
+    return Number.isFinite(Number(fallback)) && fallback !== null ? Number(fallback) : null;
+}
+
 function unique(values) {
     return [...new Set(values.filter(Boolean).map(String))];
 }

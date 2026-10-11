@@ -169,13 +169,14 @@ test('duplicate-pin flags two point-to-point devices on one controller pin', () 
 });
 
 test('duplicate-pin allows a shared I2C bus and a pull resistor on a signal pin', () => {
-    const components = [part('uno', 'arduino-uno'), part('lcd1', 'lcd1602'), part('lcd2', 'lcd1602'),
+    // Different addresses (0x27 and 0x3C) so the bus itself is legal.
+    const components = [part('uno', 'arduino-uno'), part('lcd', 'lcd1602'), part('oled', 'ssd1306'),
         part('btn', 'pushbutton'), part('pull', 'resistor')];
     const wires = connect(
-        [['lcd1', 'SDA'], ['uno', 'A4']], [['lcd1', 'SCL'], ['uno', 'A5']],
-        [['lcd2', 'SDA'], ['uno', 'A4']], [['lcd2', 'SCL'], ['uno', 'A5']],
-        [['lcd1', 'VCC'], ['uno', '5V']], [['lcd2', 'VCC'], ['uno', '5V']],
-        [['lcd1', 'GND'], ['uno', 'GND.1']], [['lcd2', 'GND'], ['uno', 'GND.1']],
+        [['lcd', 'SDA'], ['uno', 'A4']], [['lcd', 'SCL'], ['uno', 'A5']],
+        [['oled', 'DATA'], ['uno', 'A4']], [['oled', 'CLK'], ['uno', 'A5']],
+        [['lcd', 'VCC'], ['uno', '5V']], [['oled', 'VIN'], ['uno', '5V']],
+        [['lcd', 'GND'], ['uno', 'GND.1']], [['oled', 'GND'], ['uno', 'GND.1']],
         [['btn', '1.l'], ['uno', '2']], [['pull', '1'], ['uno', '2']], [['pull', '2'], ['uno', 'GND.2']],
         [['btn', '2.l'], ['uno', '5V']]);
     const result = findings(project({ components, wires }));
@@ -268,4 +269,156 @@ test('electrical finding ids are unique within one result', () => {
     const wires = connect([['btn', '1.l'], ['uno', '0']], [['led1', 'A'], ['uno', '0']], [['led2', 'A'], ['uno', '0']]);
     const result = ids(project({ components, wires }));
     assert.equal(new Set(result).size, result.length);
+});
+
+// ─── Checks added after the legacy port ───────────────
+
+test('io-short flags an I/O pin wired straight to ground or power', () => {
+    const toGround = byId(project({ components: [part('uno', 'arduino-uno')], wires: connect([['uno', '13'], ['uno', 'GND.1']]) }),
+        'io-short:uno:13');
+    assert.equal(toGround?.severity, 'error');
+    assert.match(toGround.message, /outputs HIGH/);
+    const toPower = byId(project({ components: [part('uno', 'arduino-uno')], wires: connect([['uno', '13'], ['uno', '5V']]) }),
+        'io-short:uno:13');
+    assert.match(toPower?.message, /outputs LOW/);
+});
+
+test('io-tied warns about two pins of one controller wired together but not across controllers', () => {
+    assert.equal(byId(project({ components: [part('uno', 'arduino-uno')], wires: connect([['uno', '12'], ['uno', '13']]) }),
+        'io-tied:uno:12+13')?.severity, 'warning');
+    // UART between two boards is legal.
+    const link = ids(project({
+        components: [part('uno', 'arduino-uno'), part('esp', 'esp32-devkit-v1')],
+        wires: connect([['uno', '2'], ['esp', 'D13']]),
+    }));
+    assert.ok(!link.some(id => id.startsWith('io-tied:')));
+});
+
+test('switch-short flags a button bridging 5V and GND, not normal input wiring', () => {
+    const short = byId(project({
+        components: [part('uno', 'arduino-uno'), part('btn', 'pushbutton')],
+        wires: connect([['btn', '1.l'], ['uno', '5V']], [['btn', '2.l'], ['uno', 'GND.1']]),
+    }), 'switch-short:btn:1.l+2.l');
+    assert.equal(short?.severity, 'error');
+    // Auto Wire's slide switch: 1 to 5V, 2 to the input pin, 3 to GND never shorts.
+    const slide = ids(project({
+        components: [part('uno', 'arduino-uno'), part('sw', 'slide-switch')],
+        wires: connect([['sw', '1'], ['uno', '5V']], [['sw', '2'], ['uno', '7']], [['sw', '3'], ['uno', 'GND.1']]),
+    }));
+    assert.ok(!slide.some(id => id.startsWith('switch-short:')));
+});
+
+test('led-reversed flags an anode that goes to ground, looking through the resistor', () => {
+    const reversed = byId(project({
+        components: [part('uno', 'arduino-uno'), part('led', 'led'), part('r1', 'resistor')],
+        wires: connect([['uno', '13'], ['r1', '1']], [['r1', '2'], ['led', 'C']], [['led', 'A'], ['uno', 'GND.1']]),
+    }), 'led-reversed:led');
+    assert.equal(reversed?.severity, 'error');
+    assert.ok(!ids(ledCircuit()).includes('led-reversed:led'));
+    assert.ok(!ids(ledCircuit({ resistorOn: 'cathode' })).includes('led-reversed:led'));
+});
+
+test('led-current grades the series resistor against the LED and pin limits', () => {
+    const withResistor = value => {
+        const input = ledCircuit();
+        input.components.find(item => item.id === 'r1').properties.value = value;
+        return input;
+    };
+    // Red LED at 5 V: (5 - 2) / R.
+    assert.equal(byId(withResistor(10), 'led-current:led')?.severity, 'error', '300 mA exceeds the 40 mA pin limit');
+    assert.equal(byId(withResistor(100), 'led-current:led')?.severity, 'warning', '30 mA overdrives the LED');
+    assert.equal(byId(withResistor('10k'), 'led-current:led')?.severity, 'info', '0.3 mA is very dim');
+    assert.ok(!ids(withResistor(220)).includes('led-current:led'));
+    assert.ok(!ids(withResistor('330')).includes('led-current:led'));
+    assert.match(byId(withResistor(10), 'led-current:led').message, /300 mA through 10 Ω/);
+});
+
+test('i2c-address-conflict flags two devices with one address on a bus', () => {
+    const components = [part('uno', 'arduino-uno'), part('rtc', 'ds1307'), part('imu', 'mpu6050')];
+    const wires = connect(
+        [['rtc', 'SDA'], ['uno', 'A4']], [['rtc', 'SCL'], ['uno', 'A5']], [['rtc', '5V'], ['uno', '5V']], [['rtc', 'GND'], ['uno', 'GND.1']],
+        [['imu', 'SDA'], ['uno', 'A4']], [['imu', 'SCL'], ['uno', 'A5']], [['imu', 'VCC'], ['uno', '5V']], [['imu', 'GND'], ['uno', 'GND.1']]);
+    const conflict = byId(project({ components, wires }), 'i2c-address-conflict:0x68:imu+rtc');
+    assert.equal(conflict?.severity, 'warning');
+    // A per-instance address override (for example MPU6050 AD0 high) clears it.
+    components.find(item => item.id === 'imu').properties.i2cAddress = 0x69;
+    assert.ok(!ids(project({ components, wires })).some(id => id.startsWith('i2c-address-conflict:')));
+});
+
+test('shorted-pins flags a part whose two legs share a net', () => {
+    const resistor = byId(project({
+        components: [part('uno', 'arduino-uno'), part('r1', 'resistor')],
+        wires: connect([['r1', '1'], ['uno', '13']], [['r1', '2'], ['uno', '13']]),
+    }), 'shorted-pins:r1:1+2');
+    assert.equal(resistor?.severity, 'warning');
+    // A push button's internally joined legs are not a short; opposite legs are.
+    const button = ids(project({
+        components: [part('uno', 'arduino-uno'), part('btn', 'pushbutton')],
+        wires: connect([['btn', '1.l'], ['uno', '2']], [['btn', '1.r'], ['uno', '2']], [['btn', '2.l'], ['uno', 'GND.1']]),
+    }));
+    assert.ok(!button.some(id => id.startsWith('shorted-pins:')));
+});
+
+test('under-voltage and signal-over-voltage catch 5 V parts on 3.3 V boards', () => {
+    const starved = byId(project({
+        components: [part('esp', 'esp32-devkit-v1'), part('sonar', 'hc-sr04')],
+        wires: connect([['sonar', 'VCC'], ['esp', '3V3']], [['sonar', 'GND'], ['esp', 'GND.1']],
+            [['sonar', 'TRIG'], ['esp', 'D18']], [['sonar', 'ECHO'], ['esp', 'D19']]),
+    }), 'under-voltage:sonar');
+    assert.equal(starved?.severity, 'warning');
+    assert.match(starved.message, /4.5 to 5.5 V but gets 3.3 V/);
+
+    // Powered from an Uno's 5 V, the sensor's ECHO output reaches a 3.3 V ESP32 input.
+    const level = findings(project({
+        components: [part('uno', 'arduino-uno'), part('esp', 'esp32-devkit-v1'), part('sonar', 'hc-sr04')],
+        wires: connect([['sonar', 'VCC'], ['uno', '5V']], [['sonar', 'GND'], ['uno', 'GND.1']], [['uno', 'GND.2'], ['esp', 'GND.1']],
+            [['sonar', 'TRIG'], ['esp', 'D18']], [['sonar', 'ECHO'], ['esp', 'D19']]),
+    }));
+    assert.equal(level.find(item => item.id === 'signal-over-voltage:sonar:ECHO')?.severity, 'error');
+    assert.ok(!level.some(item => item.id === 'signal-over-voltage:sonar:TRIG'), 'TRIG is an input to the sensor');
+    assert.ok(!level.some(item => item.id.startsWith('under-voltage:')));
+
+    // The same sensor on an Uno is fine.
+    const uno = ids(project({
+        components: [part('uno', 'arduino-uno'), part('sonar', 'hc-sr04')],
+        wires: connect([['sonar', 'VCC'], ['uno', '5V']], [['sonar', 'GND'], ['uno', 'GND.1']],
+            [['sonar', 'TRIG'], ['uno', '7']], [['sonar', 'ECHO'], ['uno', '8']]),
+    }));
+    assert.ok(!uno.some(id => /^(under-voltage|signal-over-voltage):/.test(id)));
+});
+
+test('needs-driver flags relay and stepper coils on controller pins', () => {
+    const relay = byId(project({
+        components: [part('uno', 'arduino-uno'), part('k1', 'relay-dpdt')],
+        wires: connect([['k1', 'COIL1'], ['uno', '7']], [['k1', 'COIL2'], ['uno', 'GND.1']]),
+    }), 'needs-driver:k1');
+    assert.equal(relay?.severity, 'error');
+    assert.match(relay.message, /transistor with a flyback diode/);
+
+    const stepper = byId(project({
+        components: [part('uno', 'arduino-uno'), part('m1', 'stepper-motor')],
+        wires: connect([['m1', 'A-'], ['uno', '8']], [['m1', 'A+'], ['uno', '9']], [['m1', 'B+'], ['uno', '10']], [['m1', 'B-'], ['uno', '11']]),
+    }), 'needs-driver:m1');
+    assert.match(stepper?.message, /stepper driver/);
+});
+
+test('floating-pin ignores undeclared terminals such as spare relay contacts', () => {
+    const result = ids(project({
+        components: [part('uno', 'arduino-uno'), part('k1', 'relay-dpdt')],
+        wires: connect([['k1', 'COIL1'], ['uno', '5V']], [['k1', 'COIL2'], ['uno', 'GND.1']]),
+    }));
+    assert.ok(!result.some(id => id.startsWith('floating-pin:k1')));
+});
+
+test('floating-pin joins the large push button legs through its declared pin groups', () => {
+    const result = ids(project({
+        components: [part('uno', 'arduino-uno'), part('btn', 'pushbutton-large')],
+        wires: connect([['btn', '1.l'], ['uno', '2']], [['btn', '2.l'], ['uno', 'GND.1']]),
+    }));
+    assert.ok(!result.some(id => id.startsWith('floating-pin:btn')));
+});
+
+test('supply-conflict allows two supply pins at the same voltage', () => {
+    const result = ids(project({ components: [part('mcu', 'franzininho')], wires: connect([['mcu', 'VCC.1'], ['mcu', 'VCC.2']]) }));
+    assert.ok(!result.some(id => id.startsWith('supply-conflict:')));
 });

@@ -12,7 +12,7 @@ The hand-written flowcharts after the generated block were drawn for the legacy 
 
 <!-- engine-doc-sync:start -->
 > Generated from `ENGINE_CONTRACT.md` by `npm run docs:sync`. Do not edit this block.
-> Contract fingerprint: `4a2a9443ffbb`
+> Contract fingerprint: `a5bcfe3132a6`
 
 ## Contract-synchronized command pipeline
 
@@ -130,9 +130,9 @@ flowchart LR
 - **VAL-01 — Read-only layers.** Logical checks read source logical wires. Physical checks read contacts, placements and renderable physical conductors. Validation never substitutes one layer for the other or mutates either.
 - **VAL-02 — Structured result.** Return `{ errors, warnings, info, all }`. Each finding has a stable `id`, `severity`, actionable `message` and optional `instanceId`, `pinName` and `relatedIds`.
 - **VAL-03 — Severity.** Error means electrically unsafe or impossible; warning means likely incorrect or risky; info means optional guidance. Layout aesthetics alone are not electrical errors.
-- **VAL-04 — Logical checks.** Detect no board, missing LED resistor, current overload/high current, illegal duplicate signal-pin use, serial-pin conflicts, missing VCC/GND, wrong I2C pins, unconnected components and floating required pins.
+- **VAL-04 — Logical checks.** Detect no board, missing LED resistor, current overload/high current, illegal duplicate signal-pin use, serial-pin conflicts, missing VCC/GND, wrong I2C pins, unconnected components and floating required pins. Also detect controller I/O pins shorted to a supply or to each other, switch contacts that bridge power and ground, reversed LEDs, LED current outside safe limits for the series resistor, a part's own terminals sharing a net, 5 V parts on a 3.3 V supply or driving 3.3 V inputs, and coils (relays, stepper motors) driven straight from a pin. Electrical limits come from metadata (`supplyVoltage`, `i2cAddress`, `switchContacts`, `needsDriver` on the part; capabilities, constraints and current limits in the board pin table), never from hard-coded part IDs.
 - **VAL-05 — Breadboard checks.** Detect missing/useful board guidance, insufficient capacity, unknown holes, occupied holes, placement overlap, incompatible or illegal footprints, disconnected mounted contacts and power-to-ground shorts.
-- **VAL-06 — Bus awareness.** Shared protocols and supply domains may legally have multiple endpoints. Duplicate-pin validation distinguishes a bus from accidentally assigning unrelated point-to-point signals to one Arduino pin.
+- **VAL-06 — Bus awareness.** Shared protocols and supply domains may legally have multiple endpoints. Duplicate-pin validation distinguishes a bus from accidentally assigning unrelated point-to-point signals to one Arduino pin. Devices on one I2C bus must have distinct addresses.
 - **VAL-07 — Postcondition gate.** A newly planned physical result cannot be committed with a new error-level short, overlap, illegal footprint, invalid hole or disconnected required endpoint.
 - **VAL-08 — Exact controller-pin compatibility.** An exact-pin mutation derives the ordinary endpoint's required role from component metadata, checks the selected controller pin's capabilities/constraints, rejects hard incompatibilities transactionally, and returns non-fatal pin concerns as warnings.
 
@@ -185,9 +185,9 @@ flowchart LR
 | `CL-08` | Route-only operations preserve existing semantic nets | `src/ai/tools.js`, `src/physical/routing.js` | `test/ai-agent.test.js`, `test/physical-interaction.test.js` |
 | `CL-09` | Unrelated automatic wires route around breadboard bodies | `src/physical/routing.js` | `test/physical-core.test.js` |
 | `VAL-01` | Validation distinguishes logical and physical views | `src/services/validation-engine.js` | `test/project-schema.test.js`, `test/breadboard-layout.test.js` |
-| `VAL-04` | Logical checks report shorts, current, pin capability, serial, duplicate-pin, supply and floating-pin findings on the live project | `src/physical/electrical-validation.js`, `src/physical/validation.js` | `test/physical-electrical-validation.test.js` |
+| `VAL-04` | Logical checks report shorts, current, voltage, coil-driver, LED polarity/current, pin capability, serial, duplicate-pin, supply and floating-pin findings on the live project | `src/physical/electrical-validation.js`, `src/physical/validation.js` | `test/physical-electrical-validation.test.js` |
 | `VAL-05` | Breadboard legality produces validation findings | `src/physical/validation.js`, `src/services/validation-engine.js` | `test/physical-core.test.js`, `test/physical-electrical-validation.test.js`, `test/breadboard-layout.test.js`, `test/breadboard-planner.test.js` |
-| `VAL-06` | Shared I2C buses and pull resistors are not duplicate pin use | `src/physical/electrical-validation.js` | `test/physical-electrical-validation.test.js` |
+| `VAL-06` | Shared I2C buses and pull resistors are not duplicate pin use; clashing I2C addresses are | `src/physical/electrical-validation.js` | `test/physical-electrical-validation.test.js` |
 | `VAL-08` | Exact controller-pin mutations enforce metadata capabilities transactionally | `src/core/pin-capabilities.js`, `src/ai/tools.js` | `test/ai-agent.test.js` |
 | `INT-01` | Selection and registration cannot move parts | `src/components/placed-component.js`, `src/store.js` | `test/breadboard-layout.test.js` |
 | `INT-03` | Mounted edits rebuild atomically or roll back | `src/components/placed-component.js`, `src/services/breadboard-service.js` | `test/rebuild-integration.test.js`, `test/breadboard-layout.test.js` |

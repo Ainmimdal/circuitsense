@@ -44,7 +44,7 @@ The **legacy schema-v2 engine** (`src/store.js`, `src/services/*`, `src/componen
 
 ### Automation
 
-- **Auto Wire** (`autoWirePhysicalStore`) reuses the metadata-driven `planAutoWire` planner: compatible and nearest-header pin assignment, shared supply nets, deterministic LED resistors, multiple controllers with stable ownership and independent pin budgets. On breadboards it collapses fixed copper and adds only the missing jumpers on unique free sockets. It never moves parts, and a failed scope leaves the project unchanged.
+- **Auto Wire** (`autoWirePhysicalStore`) reuses the metadata-driven `planAutoWire` planner: compatible and nearest-header pin assignment (pins with serial, boot-strap or input-only constraints only when nothing else is free), a supply rail inside the part's voltage range when that is safe for the board's logic level, shared supply nets, deterministic LED resistors, multiple controllers with stable ownership and independent pin budgets. On breadboards it collapses fixed copper and adds only the missing jumpers on unique free sockets. It never moves parts, and a failed scope leaves the project unchanged.
 - **Auto Layout** (`autoLayoutPhysicalStore`) runs Auto Wire, arranges components (direct scenes via `direct-layout-v2.js`, breadboard scenes as rigid board clusters with header affinity, one cluster per controller), then routes, all as one undo step. Free components stay outside board bodies; only a generated series resistor may be mounted beside its mounted owner.
 - **Clean** and **Reset wires** both return every wire to automatic routing; Clean waits for the routing worker to settle. Routes are orthogonal, scored for length, bends, crossings, obstacles and fan-out, and treat unrelated breadboard bodies as keepouts.
 - All six built-in MCUs (Uno, Mega, Nano, ESP32 DevKit v1, Franzininho, Nano RP2040 Connect) have Auto Wire pin profiles.
@@ -54,9 +54,14 @@ The **legacy schema-v2 engine** (`src/store.js`, `src/services/*`, `src/componen
 The validation bar runs `validatePhysicalProject` (`src/physical/validation.js`) on every change. Findings come in two groups.
 
 - **Physical checks:** missing footprint, illegal placement, hole collisions, broken or self-looping wires, invalid wire holes, incomplete intended nets, two nets sharing breadboard copper, redundant generated jumpers, no controller, and an empty project.
-- **Electrical checks** (`src/physical/electrical-validation.js`, ported from the legacy engine): power-to-ground shorts and tied supply pins, the controller's total current budget, signal pins that lack a needed capability (PWM, analog, output, the board's I2C SDA/SCL), serial and boot-strap pin conflicts, two devices on one I/O pin, missing or reversed VCC/GND, supply pins that never reach a controller supply, floating signal pins, unconnected parts, LEDs without a series resistor, and a hint when parts need a breadboard but the scene has none.
+- **Electrical checks** (`src/physical/electrical-validation.js`, ported from the legacy engine and extended):
+  - shorts: power to ground, tied supply pins of different voltages, an I/O pin wired straight to a supply or to another pin of the same board, and a switch that bridges power and ground when pressed;
+  - power: the controller's total current budget, 5 V parts on a 3.3 V supply, a 5 V part's output driving a 3.3 V input, and relay or stepper coils driven straight from a pin;
+  - pins: signal pins that lack a needed capability (PWM, analog, output, the board's I2C SDA/SCL), serial and boot-strap pin conflicts, two devices on one I/O pin, two I2C devices with the same address, and a part whose own legs share a net;
+  - LEDs: no series resistor, reversed polarity, and current too high or too low for the resistor value;
+  - wiring completeness: missing or reversed VCC/GND, supply pins that never reach a controller supply, floating signal pins, unconnected parts, and a hint when parts need a breadboard but the scene has none.
 
-The electrical checks read the resolved connectivity graph, so a connection through breadboard strips, rails (including the split rails of the 830-point board) or a part's internal net counts the same as a jumper. Several devices on the board's I2C pins are a legal shared bus, and a resistor sharing a signal pin is not a second device. Controller capabilities, constraints and current limits come from the board pin tables in `src/boards/`. Incomplete wiring is reported as warnings or info, never errors, so the AI assistant's one-connection-at-a-time edits are not rejected for being unfinished.
+The electrical checks read the resolved connectivity graph, so a connection through breadboard strips, rails (including the split rails of the 830-point board) or a part's internal net counts the same as a jumper. Several devices on the board's I2C pins are a legal shared bus, and a resistor sharing a signal pin is not a second device. Controller capabilities, constraints and current limits come from the board pin tables in `src/boards/`; part limits come from catalog metadata (`supplyVoltage`, `i2cAddress`, `switchContacts`, `needsDriver`). Incomplete wiring is reported as warnings or info, never errors, so the AI assistant's one-connection-at-a-time edits are not rejected for being unfinished.
 
 ### AI assistant
 
@@ -82,10 +87,11 @@ The electrical checks read the resolved connectivity graph, so a connection thro
 Gap definitions and exit conditions live in [ENGINE_CONTRACT.md](ENGINE_CONTRACT.md#known-contract-drift). `GAP-01`, `GAP-02`, `GAP-04`, `GAP-05`, `GAP-08` and `GAP-09` are closed: the live validator now runs the logical checks with shared-bus awareness and per-board hole lookup.
 
 1. **P0, test suite:** fix the failing waypoint insertion test in `test/physical-wire-edit.test.js`.
-2. **P1, capacity alternatives:** when a scene does not fit, live Auto Layout fails without offering a proven larger or additional board (`GAP-10`).
-3. **P1, command completion:** decide the Auto Wire route-dirty versus baseline-routing behavior (`GAP-03`).
-4. **P1, regression depth:** one focused fixture per remaining physical validation finding (`GAP-06`; the electrical findings have them in `test/physical-electrical-validation.test.js`) and an automated browser fixture for the mixed circuit (`GAP-07`).
-5. **P2, cleanup and performance:** retire the legacy engine once its tests are ported to `src/physical/`, re-point the contract registry, profile dense breadboard scenes and split the production bundle.
+2. **P1, board data:** the ESP32 DevKit table has no `VIN`/5 V pin, so 5 V parts on it can only be powered from 3V3 and always show `under-voltage`.
+3. **P1, capacity alternatives:** when a scene does not fit, live Auto Layout fails without offering a proven larger or additional board (`GAP-10`).
+4. **P1, command completion:** decide the Auto Wire route-dirty versus baseline-routing behavior (`GAP-03`).
+5. **P1, regression depth:** one focused fixture per remaining physical validation finding (`GAP-06`; the electrical findings have them in `test/physical-electrical-validation.test.js`) and an automated browser fixture for the mixed circuit (`GAP-07`).
+6. **P2, cleanup and performance:** retire the legacy engine once its tests are ported to `src/physical/`, re-point the contract registry, profile dense breadboard scenes and split the production bundle.
 
 For every engine change, name the affected contract rule, add the failing test first, and keep the command mutation boundaries.
 

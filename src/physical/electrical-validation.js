@@ -14,7 +14,10 @@
  */
 
 import { getComponentDef, PIN } from '../component-library.js';
-import { pinCompatibility, PIN_CAPABILITY } from '../core/pin-capabilities.js';
+import {
+    pinCompatibility, PIN_CAPABILITY, requiredControllerCapabilities, supplyPinVoltage,
+} from '../core/pin-capabilities.js';
+import { canonicalLedColor, LED_COLOR_PROFILES } from '../core/led-resistor.js';
 import { componentPinRef, connectionRefKey } from './model.js';
 import { getFootprintDefinition } from './footprints.js';
 
@@ -26,6 +29,19 @@ const SUPPLY_ROLES = new Set([PIN.VCC, PIN.GND]);
 // Pins that are optional by design and never reported as floating.
 const OPTIONAL_PINS = new Set(['NC', 'DOUT']);
 const CURRENT_HIGH_RATIO = 0.8;
+// LED current thresholds (mA): above the warning level the LED is overdriven;
+// below the dim level it barely lights.
+const LED_CURRENT_WARNING_mA = 25;
+const LED_CURRENT_DIM_mA = 1;
+// A supply is treated as above a 3.3 V board's logic level beyond this margin.
+const LOGIC_VOLTAGE_MARGIN = 0.5;
+
+const DRIVER_MESSAGES = Object.freeze({
+    relay: (part, pin, board, boardPin) =>
+        `${part} coil ${pin} is wired straight to ${board} pin ${boardPin}. A pin cannot power a relay coil, and the coil's voltage spike can damage the board. Drive it through a transistor with a flyback diode, or use a relay module.`,
+    stepper: (part, pin, board, boardPin) =>
+        `${part} coil ${pin} is wired straight to ${board} pin ${boardPin}. Pins cannot drive motor coils; connect the motor through a stepper driver such as a ULN2003 or A4988.`,
+});
 
 const CONSTRAINT_MESSAGES = Object.freeze({
     serial_reserved: (board, pin, part) =>
@@ -112,6 +128,69 @@ function isGroundPin(member) {
 
 function hasSeriesResistor(members, componentId) {
     return otherComponents(members, componentId).some(member => member.component.definitionId === 'resistor');
+}
+
+function isIoPin(member) {
+    return isController(member.definition) && !isPowerPin(member) && !isGroundPin(member);
+}
+
+function boardName(member) {
+    return member.definition.name || member.component.definitionId;
+}
+
+function supplyVoltageOf(member) {
+    return supplyPinVoltage(member.pinId, member.definition.autoWirePins.logicVoltage);
+}
+
+function logicVoltage(member) {
+    return Number(member.definition.autoWirePins.logicVoltage) || null;
+}
+
+/** Resistance in ohms from a resistor's value property ("220", "4.7k", 1000). */
+function resistorOhms(component) {
+    const raw = component.properties?.value ?? getComponentDef(component.definitionId)?.attrs?.value;
+    const match = String(raw ?? '').trim().match(/^(\d+(?:\.\d+)?)\s*([kKmM]?)/);
+    if (!match) return null;
+    const scale = { '': 1, k: 1e3, K: 1e3, m: 1e6, M: 1e6 }[match[2]];
+    const ohms = Number(match[1]) * scale;
+    return ohms > 0 ? ohms : null;
+}
+
+/** Pin groups a part joins internally (a push button's two legs on one side). */
+function internalGroups(component) {
+    const footprint = getFootprintDefinition(component.footprintId);
+    const groups = footprint?.internalNets?.length
+        ? footprint.internalNets.map(net => net.pins || [])
+        : getComponentDef(component.definitionId)?.pinGroups || [];
+    return groups.map(pins => new Set(pins.map(String)));
+}
+
+/**
+ * Members on a pin's net plus, through each series resistor on that net, the
+ * members on the resistor's far side. Returns the resistors crossed too.
+ */
+function throughResistors(index, component, pinId) {
+    const direct = index.pinsWith(component, pinId);
+    const resistors = new Map();
+    const reached = [...direct];
+    for (const member of otherComponents(direct, component.id)) {
+        if (member.component.definitionId !== 'resistor' || resistors.has(member.component.id)) continue;
+        resistors.set(member.component.id, member.component);
+        const farPin = componentPinIds(member.component).find(id => id !== member.pinId);
+        if (farPin) reached.push(...index.pinsWith(member.component, farPin));
+    }
+    return { direct, reached, resistors: [...resistors.values()] };
+}
+
+/** Supply voltage a part's VCC pins receive from controller supply pins, or null. */
+function partSupplyVoltage(component, index) {
+    const definition = getComponentDef(component.definitionId);
+    const voltages = componentPinIds(component)
+        .filter(pinId => electricalRole(definition, pinId) === PIN.VCC)
+        .flatMap(pinId => controllerPinsIn(index.pinsWith(component, pinId)).filter(isPowerPin))
+        .map(supplyVoltageOf)
+        .filter(Number.isFinite);
+    return voltages.length ? Math.max(...voltages) : null;
 }
 
 // ─── Rules ─────────────────────────────────────────────
@@ -247,9 +326,10 @@ function ruleSupplyShorts(project, index, results) {
                 power[0].component.id, 'fire', { pinName: power[0].pinId }));
             continue;
         }
+        // Two rails at the same voltage (Franzininho VCC.1/VCC.2) may be joined.
         const distinctSupplies = new Map(power.map(member => [`${member.component.id}:${member.pinId}`, member]));
         const sameBoardSupplies = [...distinctSupplies.values()].filter(member => member.component.id === power[0]?.component.id);
-        if (sameBoardSupplies.length > 1) {
+        if (new Set(sameBoardSupplies.map(supplyVoltageOf)).size > 1) {
             const names = sameBoardSupplies.map(member => member.pinId).join(' and ');
             results.push(issue(`supply-conflict:${power[0].component.id}:${sameBoardSupplies.map(member => member.pinId).sort().join('+')}`,
                 SEV.ERROR, `${power[0].definition.name} supply pins ${names} are connected together.`,
@@ -311,7 +391,9 @@ function ruleUnconnectedAndFloating(project, index, results) {
         }
         if (isPassive(definition)) continue;
         const checkedRoots = new Set();
-        for (const pinId of pinIds) {
+        // Only pins with a declared role are required; spare relay contacts and
+        // similar undeclared terminals may stay empty.
+        for (const pinId of pinIds.filter(id => electricalRole(definition, id))) {
             const role = electricalRole(definition, pinId);
             if (OPTIONAL_PINS.has(pinId) || SUPPLY_ROLES.has(role)) continue;
             // Internally joined pins (a push button's two legs) are one terminal.
@@ -350,6 +432,233 @@ function ruleLedResistor(project, index, results) {
     }
 }
 
+/**
+ * VAL-04 controller I/O pin shorted: wired straight to a supply pin, or tied
+ * to another I/O pin of the same controller. Pins of different controllers
+ * may legally meet (UART, shared I2C).
+ */
+function ruleIoShorts(project, index, results) {
+    for (const root of index.roots()) {
+        const controllers = controllerPinsIn(index.pinsOn(root));
+        const io = controllers.filter(isIoPin);
+        if (!io.length) continue;
+        const supply = controllers.find(member => isPowerPin(member) || isGroundPin(member));
+        if (supply) {
+            const pin = io[0];
+            const target = isGroundPin(supply) ? 'ground' : 'power';
+            results.push(issue(`io-short:${pin.component.id}:${pin.pinId}`, SEV.ERROR,
+                `${boardName(pin)} pin ${pin.pinId} is wired straight to ${boardName(supply)} ${supply.pinId} (${target}). It shorts as soon as the pin outputs ${target === 'ground' ? 'HIGH' : 'LOW'}; connect it through a part instead.`,
+                pin.component.id, 'fire', { pinName: pin.pinId, relatedIds: [supply.component.id] }));
+            continue;
+        }
+        const byController = new Map();
+        for (const member of io) {
+            if (!byController.has(member.component.id)) byController.set(member.component.id, []);
+            byController.get(member.component.id).push(member);
+        }
+        for (const [controllerId, pins] of byController) {
+            const names = [...new Set(pins.map(member => member.pinId))].sort();
+            if (names.length < 2) continue;
+            results.push(issue(`io-tied:${controllerId}:${names.join('+')}`, SEV.WARNING,
+                `${boardName(pins[0])} pins ${names.join(' and ')} are wired together. If one outputs HIGH while another outputs LOW they short; use one pin.`,
+                controllerId, 'shuffle', { pinName: names[0] }));
+        }
+    }
+}
+
+/** VAL-04 switch contacts bridging power and ground: a short when operated. */
+function ruleSwitchShorts(project, index, results) {
+    for (const component of project.components || []) {
+        const definition = getComponentDef(component.definitionId);
+        for (const [a, b] of definition?.switchContacts || []) {
+            const sideA = controllerPinsIn(index.pinsWith(component, a));
+            const sideB = controllerPinsIn(index.pinsWith(component, b));
+            const shorts = (power, ground) => power.some(isPowerPin) && ground.some(isGroundPin);
+            if (!shorts(sideA, sideB) && !shorts(sideB, sideA)) continue;
+            results.push(issue(`switch-short:${component.id}:${a}+${b}`, SEV.ERROR,
+                `${displayName(component)} connects power straight to ground when it is pressed or switched. Wire one side to an input pin instead, with a resistor if you need a pull-up or pull-down.`,
+                component.id, 'fire', { pinName: a }));
+        }
+    }
+}
+
+/**
+ * VAL-04 LED polarity: the anode (+, longer leg) must face the supply or I/O
+ * pin and the cathode (-) ground. Looks through one series resistor.
+ */
+function ruleLedPolarity(project, index, results) {
+    for (const component of project.components || []) {
+        const definition = getComponentDef(component.definitionId);
+        if (!definition?.needsResistor || !definition.pinMeta?.A || !definition.pinMeta?.C) continue;
+        const anode = controllerPinsIn(throughResistors(index, component, 'A').reached);
+        const cathode = controllerPinsIn(throughResistors(index, component, 'C').reached);
+        const anodeToGround = anode.some(isGroundPin) && !anode.some(member => !isGroundPin(member));
+        const cathodeDriven = cathode.some(member => !isGroundPin(member));
+        if (!anodeToGround || !cathodeDriven) continue;
+        results.push(issue(`led-reversed:${component.id}`, SEV.ERROR,
+            `${displayName(component)} is in backwards: its anode (A, the longer leg) goes to ground. Swap the legs so A faces the pin or supply and C faces GND.`,
+            component.id, 'triangleExclamation', { pinName: 'A' }));
+    }
+}
+
+/** VAL-04 LED current from the series resistor value, supply and LED colour. */
+function ruleLedCurrent(project, index, results) {
+    for (const component of project.components || []) {
+        const definition = getComponentDef(component.definitionId);
+        if (!definition?.needsResistor || !definition.pinMeta?.A || !definition.pinMeta?.C) continue;
+        const anode = throughResistors(index, component, 'A');
+        const cathode = throughResistors(index, component, 'C');
+        const resistors = [...anode.resistors, ...cathode.resistors];
+        if (!resistors.length) continue;
+        const source = controllerPinsIn(anode.reached).find(member => !isGroundPin(member));
+        const sink = controllerPinsIn(cathode.reached).find(isGroundPin);
+        if (!source || !sink) continue;
+        const ohms = resistors.map(resistorOhms);
+        if (ohms.some(value => !value)) continue;
+        const sourceVoltage = isPowerPin(source) ? supplyVoltageOf(source) : logicVoltage(source);
+        const forward = LED_COLOR_PROFILES[canonicalLedColor(component.properties?.color ?? definition.attrs?.color)].forwardVoltage;
+        if (!(sourceVoltage > forward)) continue;
+        const resistance = ohms.reduce((sum, value) => sum + value, 0);
+        const current = (sourceVoltage - forward) / resistance * 1000;
+        const pinLimit = isIoPin(source) ? Number(source.definition.autoWirePins.pinMaxCurrent_mA) || null : null;
+        const shown = `${Math.round(current)} mA through ${formatOhms(resistance)}`;
+        let severity = null;
+        let message = null;
+        if (pinLimit && current > pinLimit) {
+            severity = SEV.ERROR;
+            message = `${displayName(component)} would draw about ${shown}, more than the ${pinLimit} mA ${boardName(source)} pin ${source.pinId} can give. Use a larger resistor (220 Ω to 330 Ω).`;
+        } else if (current > LED_CURRENT_WARNING_mA) {
+            severity = SEV.WARNING;
+            message = `${displayName(component)} would draw about ${shown}, which overdrives a standard LED. Use a larger resistor (220 Ω to 330 Ω).`;
+        } else if (current < LED_CURRENT_DIM_mA) {
+            severity = SEV.INFO;
+            message = `${displayName(component)} gets only about ${current.toFixed(1)} mA through ${formatOhms(resistance)} and will be very dim. Use a smaller resistor (220 Ω to 330 Ω).`;
+        }
+        if (severity) results.push(issue(`led-current:${component.id}`, severity, message, component.id, 'bolt',
+            { relatedIds: resistors.map(resistor => resistor.id) }));
+    }
+}
+
+function formatOhms(ohms) {
+    if (ohms >= 1e6) return `${+(ohms / 1e6).toFixed(2)} MΩ`;
+    if (ohms >= 1e3) return `${+(ohms / 1e3).toFixed(2)} kΩ`;
+    return `${+ohms.toFixed(1)} Ω`;
+}
+
+/** VAL-06 two devices with the same I2C address on one bus. */
+function ruleI2cAddressConflicts(project, index, results) {
+    const buses = new Map();
+    for (const component of project.components || []) {
+        const definition = getComponentDef(component.definitionId);
+        const address = Number(component.properties?.i2cAddress ?? definition?.i2cAddress);
+        if (!Number.isInteger(address)) continue;
+        const sda = componentPinIds(component).find(pinId => electricalRole(definition, pinId) === PIN.I2C_SDA);
+        if (!sda || !otherComponents(index.pinsWith(component, sda), component.id).length) continue;
+        const key = `${index.rootOf(componentPinRef(component.id, sda))}|${address}`;
+        if (!buses.has(key)) buses.set(key, { address, components: [] });
+        buses.get(key).components.push(component);
+    }
+    for (const { address, components } of buses.values()) {
+        if (components.length < 2) continue;
+        const hex = `0x${address.toString(16).toUpperCase().padStart(2, '0')}`;
+        const ids = components.map(component => component.id).sort();
+        results.push(issue(`i2c-address-conflict:${hex}:${ids.join('+')}`, SEV.WARNING,
+            `${components.map(displayName).join(' and ')} share I2C address ${hex} on one bus, so the board cannot tell them apart. Change one module's address (jumper or address pin) or use a different device.`,
+            components[0].id, 'shuffle', { relatedIds: ids }));
+    }
+}
+
+/** VAL-04 two terminals of one part on the same net (shorted or bypassed). */
+function ruleShortedPartPins(project, index, connectivity, results) {
+    for (const component of project.components || []) {
+        const definition = getComponentDef(component.definitionId);
+        if (!definition || isController(definition)) continue;
+        const groups = internalGroups(component);
+        const byRoot = new Map();
+        for (const pinId of componentPinIds(component)) {
+            if (OPTIONAL_PINS.has(pinId)) continue;
+            const root = index.rootOf(componentPinRef(component.id, pinId));
+            if (!byRoot.has(root)) byRoot.set(root, []);
+            byRoot.get(root).push(pinId);
+        }
+        for (const pins of byRoot.values()) {
+            const pair = firstShortedPair(component, pins, groups, definition, connectivity);
+            if (!pair) continue;
+            results.push(issue(`shorted-pins:${component.id}:${pair.join('+')}`, SEV.WARNING,
+                `${displayName(component)} pins ${pair[0]} and ${pair[1]} are connected to each other, so the part is shorted out and does nothing. Move one leg to a different row or net.`,
+                component.id, 'triangleExclamation', { pinName: pair[0] }));
+        }
+    }
+}
+
+function firstShortedPair(component, pins, groups, definition, connectivity) {
+    for (let i = 0; i < pins.length; i++) for (let j = i + 1; j < pins.length; j++) {
+        const [a, b] = [pins[i], pins[j]];
+        if (groups.some(group => group.has(a) && group.has(b))) continue;
+        // Repeated supply pins (GND.1/GND.2) are meant to share a net.
+        const roleA = electricalRole(definition, a);
+        if (roleA && SUPPLY_ROLES.has(roleA) && roleA === electricalRole(definition, b)) continue;
+        if (a.split('.')[0] === b.split('.')[0]) continue;
+        // Two legs in one breadboard strip are reported by the placement check.
+        const holeA = connectivity.resolveElectricalGroup(component.id, a);
+        const holeB = connectivity.resolveElectricalGroup(component.id, b);
+        if (holeA && holeB && holeA.surfaceId === holeB.surfaceId && holeA.electricalGroup === holeB.electricalGroup) continue;
+        return [a, b];
+    }
+    return null;
+}
+
+/**
+ * VAL-04 supply voltage and logic level: a 5 V part on a 3.3 V supply will
+ * not work reliably, and a 5 V part's output can damage a 3.3 V input.
+ */
+function ruleVoltageLevels(project, index, results) {
+    for (const component of project.components || []) {
+        const definition = getComponentDef(component.definitionId);
+        if (!definition || isController(definition)) continue;
+        const range = definition.supplyVoltage;
+        const supply = partSupplyVoltage(component, index);
+        if (range && supply !== null && supply < range.min) {
+            const vccPin = componentPinIds(component).find(pinId => electricalRole(definition, pinId) === PIN.VCC);
+            results.push(issue(`under-voltage:${component.id}`, SEV.WARNING,
+                `${displayName(component)} needs ${range.min} to ${range.max} V but gets ${supply} V, so it may not work. Power it from a 5 V supply${supply < 4 ? ' and use a level shifter for its signals' : ''}.`,
+                component.id, 'bolt', { pinName: vccPin }));
+        }
+        if (supply === null) continue;
+        for (const pinId of componentPinIds(component)) {
+            const role = electricalRole(definition, pinId);
+            if (!role || SUPPLY_ROLES.has(role) || BUS_ROLES.has(role)) continue;
+            const needs = requiredControllerCapabilities(component, pinId);
+            const isOutput = needs.includes(PIN_CAPABILITY.DIGITAL_INPUT) || needs.includes(PIN_CAPABILITY.ANALOG);
+            if (!isOutput) continue;
+            const target = controllerPinsIn(index.pinsWith(component, pinId))
+                .find(member => isIoPin(member) && supply > (logicVoltage(member) ?? Infinity) + LOGIC_VOLTAGE_MARGIN);
+            if (!target) continue;
+            results.push(issue(`signal-over-voltage:${component.id}:${pinId}`, SEV.ERROR,
+                `${displayName(component)} runs at ${supply} V, so its ${pinId} signal can damage ${boardName(target)} pin ${target.pinId}, which only takes ${logicVoltage(target)} V. Add a level shifter or a voltage divider.`,
+                component.id, 'fire', { pinName: pinId, relatedIds: [target.component.id] }));
+        }
+    }
+}
+
+/** VAL-04 coils (relays, stepper motors) driven straight from controller pins. */
+function ruleNeedsDriver(project, index, results) {
+    for (const component of project.components || []) {
+        const definition = getComponentDef(component.definitionId);
+        const driver = definition?.needsDriver;
+        if (!driver) continue;
+        for (const pinId of driver.pins || []) {
+            const pin = controllerPinsIn(index.pinsWith(component, pinId)).find(isIoPin);
+            if (!pin) continue;
+            const message = (DRIVER_MESSAGES[driver.kind] || DRIVER_MESSAGES.relay)(
+                definition.name || definition.id, pinId, boardName(pin), pin.pinId);
+            results.push(issue(`needs-driver:${component.id}`, SEV.ERROR, message, component.id, 'bolt',
+                { pinName: pinId, relatedIds: [pin.component.id] }));
+            break;
+        }
+    }
+}
+
 /** VAL-05 guidance: parts that need a breadboard when the scene has none. */
 function ruleBreadboardGuidance(project, results) {
     if ((project.surfaces || []).length) return;
@@ -369,11 +678,19 @@ export function validateElectrical(project, connectivity) {
     const results = [];
     const index = buildNetIndex(project, connectivity);
     ruleSupplyShorts(project, index, results);
+    ruleIoShorts(project, index, results);
+    ruleSwitchShorts(project, index, results);
     ruleCurrentBudget(project, index, results);
+    ruleVoltageLevels(project, index, results);
+    ruleNeedsDriver(project, index, results);
     ruleControllerPinCompatibility(project, index, results);
     ruleDuplicateSignalPin(project, index, results);
     ruleSupplyPins(project, index, results);
     ruleLedResistor(project, index, results);
+    ruleLedPolarity(project, index, results);
+    ruleLedCurrent(project, index, results);
+    ruleI2cAddressConflicts(project, index, results);
+    ruleShortedPartPins(project, index, connectivity, results);
     ruleUnconnectedAndFloating(project, index, results);
     ruleBreadboardGuidance(project, results);
     // A pin reached through several controller pins reports once per id.
