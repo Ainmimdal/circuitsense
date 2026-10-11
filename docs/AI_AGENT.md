@@ -6,7 +6,7 @@ The model never edits DOM nodes or project JSON directly.
 
 ## Supported providers
 
-The built-in transports use the OpenAI Chat Completions tool schema:
+Tools are defined once in the OpenAI function-tool JSON schema. OpenAI uses the Responses API, Gemini uses the Interactions API, and every other provider uses Chat Completions:
 
 | Provider | Runtime transport | Conversation state | Cache optimization |
 | --- | --- | --- | --- |

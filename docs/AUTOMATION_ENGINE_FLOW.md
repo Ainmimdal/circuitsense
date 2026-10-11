@@ -1,5 +1,7 @@
 # Elera Auto Wire and Auto Layout Flow
 
+Status: migration reference. The physical editor now runs Auto Wire and Auto Layout from `src/physical/automation.js`, with the direct-scene branch in `src/physical/direct-layout-v2.js`; the flowcharts below remain the target behavior.
+
 This is the migration reference for restoring the pre-Konva Elera automation behavior inside the physical editor. The historical source is Git commit `05c4c0e` (2026-06-03), especially `src/services/auto-wire-engine.js`, `src/services/routing-engine.js`, `src/store.js`, and the toolbar orchestration in `src/circuit-app.js`.
 
 The old engine operated on the legacy store and had no breadboard planner. Its useful behavior must be ported into the physical project model; the physical editor must not call the legacy store behind the canvas.
@@ -96,7 +98,9 @@ flowchart TD
 
 ## Recovered regression cause
 
-The current toolbar no longer executes the historical pipeline. It calls `src/physical/automation.js`, while the proven pre-Konva placement and routing logic remains in the legacy `src/services` path. The first physical replacement reduced the old per-component header alignment into a board-first scene and packed remaining free parts beside it. That changed the algorithm, not merely its rendering, and is why repeated cosmetic routing changes could not reproduce old Elera.
+This section records why the first physical port regressed; it is kept as history.
+
+The toolbar no longer executes the historical pipeline. It calls `src/physical/automation.js`, while the proven pre-Konva placement and routing logic remains in the legacy `src/services` path. The first physical replacement reduced the old per-component header alignment into a board-first scene and packed remaining free parts beside it. That changed the algorithm, not merely its rendering, and is why repeated cosmetic routing changes could not reproduce old Elera.
 
 The physical implementation is correct only when the direct branch reproduces the old per-component header layout and the breadboard branch adds a rigid board cluster without replacing that direct placement behavior for free components.
 
