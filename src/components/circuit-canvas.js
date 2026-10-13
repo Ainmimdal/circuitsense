@@ -1775,8 +1775,9 @@ class CircuitCanvas extends LitElement {
             const pointer = this._pointerWorld();
             grabOffset = { x: pointer.x - group.x(), y: pointer.y - group.y() };
             this.interaction.beginComponentDrag(component.id);
-            const footprint = getFootprintDefinition(component.footprintId);
-            this._status = footprint?.placementMode === 'breadboard-rigid'
+            const canSnap = footprintsForComponent(component.definitionId)
+                .some(footprint => footprint.placementMode === 'breadboard-rigid');
+            this._status = canSnap
                 ? 'Move over the breadboard to find a valid set of holes.'
                 : 'Release to place the component.';
             this.requestUpdate();
@@ -2333,15 +2334,17 @@ class CircuitCanvas extends LitElement {
             id: this.store.newComponentId(), definitionId, footprintId: footprint.id, x: world.x, y: world.y,
         });
         this.store.execute(addComponentCommand(component));
-        if (footprint.placementMode === 'breadboard-rigid') {
+        // Parts that start free (resistor, header modules) still snap when dropped on a board.
+        if (footprintsForComponent(definitionId).some(item => item.placementMode === 'breadboard-rigid')) {
             this.interaction.beginComponentDrag(component.id);
             this.interaction.updateComponentDrag(world);
             this.interaction.commitComponentDrag(world);
         }
-        const mounted = this.store.project.components.find(item => item.id === component.id)?.placement.type === 'surface';
+        const placed = this.store.project.components.find(item => item.id === component.id);
+        const mounted = placed?.placement.type === 'surface';
         this._selectComponent(component.id);
             this._status = mounted
-                ? `${getPhysicalComponentDefinition(definitionId).name} snapped into ${footprint.pins.length} valid breadboard holes.`
+                ? `${getPhysicalComponentDefinition(definitionId).name} snapped into ${Object.keys(placed.placement.bindings || {}).length} valid breadboard holes.`
                 : `Drag ${getPhysicalComponentDefinition(definitionId).name} to move it, or place it over a breadboard to snap it in.`;
         this._renderComponentVisuals();
         this.requestUpdate();

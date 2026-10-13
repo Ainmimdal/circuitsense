@@ -10,7 +10,7 @@ This is the current status source of truth. Engine behavior is governed by [ENGI
 
 | Check | Status |
 | --- | --- |
-| Node test suite (`npm test`) | All 202 passing. |
+| Node test suite (`npm test`) | All 207 passing. |
 | Production build (`npm run build`) | Passing. The main chunk is about 1,147 kB (293 kB gzip) and triggers Vite's 500 kB warning; the routing worker is a separate 89 kB chunk. |
 | Lint / type check | Not configured |
 | Browser acceptance | Manual only (`GAP-07`). Pointer events cannot be driven reliably into the nested Konva canvas by the current browser harness, so add/move/delete behavior is covered at command and controller level. |
@@ -42,6 +42,7 @@ The **legacy schema-v2 engine** (`src/store.js`, `src/services/*`, `src/componen
 - Schema-4 projects (`src/physical/model.js`; schema 3 is also accepted on load) store surfaces, components, semantic wire endpoints and route intent. Mounted parts persist only surface, footprint, rotation and pin-to-hole bindings, so moving a board carries its parts and wire endpoints.
 - Geometry is in millimetres with an exact 2.54 mm pitch and 7.62 mm E-F spacing.
 - Every catalog part marked breadboard-mountable resolves to a calibrated rigid package via `src/core/part-registry.js`. DIP packages come from `createDipFootprint()`.
+- Breakout modules with one straight 2.54 mm header row (HC-SR04, PIR, MPU6050, SSD1306, DS1307, microSD, the sound, flame, gas, NTC, photoresistor and tilt modules) start free beside the board and snap onto it with a rigid header package, like the resistor. Parts that stay off the board (servos, steppers, large displays, NeoPixels, keypad, joystick, KY-040, pulse sensor, HX711, slide pot, 12 mm button, socketed boards) each carry a specific student-facing reason in `src/component-library.js`.
 - Resistors have three presentations of one electrical part: the Wokwi axial visual in free space, a compact horizontal breadboard package (five holes by default, three to eight pitches allowed) and an upright package.
 - `ConnectivityResolver` unions breadboard groups, mounted contacts, internal component nets and wires without reading the renderer. Every breadboard socket has a derived `FREE`, `COMPONENT_PIN` or `WIRE_ENDPOINT` state.
 - Schema-v2 projects are not migrated into schema 4.
