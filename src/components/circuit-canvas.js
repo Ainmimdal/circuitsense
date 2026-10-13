@@ -49,6 +49,7 @@ class CircuitCanvas extends LitElement {
     static properties = {
         _status: { state: true },
         _zoomLabel: { state: true },
+        _hintsOpen: { state: true },
         _hoveredPinView: { state: true },
     };
 
@@ -169,9 +170,8 @@ class CircuitCanvas extends LitElement {
         }
 
         .mode-pill,
-        .help,
         .zoom-controls,
-        .legend,
+        .canvas-hints,
         .net-inspector,
         .property-inspector {
             position: absolute;
@@ -248,27 +248,59 @@ class CircuitCanvas extends LitElement {
 
         .mode-pill span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-        .help {
-            left: 14px;
-            bottom: 50px;
-            width: min(430px, calc(100% - 28px));
-            padding: 10px 12px;
-            font-size: 10px;
-            line-height: 1.6;
-        }
-
-        .legend {
+        .canvas-hints {
             right: 14px;
             bottom: 50px;
-            padding: 9px 11px;
-            font-size: 10px;
-            line-height: 1.55;
+            width: 252px;
+            overflow: hidden;
+            pointer-events: auto;
+            font-size: 11px;
         }
-
-        .legend span { display: inline-flex; align-items: center; gap: 6px; margin-left: 9px; }
+        .canvas-hints.closed { width: auto; }
+        .hints-toggle {
+            display: flex; align-items: center; gap: 7px; width: 100%; height: 32px; padding: 0 10px;
+            border: 0; background: transparent; color: var(--text-muted); cursor: pointer;
+            font: 600 10px/1 var(--font-ui, 'Public Sans', sans-serif); letter-spacing: .06em; text-transform: uppercase;
+            transition: color 140ms;
+        }
+        .hints-toggle:hover, .hints-toggle:focus-visible { color: var(--text); outline: none; }
+        .hints-toggle .chev { margin-left: auto; transition: transform 200ms ease; }
+        .canvas-hints:not(.closed) .hints-toggle .chev { transform: rotate(180deg); }
+        .canvas-hints.closed .hints-toggle .chev { margin-left: 4px; }
+        .hint-list { display: grid; gap: 2px; padding: 0 6px 6px; margin: 0; list-style: none; }
+        .hint {
+            display: grid; grid-template-columns: 74px 1fr; align-items: center; gap: 8px;
+            padding: 5px 6px; border-radius: 4px; color: var(--text-muted);
+            transition: background 140ms, color 140ms, transform 140ms;
+        }
+        .hint:hover { background: color-mix(in srgb, var(--primary) 70%, transparent); color: var(--text); transform: translateX(-2px); }
+        .hint-keys { display: flex; align-items: center; gap: 3px; color: var(--text); }
+        .hint-keys .fa-icon { width: 17px; height: 17px; transition: transform 160ms ease; }
+        .hint-keys .mouse-button { color: var(--accent); opacity: .55; transition: opacity 160ms; }
+        .hint:hover .mouse-button { opacity: 1; }
+        .hint:hover .mouse-wheel { animation: wheel-roll 700ms ease-in-out infinite; }
+        .hint:hover .hint-keys > .fa-icon { transform: translateY(-1px); }
+        @keyframes wheel-roll { 50% { transform: translateY(2px); } }
+        .hint-keys small { color: var(--text-muted); font-size: 9px; }
+        kbd {
+            min-width: 20px; height: 20px; padding: 0 5px; display: inline-grid; place-items: center;
+            border: 1px solid var(--panel-border); border-bottom-width: 2px; border-radius: 4px;
+            background: var(--ink); color: var(--text);
+            font: 10px/1 var(--font-tech, '0xProto', monospace);
+            transition: transform 120ms, border-color 120ms, border-bottom-width 120ms;
+        }
+        .hint:hover kbd { transform: translateY(1px); border-bottom-width: 1px; border-color: var(--accent); }
+        .legend {
+            display: flex; flex-wrap: wrap; gap: 4px 12px; padding: 8px 12px;
+            border-top: 1px solid var(--panel-border); color: var(--text-muted); font-size: 10px;
+        }
+        .legend span { display: inline-flex; align-items: center; gap: 6px; }
         .legend i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
         .legend .valid-dot { background: var(--accent-sensors); }
         .legend .strip-dot { background: var(--accent-breadboards); }
+        @media (prefers-reduced-motion: reduce) {
+            .hint, .hint *, .hints-toggle .chev { transition: none !important; animation: none !important; }
+        }
 
         .net-inspector {
             right: 14px;
@@ -395,8 +427,7 @@ class CircuitCanvas extends LitElement {
                 max-height: 42vh;
                 overflow: auto;
             }
-            .help { display: none; }
-            .legend { right: 10px; bottom: 46px; }
+            .canvas-hints { right: 10px; bottom: 46px; }
             .pin-readout { left: 10px; top: 58px; max-width: calc(100% - 150px); }
         }
     `;
@@ -407,6 +438,7 @@ class CircuitCanvas extends LitElement {
         this.interaction = new InteractionController(this.store);
         this.camera = { pixelsPerMillimetre: CAMERA.pixelsPerMillimetre, zoom: 1, panX: 36, panY: 28 };
         this._zoomLabel = '100%';
+        this._hintsOpen = window.innerWidth > 900;
         this._status = 'Drag a component onto the canvas to begin';
         this._hoveredHole = null;
         this._hoveredTerminalRef = null;
@@ -499,18 +531,40 @@ class CircuitCanvas extends LitElement {
                     </section>
                 ` : ''}
                 ${propertyInspector ? this._renderPropertyInspector(propertyInspector) : ''}
-                <div class="help">
-                    Drag parts onto empty space. Breadboard parts snap to valid holes.<br>
-                    To wire, click a pin, add corners in empty space, then click another pin.<br>
-                    Drag blue segments or yellow corners to reshape a selected wire.<br>
-                    Drag empty space to select a group. Hold Shift to add or remove items.<br>
-                    Drag a selected item to move the group. Press Delete to remove it. Use the wheel to zoom.
-                </div>
-                <div class="legend">
-                    <span><i class="valid-dot"></i>Valid connection</span>
-                    <span><i class="strip-dot"></i>Connected strip</span>
-                </div>
+                ${this._renderHints()}
             </div>
+        `;
+    }
+
+    _renderHints() {
+        const mouse = (icon, label) => html`${faIcon(icon)}${label ? html`<small>${label}</small>` : ''}`;
+        const keys = (...names) => names.map(name => html`<kbd>${name}</kbd>`);
+        const hints = [
+            [mouse('mouseLeft', 'drag'), 'Place or move a part'],
+            [mouse('mouseLeft', 'pin'), 'Click two pins to wire'],
+            [mouse('mouseLeft', 'empty'), 'Drag to box-select'],
+            [mouse('mouseWheel'), 'Zoom in and out'],
+            [keys('Shift'), 'Hold to add to selection'],
+            [keys('R'), 'Rotate selected part'],
+            [keys('Del'), 'Delete selection'],
+            [keys('Esc'), 'Cancel a wire'],
+            [keys('Ctrl', 'Z'), 'Undo'],
+        ];
+        return html`
+            <section class="canvas-hints ${this._hintsOpen ? '' : 'closed'}" @pointerdown=${event => event.stopPropagation()} aria-label="Canvas controls">
+                <button class="hints-toggle" @click=${() => { this._hintsOpen = !this._hintsOpen; }} aria-expanded=${this._hintsOpen ? 'true' : 'false'}>
+                    ${faIcon('keyboard')} Controls ${faIcon('chevronUp', 'chev')}
+                </button>
+                ${this._hintsOpen ? html`
+                    <ul class="hint-list">
+                        ${hints.map(([input, label]) => html`<li class="hint"><span class="hint-keys">${input}</span><span>${label}</span></li>`)}
+                    </ul>
+                    <div class="legend">
+                        <span><i class="valid-dot"></i>Valid connection</span>
+                        <span><i class="strip-dot"></i>Connected strip</span>
+                    </div>
+                ` : ''}
+            </section>
         `;
     }
 

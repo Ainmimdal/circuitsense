@@ -47,6 +47,10 @@ const ICONS = Object.freeze({
     rightToBracket: svg`<path d="M10 4H5v16h5M13 8l4 4-4 4M17 12H8"/>`,
     google: svg`<path d="M20 12h-8M20 12a8 8 0 1 1-2.34-5.66"/>`,
     cloud: svg`<path d="M7 18a4 4 0 0 1-.5-8A6 6 0 0 1 18 9a4.5 4.5 0 0 1-.5 9z"/>`,
+    mouse: svg`<rect x="6" y="3" width="12" height="18" rx="6"/><path d="M6 10h12M12 3v7"/>`,
+    mouseLeft: svg`<rect x="6" y="3" width="12" height="18" rx="6"/><path d="M6 10h12M12 3v7"/><path class="mouse-button" d="M12 3a6 6 0 0 0-6 6v1h6z" fill="currentColor"/>`,
+    mouseWheel: svg`<rect x="6" y="3" width="12" height="18" rx="6"/><path class="mouse-wheel" d="M12 6.5v4"/>`,
+    keyboard: svg`<rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/>`,
     rightFromBracket: svg`<path d="M14 4h5v16h-5M11 8l-4 4 4 4M7 12h9"/>`,
 });
 
