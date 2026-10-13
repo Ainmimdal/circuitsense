@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { PhysicalCircuitStore } from '../src/physical/circuit-store.js';
 import { arrangePhysicalStore, autoLayoutPhysicalStore, autoWirePhysicalStore } from '../src/physical/automation.js';
 import { addComponentCommand } from '../src/physical/commands.js';
-import { createHalfBreadboardSurface, getSurfaceDefinition } from '../src/physical/breadboard.js';
+import { createFullBreadboardSurface, createHalfBreadboardSurface, getSurfaceDefinition } from '../src/physical/breadboard.js';
 import {
     componentPinRef, createComponentInstance, createPhysicalProject, resolveConnectionWorldPoint, surfaceHoleRef,
 } from '../src/physical/model.js';
@@ -590,4 +590,18 @@ test('fanout escape lanes stop before passing a nearby destination', () => {
         assert.ok(first.b.y <= destination.y + 1e-6,
             `${wire.id} must not fan out below its destination and reverse direction`);
     }
+});
+
+test('Auto Layout keeps ground intent in step with wires when free parts share a Nano ground', () => {
+    const store = new PhysicalCircuitStore({ load: false, routingWorker: null });
+    const make = (id, definitionId, x = 0, y = 0) => createComponentInstance({
+        id, definitionId, footprintId: defaultFootprintForComponent(definitionId).id, x, y,
+    });
+    store.importProject(createPhysicalProject({
+        surfaces: [createFullBreadboardSurface({ x: 30, y: 20 })],
+        components: [make('nano', 'arduino-nano', 160, 20), make('led', 'led'), make('servo', 'servo')],
+    }));
+    const result = autoLayoutPhysicalStore(store);
+    assert.equal(result.status, 'success', JSON.stringify(result.diagnostics));
+    assert.deepEqual(validatePhysicalProject(store.project).errors, []);
 });
