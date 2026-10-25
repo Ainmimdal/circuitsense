@@ -1,10 +1,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { createHalfBreadboardSurface } from '../src/physical/breadboard.js';
-import { defaultFootprintForComponent } from '../src/physical/footprints.js';
-import { componentPinRef, createComponentInstance, createPhysicalProject, surfaceHoleRef } from '../src/physical/model.js';
-import { buildLessonSteps, isLessonStepComplete, lessonProgress } from '../src/physical/lessons.js';
+import { createHalfBreadboardSurface, holeWorldPosition } from '../src/physical/breadboard.js';
+import { defaultFootprintForComponent, getFootprintDefinition, projectFootprintPoint } from '../src/physical/footprints.js';
+import { applyTransform } from '../src/physical/geometry.js';
+import {
+    componentPinRef, createComponentInstance, createPhysicalProject, mountedComponentTransform, surfaceHoleRef,
+} from '../src/physical/model.js';
+import {
+    buildLessonSteps, isLessonStepComplete, lessonProgress, lessonStepGhost, lessonStepHint, lessonStepMutation,
+} from '../src/physical/lessons.js';
+import { validatePhysicalProject } from '../src/physical/validation.js';
+import { listLessons } from '../src/lessons/catalog.js';
 
 function part(id, definitionId) {
     return createComponentInstance({ id, definitionId, footprintId: defaultFootprintForComponent(definitionId).id });
@@ -79,4 +86,48 @@ test('a build with fresh ids from the sidebar still completes every step', () =>
         ],
     });
     assert.equal(lessonProgress(steps, target, current), steps.length);
+});
+
+test('every preset lesson is a valid circuit whose steps all complete on itself', () => {
+    for (const lesson of listLessons()) {
+        const target = lesson.build();
+        for (const component of target.components.filter(item => item.placement.type === 'surface')) {
+            const footprint = getFootprintDefinition(component.footprintId);
+            const transform = mountedComponentTransform(target, component);
+            for (const footprintPin of footprint.pins) {
+                const expected = applyTransform(projectFootprintPoint(footprint, footprintPin), transform);
+                const actual = holeWorldPosition(target.surfaces[0], component.placement.bindings[footprintPin.pinId]);
+                assert.ok(Math.hypot(expected.x - actual.x, expected.y - actual.y) < 1e-6,
+                    `${lesson.id}: ${component.id} pin ${footprintPin.pinId} is not where its footprint puts it`);
+            }
+        }
+        const errors = validatePhysicalProject(target).all.filter(item => item.severity === 'error');
+        assert.deepEqual(errors.map(item => item.id), [], lesson.id);
+        const steps = buildLessonSteps(target);
+        assert.equal(lessonProgress(steps, target, target), steps.length, lesson.id);
+        assert.ok(lesson.code.includes('void loop()'), lesson.id);
+    }
+});
+
+test('show me completes each step of a lesson from an empty workspace', () => {
+    const target = listLessons().find(lesson => lesson.id === 'traffic-light').build();
+    const steps = buildLessonSteps(target);
+    let counter = 0;
+    const ids = { surface: () => `bb-${++counter}`, component: () => `part-${++counter}`, wire: () => `wire-${++counter}` };
+    const current = createPhysicalProject({});
+    for (let index = 0; index < steps.length; index++) {
+        assert.equal(lessonProgress(steps, target, current), index);
+        assert.ok(lessonStepGhost(steps[index], target, current), `ghost for ${steps[index].id}`);
+        lessonStepMutation(steps[index], target, current, ids)(current);
+    }
+    assert.equal(lessonProgress(steps, target, current), steps.length);
+});
+
+test('a misplaced LED gets a hint naming the leg and column', () => {
+    const target = blink();
+    const led = part('led', 'led');
+    led.placement = { ...target.components[0].placement, bindings: { C: 'C12', A: 'C13' } };
+    const current = createPhysicalProject({ surfaces: target.surfaces, components: [led] });
+    const step = buildLessonSteps(target).find(item => item.id === 'led');
+    assert.match(lessonStepHint(step, target, current), /short leg belongs in column 10/);
 });

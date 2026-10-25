@@ -1,5 +1,5 @@
 import { ConnectivityResolver } from './connectivity.js';
-import { componentPinRef, surfaceHoleRef } from './model.js';
+import { componentPinRef, componentWorldTransform, resolveConnectionWorldPoint, surfaceHoleRef } from './model.js';
 import { getSurfaceDefinition } from './breadboard.js';
 import { getComponentDef } from '../component-library.js';
 
@@ -7,15 +7,56 @@ import { getComponentDef } from '../component-library.js';
 // breadboards, then boards, then parts, then power, ground and signal wires.
 
 const WIRE_ORDER = { power: 0, ground: 1, signal: 2 };
+const RAILS = { TP: 'top + rail', TN: 'top − rail', BP: 'bottom + rail', BN: 'bottom − rail' };
+const PIN_NAMES = {
+    led: { A: 'long leg', C: 'short leg' },
+    'rgb-led': { COM: 'longest leg (common −)', R: 'red leg', G: 'green leg', B: 'blue leg' },
+    buzzer: { 1: '+ leg', 2: '− leg' },
+    potentiometer: { GND: 'left leg', SIG: 'middle leg', VCC: 'right leg' },
+};
+
+function componentById(project, componentId) {
+    return project.components.find(item => item.id === componentId);
+}
 
 function partName(project, componentId) {
-    const component = project.components.find(item => item.id === componentId);
-    return getComponentDef(component?.definitionId)?.name || componentId;
+    const component = componentById(project, componentId);
+    const definition = getComponentDef(component?.definitionId);
+    const name = definition?.isBoard ? definition.name : String(definition?.name || componentId).split(' ')
+        .map(word => (/^[A-Z0-9-]+$/.test(word) ? word : word.toLowerCase())).join(' ');
+    const color = component?.definitionId === 'led' ? component.properties?.color : null;
+    return color ? `${color} ${name}` : name;
+}
+
+function pinName(project, componentId, pinId) {
+    const component = componentById(project, componentId);
+    return PIN_NAMES[component?.definitionId]?.[pinId] || null;
+}
+
+function holeLabel(project, ref) {
+    const prefix = String(ref.holeId).replace(/\d+$/, '');
+    if (RAILS[prefix]) return `the ${RAILS[prefix]}`;
+    const column = String(ref.holeId).replace(/^\D+/, '');
+    const surface = project.surfaces.find(item => item.id === ref.surfaceId);
+    const group = getSurfaceDefinition(surface)?.getHole(ref.holeId)?.electricalGroup;
+    const occupant = project.components.find(component => component.placement?.type === 'surface'
+        && component.placement.surfaceId === ref.surfaceId
+        && Object.values(component.placement.bindings || {}).some(holeId =>
+            getSurfaceDefinition(surface)?.getHole(holeId)?.electricalGroup === group));
+    if (!occupant) return `column ${column}`;
+    const occupantPin = Object.entries(occupant.placement.bindings)
+        .find(([, holeId]) => getSurfaceDefinition(surface).getHole(holeId).electricalGroup === group)[0];
+    const leg = pinName(project, occupant.id, occupantPin);
+    return `column ${column} (the ${partName(project, occupant.id)}${leg ? `'s ${leg}` : ''})`;
 }
 
 function refLabel(project, ref) {
-    if (ref?.type === 'surface-hole') return `breadboard hole ${ref.holeId}`;
-    return `${partName(project, ref?.componentId)} pin ${ref?.pinId}`;
+    if (ref?.type === 'surface-hole') return holeLabel(project, ref);
+    const component = componentById(project, ref?.componentId);
+    const pin = String(ref?.pinId).replace(/\.\d+$/, '');
+    if (getComponentDef(component?.definitionId)?.isBoard) return `Arduino ${/^\d+$|^A\d$/.test(pin) ? 'pin ' : ''}${pin}`;
+    const leg = pinName(project, ref?.componentId, ref?.pinId);
+    return `the ${partName(project, ref?.componentId)}'s ${leg || `${pin} pin`}`;
 }
 
 function wireKind(resolver, wire) {
@@ -43,7 +84,8 @@ export function buildLessonSteps(project) {
         id: wire.id,
         wireKind: wireKind(resolver, wire),
         index,
-        title: `Connect ${refLabel(project, wire.from)} to ${refLabel(project, wire.to)}`,
+        color: wire.color,
+        title: `Wire ${refLabel(project, wire.from)} to ${refLabel(project, wire.to)}`,
     }));
     components.sort((a, b) => Number(b.isBoard) - Number(a.isBoard));
     wires.sort((a, b) => WIRE_ORDER[a.wireKind] - WIRE_ORDER[b.wireKind] || a.index - b.index);
@@ -119,4 +161,120 @@ export function lessonProgress(steps, target, current) {
     const match = matchLessonBuild(target, current);
     const index = steps.findIndex(step => !isLessonStepComplete(step, target, current, match));
     return index === -1 ? steps.length : index;
+}
+
+const DEFAULT_NOTES = {
+    surface: 'The breadboard holds your parts. Each column of five holes is one connected strip.',
+    board: 'The Arduino runs your code and powers the circuit.',
+    power: 'Power wires carry 5 V. Red is the usual colour for them.',
+    ground: 'Ground is the return path every circuit needs. Black is the usual colour.',
+    signal: 'Signal wires carry information between the Arduino and a part.',
+};
+
+// One-line explanation of why the step matters.
+export function lessonStepNote(step, target, notes = {}) {
+    if (notes[step.id]) return notes[step.id];
+    if (step.kind === 'surface') return DEFAULT_NOTES.surface;
+    if (step.kind === 'wire') return DEFAULT_NOTES[step.wireKind];
+    if (step.isBoard) return DEFAULT_NOTES.board;
+    const component = componentById(target, step.id);
+    return getComponentDef(component?.definitionId)?.description || 'Place this part where the outline shows.';
+}
+
+function describeHole(holeId) {
+    const prefix = String(holeId).replace(/\d+$/, '');
+    if (RAILS[prefix]) return `on the ${RAILS[prefix]}`;
+    const half = 'ABCDE'.includes(prefix) ? 'A to E' : 'F to J';
+    return `in column ${String(holeId).replace(/^\D+/, '')} (any row ${half})`;
+}
+
+// A gentle nudge once the student has tried something, or null when the
+// glowing outline already says everything.
+export function lessonStepHint(step, target, current, match = matchLessonBuild(target, current)) {
+    if (step.kind === 'component') {
+        const want = componentById(target, step.id);
+        const have = match.components.get(step.id);
+        if (!want || !have || want.placement?.type !== 'surface') return null;
+        if (have.placement?.type !== 'surface') {
+            return `Drag the ${partName(target, step.id)} onto the breadboard so it snaps into the holes.`;
+        }
+        const surface = match.surfaces.get(want.placement.surfaceId);
+        const wrongPin = Object.entries(want.placement.bindings).find(([pinId, holeId]) =>
+            holeGroup(target, want.placement.surfaceId, holeId)
+                !== holeGroup(current, surface?.id, have.placement.bindings?.[pinId]));
+        if (!wrongPin) return null;
+        const leg = pinName(target, step.id, wrongPin[0]) || `pin ${wrongPin[0]}`;
+        return `Close! The ${leg} belongs ${describeHole(wrongPin[1])}. Rotate the part if it is the wrong way round.`;
+    }
+    if (step.kind === 'wire') return 'Click one end, then the other. A wire can land in any hole of the right strip.';
+    return null;
+}
+
+function ghostPoint(ref, target, current, match) {
+    const translated = translateRef(ref, match);
+    return (translated && resolveConnectionWorldPoint(current, translated)) || resolveConnectionWorldPoint(target, ref);
+}
+
+// What the canvas should draw for this step, in the student's coordinates.
+export function lessonStepGhost(step, target, current, match = matchLessonBuild(target, current)) {
+    if (step.kind === 'surface') {
+        const surface = target.surfaces.find(item => item.id === step.id);
+        return surface ? { kind: 'surface', surface: structuredClone(surface) } : null;
+    }
+    if (step.kind === 'component') {
+        const want = componentById(target, step.id);
+        if (!want) return null;
+        const component = structuredClone(want);
+        component.id = `lesson-ghost:${want.id}`;
+        const surface = want.placement?.type === 'surface' ? match.surfaces.get(want.placement.surfaceId) : null;
+        if (surface) {
+            component.placement.surfaceId = surface.id;
+        } else if (want.placement?.type === 'surface') {
+            const transform = componentWorldTransform(target, want);
+            component.placement = { type: 'free', position: { x: transform.x, y: transform.y }, rotation: transform.rotation };
+        }
+        const holes = surface
+            ? Object.values(want.placement.bindings || {}).map(holeId => ({ surfaceId: surface.id, holeId }))
+            : [];
+        return { kind: 'component', component, holes };
+    }
+    const wire = target.wires.find(item => item.id === step.id);
+    if (!wire) return null;
+    const from = ghostPoint(wire.from, target, current, match);
+    const to = ghostPoint(wire.to, target, current, match);
+    return from && to ? { kind: 'wire', from, to, color: wire.color || '#22d3ee' } : null;
+}
+
+// "Show me": a mutation that completes the step in the student's project.
+// `ids` hands out fresh ids so the result matches a hand-built circuit.
+export function lessonStepMutation(step, target, current, ids, match = matchLessonBuild(target, current)) {
+    if (step.kind === 'surface') {
+        const surface = target.surfaces.find(item => item.id === step.id);
+        return project => { project.surfaces.push({ ...structuredClone(surface), id: ids.surface() }); };
+    }
+    if (step.kind === 'component') {
+        const want = componentById(target, step.id);
+        const existing = match.components.get(step.id);
+        const placement = structuredClone(want.placement);
+        if (placement.type === 'surface') {
+            const surface = match.surfaces.get(want.placement.surfaceId);
+            if (!surface) return null;
+            placement.surfaceId = surface.id;
+        }
+        return project => {
+            const component = existing && project.components.find(item => item.id === existing.id);
+            if (component) {
+                component.footprintId = want.footprintId;
+                component.placement = placement;
+            } else {
+                project.components.push({ ...structuredClone(want), id: ids.component(), placement });
+            }
+        };
+    }
+    const wire = target.wires.find(item => item.id === step.id);
+    const from = translateRef(wire?.from, match), to = translateRef(wire?.to, match);
+    if (!from || !to) return null;
+    return project => {
+        project.wires.push({ ...structuredClone(wire), id: ids.wire(), from, to, route: { mode: 'auto', waypoints: [] } });
+    };
 }
