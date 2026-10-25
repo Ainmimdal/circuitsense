@@ -303,3 +303,52 @@ export function lessonStepMutation(step, target, current, ids, match = matchLess
         project.wires.push({ ...structuredClone(wire), id: ids.wire(), from, to, route: { mode: 'auto', waypoints: [] } });
     };
 }
+
+// A flat drawing of a finished circuit for thumbnails: board holes, parts as
+// lines through their pins, off-board parts as boxes and wires as straight lines.
+// Every item keeps the id of the step that builds it.
+export function lessonMap(target) {
+    const bounds = lessonBounds(target, 4);
+    if (!bounds) return null;
+    const surfaces = (target.surfaces || []).map(surface => {
+        const definition = getSurfaceDefinition(surface);
+        const holes = (definition?.holes || []).map(hole => applyTransform(hole, surface.transform));
+        return { id: surface.id, x: surface.transform.x, y: surface.transform.y, width: definition?.width || 0, height: definition?.height || 0, holes };
+    });
+    const parts = [], boxes = [];
+    for (const component of target.components || []) {
+        if (component.placement?.type === 'surface') {
+            const points = Object.keys(component.placement.bindings || {})
+                .map(pinId => resolveConnectionWorldPoint(target, componentPinRef(component.id, pinId)))
+                .filter(Boolean);
+            parts.push({ id: component.id, kind: component.definitionId, color: component.properties?.color, points });
+            continue;
+        }
+        const box = getFootprintDefinition(component.footprintId)?.routingBounds;
+        if (!box) continue;
+        const transform = componentWorldTransform(target, component);
+        const corners = [[0, 0], [1, 1]].map(([u, v]) => applyTransform({ x: box.x + u * box.width, y: box.y + v * box.height }, transform));
+        boxes.push({
+            id: component.id,
+            label: getComponentDef(component.definitionId)?.name || component.definitionId,
+            x: Math.min(corners[0].x, corners[1].x), y: Math.min(corners[0].y, corners[1].y),
+            width: Math.abs(corners[1].x - corners[0].x), height: Math.abs(corners[1].y - corners[0].y),
+        });
+    }
+    const wires = (target.wires || []).map(wire => ({
+        id: wire.id, color: wire.color,
+        from: resolveConnectionWorldPoint(target, wire.from), to: resolveConnectionWorldPoint(target, wire.to),
+    })).filter(wire => wire.from && wire.to);
+    // Label the off-board pins that wires land on ("13", "GND", "5V").
+    for (const box of boxes) {
+        box.pins = [];
+        for (const wire of target.wires || []) {
+            for (const end of [wire.from, wire.to]) {
+                if (end.type !== 'component-pin' || end.componentId !== box.id) continue;
+                const point = resolveConnectionWorldPoint(target, end);
+                if (point) box.pins.push({ ...point, label: String(end.pinId).replace(/\.\d+$/, '') });
+            }
+        }
+    }
+    return { bounds, surfaces, parts, boxes, wires };
+}

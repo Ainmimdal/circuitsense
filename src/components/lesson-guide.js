@@ -2,12 +2,13 @@ import { LitElement, html, css } from 'lit';
 import { keyed } from 'lit/directives/keyed.js';
 import { physicalCircuitStore } from '../physical/circuit-store.js';
 import {
-    buildLessonSteps, isLessonStepComplete, lessonStepGhost, lessonStepHint, lessonStepMutation, lessonStepNote,
+    buildLessonSteps, isLessonStepComplete, lessonMap, lessonStepGhost, lessonStepHint, lessonStepMutation, lessonStepNote,
     matchLessonBuild,
 } from '../physical/lessons.js';
 import { validatePhysicalProject } from '../physical/validation.js';
 import { getComponentDef } from '../component-library.js';
 import { faIcon } from '../utils/fa-icons.js';
+import './lesson-map.js';
 
 // Guided build panel. `session` is { target, lesson?, name }: the finished
 // circuit to rebuild and, for preset lessons, the story and sketch. The panel
@@ -34,7 +35,7 @@ function highlight(line) {
     return parts;
 }
 
-function billOfMaterials(target) {
+export function billOfMaterials(target) {
     const counts = new Map();
     for (const component of target.components) {
         const definition = getComponentDef(component.definitionId);
@@ -77,8 +78,8 @@ class LessonGuide extends LitElement {
 
         header { padding: 18px 18px 14px; border-bottom: 1px solid var(--panel-border); }
         .top { display: flex; align-items: flex-start; gap: 10px; }
-        .eyebrow { color: var(--accent); font-size: 10.5px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
-        h2 { margin: 4px 0 0; font-size: 19px; letter-spacing: -.01em; }
+        .sub { margin: 3px 0 0; color: var(--text-muted); font-size: 12.5px; }
+        h2 { margin: 0; font-size: 19px; letter-spacing: -.01em; }
         .icon-btn {
             flex: 0 0 auto;
             width: 30px;
@@ -107,7 +108,7 @@ class LessonGuide extends LitElement {
         }
         .seg:hover { background: var(--primary-hover); }
         .seg.done { background: var(--accent); }
-        .seg.skipped { background: repeating-linear-gradient(45deg, var(--primary-hover) 0 3px, var(--primary) 3px 6px); }
+        .seg.skipped { /* taste-skill-ignore: a hatch marks skipped steps */ background: repeating-linear-gradient(45deg, var(--primary-hover) 0 3px, var(--primary) 3px 6px); }
         .seg.current { background: var(--text); }
         .count { display: flex; justify-content: space-between; margin-top: 8px; color: var(--text-muted); font-size: 11.5px; }
 
@@ -236,18 +237,8 @@ class LessonGuide extends LitElement {
         .chips { display: flex; flex-wrap: wrap; gap: 5px; }
         .chip { padding: 3px 8px; color: var(--text-muted); border: 1px solid var(--panel-border); border-radius: 4px; font-size: 11px; }
 
+        .map { height: 190px; margin: 0 0 14px; padding: 10px; background: var(--ink); border-radius: 4px; }
         .finish { position: relative; text-align: center; padding-top: 6px; }
-        .trophy {
-            width: 48px;
-            height: 48px;
-            margin: 6px auto 12px;
-            display: grid;
-            place-items: center;
-            color: var(--ink);
-            background: var(--accent);
-            border-radius: 50%;
-        }
-        .trophy .fa-icon { width: 22px; height: 22px; }
         .finish h3 { font-size: 21px; margin: 0 0 6px; }
         .stats { display: flex; justify-content: center; gap: 18px; margin: 14px 0 4px; color: var(--text-muted); font-size: 11.5px; }
         .stats b { display: block; color: var(--text); font-size: 18px; font-family: var(--font-tech); }
@@ -294,6 +285,7 @@ class LessonGuide extends LitElement {
     willUpdate(changed) {
         if (!changed.has('session')) return;
         this._steps = this.session ? buildLessonSteps(this.session.target) : [];
+        this._map = this.session ? lessonMap(this.session.target) : null;
         this._skipped = new Set();
         this._cursor = this.session?.lesson ? -1 : 0;
         this._startedAt = Date.now();
@@ -408,10 +400,20 @@ class LessonGuide extends LitElement {
         }
     }
 
+    // The finished circuit, with built steps solid, the current one in the accent and the rest faint.
+    _renderMap(all = false) {
+        const states = {};
+        this._steps.forEach((step, index) => {
+            states[step.id] = all || this._done[index] ? 'done' : index === this._cursor ? 'current' : 'todo';
+        });
+        return html`<lesson-map class="map" .map=${this._map} .states=${states}></lesson-map>`;
+    }
+
     _renderIntro() {
         const lesson = this.session.lesson;
         return html`
             <div class="scroll">
+                ${this._renderMap(true)}
                 <div class="card intro">
                     <p class="goal">${lesson.goal}</p>
                     <p class="note">${lesson.explanation}</p>
@@ -433,6 +435,7 @@ class LessonGuide extends LitElement {
         const note = lessonStepNote(step, this.session.target, this.session.lesson?.notes);
         return html`
             <div class="scroll">
+                ${this._renderMap()}
                 ${keyed(step.id, html`<div class="card ${done ? 'success' : ''}">
                     <span class="kind"><span class="dot" style=${step.color ? `--dot:${step.color}` : ''}></span>${KIND_LABELS[kind]}</span>
                     ${done ? html`<span class="done-mark" aria-label="Done">${faIcon(skipped ? 'forward' : 'check')}</span>` : ''}
@@ -471,7 +474,7 @@ class LessonGuide extends LitElement {
         return html`
             <div class="scroll">
                 <div class="finish">
-                    <div class="trophy">${faIcon('trophy')}</div>
+                    ${this._renderMap(true)}
                     <h3>${lesson ? `${lesson.title} built!` : 'Circuit rebuilt!'}</h3>
                     <p class="note">${lesson ? lesson.goal.replace(/\.$/, '') + ' is ready to go.' : `You rebuilt ${this.session.name || 'the circuit'} step by step.`}</p>
                     <div class="stats">
@@ -523,8 +526,8 @@ class LessonGuide extends LitElement {
             <header>
                 <div class="top">
                     <div>
-                        <div class="eyebrow">${lesson ? `Lesson · ${lesson.level}` : 'Guided build'}</div>
                         <h2>${lesson?.title || this.session.name || 'Your circuit'}</h2>
+                        <p class="sub">${lesson ? `${lesson.level} lesson · about ${lesson.minutes} min` : 'Guided rebuild'}</p>
                     </div>
                     <button class="icon-btn" @click=${this._close} aria-label="Close guide" title="Close guide">${faIcon('xmark')}</button>
                 </div>

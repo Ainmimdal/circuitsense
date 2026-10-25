@@ -8,7 +8,7 @@ import {
     componentPinRef, createComponentInstance, createPhysicalProject, mountedComponentTransform, surfaceHoleRef,
 } from '../src/physical/model.js';
 import {
-    buildLessonSteps, isLessonStepComplete, lessonProgress, lessonStepGhost, lessonStepHint, lessonStepMutation,
+    buildLessonSteps, isLessonStepComplete, lessonMap, lessonProgress, lessonStepGhost, lessonStepHint, lessonStepMutation,
 } from '../src/physical/lessons.js';
 import { validatePhysicalProject } from '../src/physical/validation.js';
 import { listLessons } from '../src/lessons/catalog.js';
@@ -130,4 +130,15 @@ test('a misplaced LED gets a hint naming the leg and column', () => {
     const current = createPhysicalProject({ surfaces: target.surfaces, components: [led] });
     const step = buildLessonSteps(target).find(item => item.id === 'led');
     assert.match(lessonStepHint(step, target, current), /short leg belongs in column 10/);
+});
+
+test('every lesson draws as a map that covers each part and wire', () => {
+    for (const lesson of listLessons()) {
+        const target = lesson.build();
+        const map = lessonMap(target);
+        const drawn = new Set([...map.parts, ...map.boxes].map(item => item.id));
+        for (const component of target.components) assert.ok(drawn.has(component.id), `${lesson.id}: ${component.id} missing`);
+        assert.equal(map.wires.length, target.wires.length, `${lesson.id}: a wire end did not resolve`);
+        for (const part of map.parts) assert.equal(part.points.length, Object.keys(target.components.find(item => item.id === part.id).placement.bindings).length);
+    }
 });
