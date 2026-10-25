@@ -37,6 +37,14 @@ The **legacy schema-v2 engine** (`src/store.js`, `src/services/*`, `src/componen
 - Accounts stay switched off until `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` are set. The schema, Google setup, free-tier notes and the keep-awake workflow are covered in [CLOUD_SYNC_SETUP.md](CLOUD_SYNC_SETUP.md); library and sync coverage is in `test/project-library.test.js`.
 - Not yet built: share links and read-only public projects.
 
+### Lessons and guided builds
+
+- The Learn button opens eight preset lessons (`src/lessons/catalog.js`): Blink, Push to light, Traffic light, Knob dimmer, Doorbell, Night light, Colour mixer and Servo steering. Each has a goal, an explanation, a parts list, per-step notes, an Arduino sketch and a follow-up challenge.
+- `src/physical/lessons.js` turns any finished project into ordered steps (breadboards, boards, parts, then power, ground and signal wires) and checks each step against the student's build. Parts are matched by definition rather than id, and any hole in the right strip counts.
+- The guide panel (`src/components/lesson-guide.js`) shows step N of M, a one-line reason for each step, gentle hints after a wrong placement, and Show me, Back and Skip. The canvas draws the next part or wire as a glowing ghost. The finish screen shows the sketch with a copy button and upload steps.
+- "Guide me" turns the circuit on the canvas, or any saved project from My projects, into the same step-by-step rebuild; leaving it early offers the original circuit back.
+- `test/lessons.test.js` checks that every lesson is a valid circuit whose footprints match their holes, that Show me completes every step, and that hints name the right leg and column.
+
 ### Physical model
 
 - Schema-4 projects (`src/physical/model.js`; schema 3 is also accepted on load) store surfaces, components, semantic wire endpoints and route intent. Mounted parts persist only surface, footprint, rotation and pin-to-hole bindings, so moving a board carries its parts and wire endpoints.

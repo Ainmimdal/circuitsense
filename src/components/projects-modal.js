@@ -311,6 +311,19 @@ class ProjectsModal extends LitElement {
         await this._refreshProjects();
     }
 
+    // Hands the saved circuit to the guided build, which rebuilds it from scratch.
+    async _guideProject(id) {
+        const record = await projectLibrary.get(id);
+        if (!record) return;
+        try {
+            const project = normalizePersistedProject(record.data);
+            window.dispatchEvent(new CustomEvent('elera-guide-project', { detail: { project, name: record.name } }));
+            this._close();
+        } catch (error) {
+            console.error('[Elera] Saved project could not be guided:', error);
+        }
+    }
+
     async _loadProject(id) {
         if (!confirm('Open this project? Changes to the circuit you have open now will be lost unless you save them first.')) return;
         const record = await projectLibrary.get(id);
@@ -390,6 +403,7 @@ class ProjectsModal extends LitElement {
                                 </div>
                                 <div class="project-actions">
                                     <button class="btn-action" @click=${() => this._loadProject(p.id)}>Open</button>
+                                    <button class="btn-action" @click=${() => this._guideProject(p.id)} title="Rebuild this circuit step by step">Guide me</button>
                                     <button class="btn-danger" @click=${() => this._deleteProject(p)}>Delete</button>
                                 </div>
                             </div>

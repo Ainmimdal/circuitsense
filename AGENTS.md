@@ -27,6 +27,7 @@ There is no lint or type-check script. Run `npm test`, `npm run build` and `git 
 - `src/components/circuit-canvas.js`: Konva workspace host; Lit owns the rest of the UI.
 - `src/core/`: renderer-independent definitions shared across the app (component geometry, part registry, breadboard topology, pin capabilities, the `planAutoWire` pin planner).
 - `src/ai/`: BYOK agent, provider transports and the tool registry that calls into `src/physical/`.
+- `src/lessons/catalog.js`: preset lessons (finished circuits plus story and sketch). `src/physical/lessons.js` turns any project into checked build steps; `src/components/lesson-guide.js` and `lessons-modal.js` are the UI.
 
 The legacy schema-v2 engine (`src/store.js`, `src/services/*` and related core modules) and its tests were removed on 2026-10-11; the last commit containing it is `a59b779`. Rules proven only there are tracked as `GAP-11` in `docs/ENGINE_CONTRACT.md`; port them into `src/physical/`.
 

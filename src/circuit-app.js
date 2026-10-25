@@ -4,8 +4,21 @@ import { autoLayoutPhysicalStore, autoWirePhysicalStore } from './physical/autom
 import { accountService } from './persistence/account.js';
 import { projectLibrary } from './persistence/project-library.js';
 import { faIcon } from './utils/fa-icons.js';
+import { getLesson } from './lessons/catalog.js';
 import './components/component-builder-modal.js';
 import './components/login-modal.js';
+import './components/lessons-modal.js';
+import './components/lesson-guide.js';
+
+const COMPLETED_LESSONS_KEY = 'elera_completed_lessons';
+
+function loadCompletedLessons() {
+    try {
+        return JSON.parse(localStorage.getItem(COMPLETED_LESSONS_KEY) || '[]');
+    } catch {
+        return [];
+    }
+}
 
 const ELERA_LOGO_URL = new URL('../diagram images/eleraLogo.svg', import.meta.url).href;
 
@@ -24,6 +37,9 @@ class CircuitApp extends LitElement {
         _manualWireMode: { state: true },
         _manualWireSnap: { state: true },
         _libraryOpen: { state: true },
+        _lessonsOpen: { state: true },
+        _guideSession: { state: true },
+        _completedLessons: { state: true },
     };
 
     static styles = css `
@@ -175,6 +191,9 @@ class CircuitApp extends LitElement {
       component-sidebar { width: 100%; height: 100%; }
       .canvas-wrapper { position: relative; flex: 1; min-width: 0; overflow: hidden; transition: margin-right .2s ease; }
       .canvas-wrapper.ai-open { margin-right: 380px; }
+      .canvas-wrapper.guide-open { margin-right: 372px; }
+      .toolbar-btn.learn { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, var(--panel-border)); }
+      .toolbar-btn.learn:hover, .toolbar-btn.learn.active { color: var(--ink); background: var(--accent); border-color: var(--accent); }
       circuit-canvas { width: 100%; height: 100%; }
       .library-rail, .sidebar-scrim { display: none; }
 
@@ -197,7 +216,7 @@ class CircuitApp extends LitElement {
         .toolbar { flex: 0 1 auto; }
         .tool-cluster.history .toolbar-btn:not(.icon-only) { display: none; }
         .account-cluster .projects-btn { display: none; }
-        .canvas-wrapper.ai-open { margin-right: 0; }
+        .canvas-wrapper.ai-open, .canvas-wrapper.guide-open { margin-right: 0; }
         .sidebar-shell {
           position: absolute;
           inset: 0 auto 0 0;
@@ -271,6 +290,10 @@ class CircuitApp extends LitElement {
         this._manualWireMode = physicalCircuitStore.manualWireMode;
         this._manualWireSnap = physicalCircuitStore.manualWireSnap;
         this._libraryOpen = false;
+        this._lessonsOpen = false;
+        this._guideSession = null;
+        this._completedLessons = loadCompletedLessons();
+        this._guideProjectHandler = event => this._startGuide({ target: event.detail.project, name: event.detail.name });
         this._builderComponentId = null;
         this._aiSettingsHandler = () => this._openLogin('keys');
         this._settingsHandler = () => {
@@ -283,6 +306,7 @@ class CircuitApp extends LitElement {
         super.connectedCallback();
         physicalCircuitStore.addEventListener('settings-change', this._settingsHandler);
         window.addEventListener('elera-open-ai-settings', this._aiSettingsHandler);
+        window.addEventListener('elera-guide-project', this._guideProjectHandler);
         accountService.addEventListener('change', this._accountHandler);
         projectLibrary.addEventListener('change', this._libraryHandler);
         accountService.init().then(this._accountHandler);
@@ -293,6 +317,7 @@ class CircuitApp extends LitElement {
         super.disconnectedCallback();
         physicalCircuitStore.removeEventListener('settings-change', this._settingsHandler);
         window.removeEventListener('elera-open-ai-settings', this._aiSettingsHandler);
+        window.removeEventListener('elera-guide-project', this._guideProjectHandler);
         accountService.removeEventListener('change', this._accountHandler);
         projectLibrary.removeEventListener('change', this._libraryHandler);
     }
@@ -476,6 +501,57 @@ class CircuitApp extends LitElement {
         this._libraryOpen = false;
     }
 
+    _openLessons() {
+        this._lessonsOpen = true;
+    }
+
+    _onStartLesson(event) {
+        const { lessonId, current } = event.detail || {};
+        this._lessonsOpen = false;
+        if (current) {
+            this._startGuide({ target: structuredClone(physicalCircuitStore.project), name: this._currentProjectName });
+            return;
+        }
+        const lesson = getLesson(lessonId);
+        if (lesson) this._startGuide({ target: lesson.build(), lesson });
+    }
+
+    // Clears the canvas down to the target's breadboards, then hands the
+    // finished circuit to the guide panel to rebuild step by step.
+    _startGuide({ target, lesson = null, name = '' }) {
+        const project = physicalCircuitStore.project;
+        const hasWork = project.components.length > 0 || project.wires.length > 0;
+        const subject = lesson ? `the ${lesson.title} lesson` : `a guided rebuild of ${name || 'this circuit'}`;
+        if (hasWork && !confirm(`Start ${subject}? The canvas will be cleared, so save first if you want to keep what is on it.`)) return;
+        physicalCircuitStore.clear();
+        physicalCircuitStore.transaction('lesson-start', next => { next.surfaces = structuredClone(target.surfaces); });
+        projectLibrary.setCurrentProjectId(null);
+        this._guideSession = { target, lesson, name };
+        requestAnimationFrame(() => window.dispatchEvent(new CustomEvent('elera-lesson-fit', { detail: target })));
+    }
+
+    _closeGuide(event) {
+        const session = this._guideSession;
+        // Leaving an unfinished rebuild of the student's own circuit offers it back.
+        if (!session?.lesson && !event?.detail?.finished
+            && confirm('Stop the guided build and put the original circuit back on the canvas?')) {
+            physicalCircuitStore.importProject(session.target);
+        }
+        this._guideSession = null;
+        window.dispatchEvent(new CustomEvent('elera-lesson-fit', { detail: null }));
+    }
+
+    _onLessonComplete(event) {
+        const lessonId = event.detail?.lessonId;
+        if (!lessonId || this._completedLessons.includes(lessonId)) return;
+        this._completedLessons = [...this._completedLessons, lessonId];
+        try {
+            localStorage.setItem(COMPLETED_LESSONS_KEY, JSON.stringify(this._completedLessons));
+        } catch {
+            // Progress badges are a convenience; the lesson itself still works.
+        }
+    }
+
     _runOverflowAction(event, action) {
         event.currentTarget.closest('details')?.removeAttribute('open');
         action.call(this);
@@ -527,6 +603,7 @@ class CircuitApp extends LitElement {
           <details class="action-overflow">
             <summary>${faIcon('gear')} More</summary>
             <div class="mode-popover action-popover">
+              <button class="toolbar-btn btn-action" @click=${event => this._runOverflowAction(event, this._openLessons)}>${faIcon('graduation')} Learn</button>
               <button class="toolbar-btn btn-action" @click=${event => this._runOverflowAction(event, this._cleanupWires)}>${faIcon('wrench')} Clean wire routes</button>
               <button class="toolbar-btn btn-action" @click=${event => this._runOverflowAction(event, this._autoWireAll)}>${faIcon('bolt')} Auto Wire</button>
               <button class="toolbar-btn btn-action" @click=${event => this._runOverflowAction(event, this._autoLayoutAll)}>${faIcon('wand')} Auto Layout</button>
@@ -544,6 +621,8 @@ class CircuitApp extends LitElement {
           </div>
         </nav>
         <div class="spacer"></div>
+        <button class="toolbar-btn learn ${this._lessonsOpen || this._guideSession ? 'active' : ''}" @click=${this._openLessons}
+          title="Lessons and guided builds"><span class="icon">${faIcon('graduation')}</span>Learn</button>
         <div class="account-cluster" aria-label="Account controls">
           <button class="toolbar-btn btn-action projects-btn" @click=${this._openProjects} title="Projects"><span class="icon">${faIcon('folder')}</span>Projects</button>
           <button class="toolbar-btn btn-action icon-only" @click=${this._openPreferences} title="Preferences" aria-label="Preferences"><span class="icon">${faIcon('gear')}</span></button>
@@ -562,11 +641,16 @@ class CircuitApp extends LitElement {
         <div class="sidebar-shell ${this._libraryOpen ? 'open' : ''}">
           <component-sidebar @open-component-builder=${this._openBuilder} @component-chosen=${this._closeLibrary}></component-sidebar>
         </div>
-        <div class="canvas-wrapper ${this._aiOpen ? 'ai-open' : ''}">
-          <circuit-canvas @edit-component-definition=${this._openBuilder}></circuit-canvas>
+        <div class="canvas-wrapper ${this._aiOpen ? 'ai-open' : ''} ${this._guideSession ? 'guide-open' : ''}">
+          <circuit-canvas .guided=${Boolean(this._guideSession)} @edit-component-definition=${this._openBuilder}></circuit-canvas>
           <validation-bar></validation-bar>
         </div>
+        ${this._guideSession ? html`<lesson-guide .session=${this._guideSession} @close=${this._closeGuide}
+          @pick-lesson=${this._openLessons} @lesson-complete=${this._onLessonComplete}></lesson-guide>` : ''}
       </main>
+      <lessons-modal .open=${this._lessonsOpen} .completed=${this._completedLessons}
+        .canGuideCurrent=${physicalCircuitStore.project.components.length > 0}
+        @close=${() => { this._lessonsOpen = false; }} @start-lesson=${this._onStartLesson}></lessons-modal>
       <ai-assistant @open-ai-settings=${this._openAiSettings}></ai-assistant>
       <projects-modal></projects-modal>
       <login-modal
