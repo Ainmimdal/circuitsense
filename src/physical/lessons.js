@@ -1,4 +1,5 @@
 import { ConnectivityResolver } from './connectivity.js';
+import { componentPinRef, surfaceHoleRef } from './model.js';
 import { getSurfaceDefinition } from './breadboard.js';
 import { getComponentDef } from '../component-library.js';
 
@@ -54,31 +55,68 @@ function holeGroup(project, surfaceId, holeId) {
     return getSurfaceDefinition(surface)?.getHole(holeId)?.electricalGroup ?? null;
 }
 
+// Pair each target item with an unclaimed current item of the same definition,
+// first among those that pass `prefer`, so ids never need to match.
+function pairByDefinition(wanted, available, prefer) {
+    const pairs = new Map(), claimed = new Set();
+    for (const strict of [true, false]) {
+        for (const want of wanted) {
+            if (pairs.has(want.id)) continue;
+            const have = available.find(item => !claimed.has(item.id)
+                && item.definitionId === want.definitionId && (!strict || prefer(want, item)));
+            if (!have) continue;
+            pairs.set(want.id, have);
+            claimed.add(have.id);
+        }
+    }
+    return pairs;
+}
+
 // A part counts when it sits in the same breadboard strips as the target,
 // so any hole of the right strip is accepted.
-function componentDone(target, current, id) {
-    const want = target.components.find(item => item.id === id);
-    const have = current.components.find(item => item.id === id);
-    if (!want || !have || have.definitionId !== want.definitionId) return false;
+function inRightStrips(target, current, surfaces, want, have) {
     if (want.placement?.type !== 'surface') return true;
-    if (have.placement?.type !== 'surface' || have.placement.surfaceId !== want.placement.surfaceId) return false;
+    const surface = surfaces.get(want.placement.surfaceId);
+    if (!surface || have.placement?.type !== 'surface' || have.placement.surfaceId !== surface.id) return false;
     return Object.entries(want.placement.bindings || {}).every(([pinId, holeId]) => {
         const wantGroup = holeGroup(target, want.placement.surfaceId, holeId);
-        return wantGroup !== null
-            && wantGroup === holeGroup(current, have.placement.surfaceId, have.placement.bindings?.[pinId]);
+        return wantGroup !== null && wantGroup === holeGroup(current, surface.id, have.placement.bindings?.[pinId]);
     });
 }
 
-export function isLessonStepComplete(step, target, current, resolver = new ConnectivityResolver(current)) {
-    if (step.kind === 'surface') return current.surfaces.some(item => item.id === step.id);
-    if (step.kind === 'component') return componentDone(target, current, step.id);
+// Works on any build: the student's parts and breadboards are matched to the
+// target by definition, not by id.
+export function matchLessonBuild(target, current) {
+    const surfaces = pairByDefinition(target.surfaces || [], current.surfaces || [], () => true);
+    const components = pairByDefinition(target.components || [], current.components || [],
+        (want, have) => inRightStrips(target, current, surfaces, want, have));
+    return { surfaces, components, resolver: new ConnectivityResolver(current) };
+}
+
+function translateRef(ref, match) {
+    if (ref?.type === 'surface-hole') {
+        const surface = match.surfaces.get(ref.surfaceId);
+        return surface ? surfaceHoleRef(surface.id, ref.holeId) : null;
+    }
+    const component = match.components.get(ref?.componentId);
+    return component ? componentPinRef(component.id, ref.pinId) : null;
+}
+
+export function isLessonStepComplete(step, target, current, match = matchLessonBuild(target, current)) {
+    if (step.kind === 'surface') return match.surfaces.has(step.id);
+    if (step.kind === 'component') {
+        const want = target.components.find(item => item.id === step.id);
+        const have = match.components.get(step.id);
+        return Boolean(want && have) && inRightStrips(target, current, match.surfaces, want, have);
+    }
     const wire = target.wires.find(item => item.id === step.id);
-    return Boolean(wire) && resolver.areConnected(wire.from, wire.to);
+    const from = translateRef(wire?.from, match), to = translateRef(wire?.to, match);
+    return Boolean(from && to) && match.resolver.areConnected(from, to);
 }
 
 // Index of the first unfinished step, or steps.length when the build is done.
 export function lessonProgress(steps, target, current) {
-    const resolver = new ConnectivityResolver(current);
-    const index = steps.findIndex(step => !isLessonStepComplete(step, target, current, resolver));
+    const match = matchLessonBuild(target, current);
+    const index = steps.findIndex(step => !isLessonStepComplete(step, target, current, match));
     return index === -1 ? steps.length : index;
 }

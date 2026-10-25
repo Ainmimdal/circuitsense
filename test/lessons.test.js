@@ -63,3 +63,20 @@ test('a part in the wrong strip does not complete its step', () => {
     const step = buildLessonSteps(target).find(item => item.id === 'led');
     assert.equal(isLessonStepComplete(step, target, current), false);
 });
+
+test('a build with fresh ids from the sidebar still completes every step', () => {
+    const target = blink();
+    const steps = buildLessonSteps(target);
+    const board = createHalfBreadboardSurface({ id: 'bb-7' });
+    const led = part('part-42', 'led');
+    led.placement = { type: 'surface', surfaceId: 'bb-7', rotation: 0, bindings: { C: 'D10', A: 'D11' } };
+    const current = createPhysicalProject({
+        surfaces: [board],
+        components: [part('part-41', 'arduino-uno'), led],
+        wires: [
+            wire('x1', componentPinRef('part-41', 'GND.1'), surfaceHoleRef('bb-7', 'B10')),
+            wire('x2', componentPinRef('part-41', '13'), componentPinRef('part-42', 'A')),
+        ],
+    });
+    assert.equal(lessonProgress(steps, target, current), steps.length);
+});
