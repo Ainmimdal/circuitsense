@@ -16,7 +16,7 @@ function board() {
 
 function uno() {
     return { id: 'uno', definitionId: 'arduino-uno', footprintId: 'free:arduino-uno', properties: {},
-        placement: { type: 'free', position: { x: 42, y: 92 }, rotation: 0 } };
+        placement: { type: 'free', position: { x: 42, y: 80 }, rotation: 0 } };
 }
 
 function free(id, definitionId, x, y, properties = {}) {
@@ -65,7 +65,6 @@ const LESSONS = [
         level: 'Beginner',
         minutes: 10,
         accent: '#ef4444',
-        icon: 'lightbulb',
         goal: 'Make an LED flash on and off once a second.',
         summary: 'The "hello world" of electronics: your first output, a resistor and a ground path.',
         concepts: ['Digital output', 'Resistors', 'LED polarity'],
@@ -101,7 +100,6 @@ void loop() {
         level: 'Beginner',
         minutes: 15,
         accent: '#22d3ee',
-        icon: 'circleDot',
         goal: 'Light the LED only while the button is held down.',
         summary: 'Read your first input and use it to decide what the output does.',
         concepts: ['Digital input', 'Pull-up resistors', 'if / else'],
@@ -145,7 +143,6 @@ void loop() {
         level: 'Beginner',
         minutes: 20,
         accent: '#facc15',
-        icon: 'lightbulb',
         goal: 'Cycle red, green and yellow lights like a real crossing.',
         summary: 'Three outputs, one sequence. Learn to organise timing in code.',
         concepts: ['Multiple outputs', 'Sequencing', 'Functions'],
@@ -201,7 +198,6 @@ void loop() {
         level: 'Beginner',
         minutes: 20,
         accent: '#a78bfa',
-        icon: 'sliders',
         goal: 'Turn a knob to fade the LED from dark to full brightness.',
         summary: 'Your first analog input and a "fake analog" output with PWM.',
         concepts: ['analogRead', 'PWM with analogWrite', 'map()'],
@@ -248,7 +244,6 @@ void loop() {
         level: 'Beginner',
         minutes: 15,
         accent: '#fb923c',
-        icon: 'volume',
         goal: 'Press the button to play a two-tone "ding dong".',
         summary: 'Make sound with tone() and combine it with the button you already know.',
         concepts: ['tone()', 'Frequency', 'Reusing inputs'],
@@ -292,7 +287,6 @@ void loop() {
         level: 'Intermediate',
         minutes: 20,
         accent: '#38bdf8',
-        icon: 'moon',
         goal: 'Switch the LED on automatically when the room gets dark.',
         summary: 'Read a real sensor, pick a threshold and debug with the Serial Monitor.',
         concepts: ['Sensors', 'Thresholds', 'Serial Monitor'],
@@ -338,7 +332,6 @@ void loop() {
         level: 'Intermediate',
         minutes: 25,
         accent: '#f472b6',
-        icon: 'palette',
         goal: 'Fade an RGB LED smoothly through the rainbow.',
         summary: 'Three PWM channels in one LED. Mix any colour from red, green and blue.',
         concepts: ['RGB colour', 'Common cathode', 'for loops'],
@@ -389,7 +382,6 @@ void loop() {
         level: 'Intermediate',
         minutes: 25,
         accent: '#34d399',
-        icon: 'gauge',
         goal: 'Point a servo arm wherever you turn the knob.',
         summary: 'Your first motor and your first library: real movement from a dial.',
         concepts: ['Servo library', 'Motors', 'Mapping ranges'],

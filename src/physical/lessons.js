@@ -1,6 +1,8 @@
 import { ConnectivityResolver } from './connectivity.js';
 import { componentPinRef, componentWorldTransform, resolveConnectionWorldPoint, surfaceHoleRef } from './model.js';
 import { getSurfaceDefinition } from './breadboard.js';
+import { getFootprintDefinition } from './footprints.js';
+import { applyTransform } from './geometry.js';
 import { getComponentDef } from '../component-library.js';
 
 // Step-by-step build guide generated from a finished schema-4 project:
@@ -243,6 +245,29 @@ export function lessonStepGhost(step, target, current, match = matchLessonBuild(
     const from = ghostPoint(wire.from, target, current, match);
     const to = ghostPoint(wire.to, target, current, match);
     return from && to ? { kind: 'wire', from, to, color: wire.color || '#22d3ee' } : null;
+}
+
+// World rectangle around the finished circuit, so the camera can frame it.
+export function lessonBounds(target, padding = 14) {
+    const points = [];
+    for (const surface of target.surfaces || []) {
+        const definition = getSurfaceDefinition(surface);
+        points.push(surface.transform, {
+            x: surface.transform.x + (definition?.width || 0), y: surface.transform.y + (definition?.height || 0),
+        });
+    }
+    for (const component of target.components || []) {
+        const bounds = getFootprintDefinition(component.footprintId)?.routingBounds;
+        if (!bounds) continue;
+        const transform = componentWorldTransform(target, component);
+        for (const corner of [[0, 0], [1, 0], [0, 1], [1, 1]]) {
+            points.push(applyTransform({ x: bounds.x + corner[0] * bounds.width, y: bounds.y + corner[1] * bounds.height }, transform));
+        }
+    }
+    if (!points.length) return null;
+    const xs = points.map(point => point.x), ys = points.map(point => point.y);
+    const x = Math.min(...xs) - padding, y = Math.min(...ys) - padding;
+    return { x, y, width: Math.max(...xs) + padding - x, height: Math.max(...ys) + padding - y };
 }
 
 // "Show me": a mutation that completes the step in the student's project.

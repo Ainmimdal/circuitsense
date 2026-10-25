@@ -21,6 +21,7 @@ import { applyTransform, screenToWorld } from '../physical/geometry.js';
 import { pinExitDirection } from '../physical/routing.js';
 import { editableWirePoints, insertWireWaypoint, moveWireRouteEndpoints, moveWireSegment, moveWireWaypoint, removeWireWaypoint, translateWireRoute } from '../physical/wire-edit.js';
 import { inspectNetAt, inspectWireNet } from '../physical/net-inspector.js';
+import { lessonBounds } from '../physical/lessons.js';
 import { faIcon } from '../utils/fa-icons.js';
 
 const CAMERA = Object.freeze({ pixelsPerMillimetre: 5.2, minZoom: 0.42, maxZoom: 2.5 });
@@ -47,6 +48,7 @@ function isPrimaryPointer(event) {
 
 class CircuitCanvas extends LitElement {
     static properties = {
+        guided: { type: Boolean },
         _status: { state: true },
         _zoomLabel: { state: true },
         _hoveredPinView: { state: true },
@@ -112,6 +114,12 @@ class CircuitCanvas extends LitElement {
 
         .component-visual { transition: opacity 120ms ease; }
         .component-visual.net-dimmed { opacity: .28; }
+        .component-visual.lesson-ghost { opacity: .38; animation: lesson-ghost 1.8s ease-in-out infinite; }
+        .component-visual.lesson-ghost .component-artwork {
+            filter: drop-shadow(0 0 4px var(--accent)) drop-shadow(0 0 10px color-mix(in srgb, var(--accent) 60%, transparent));
+        }
+        @keyframes lesson-ghost { 50% { opacity: .62; } }
+        @media (prefers-reduced-motion: reduce) { .component-visual.lesson-ghost { animation: none; } }
 
         .component-visual.selected .component-artwork {
             filter: drop-shadow(0 0 5px var(--primary-hover)) drop-shadow(0 0 1px var(--text));
@@ -248,6 +256,7 @@ class CircuitCanvas extends LitElement {
 
         .mode-pill span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+        .help[hidden] { display: none; }
         .help {
             left: 14px;
             bottom: 50px;
@@ -404,6 +413,7 @@ class CircuitCanvas extends LitElement {
     constructor() {
         super();
         this.store = physicalCircuitStore;
+        this.guided = false;
         this.interaction = new InteractionController(this.store);
         this.camera = { pixelsPerMillimetre: CAMERA.pixelsPerMillimetre, zoom: 1, panX: 36, panY: 28 };
         this._zoomLabel = '100%';
@@ -432,6 +442,15 @@ class CircuitCanvas extends LitElement {
             this._renderScene();
         };
         this._interactionHandler = () => this._renderInteractionLayer();
+        this._lessonGhost = null;
+        this._lessonGhostHandler = event => {
+            this._lessonGhost = event.detail || null;
+            this._renderLessonGhost();
+        };
+        this._lessonFitHandler = event => {
+            this._lessonFit = { target: event.detail, at: Date.now() };
+            this._refitLesson();
+        };
         this._keyHandler = event => this._onKeyDown(event);
         this._physicalAddHandler = event => this._quickAddPhysical(event.detail?.componentId);
         this._physicalSelectHandler = event => {
@@ -499,7 +518,7 @@ class CircuitCanvas extends LitElement {
                     </section>
                 ` : ''}
                 ${propertyInspector ? this._renderPropertyInspector(propertyInspector) : ''}
-                <div class="help">
+                <div class="help" ?hidden=${this.guided}>
                     Drag parts onto empty space. Breadboard parts snap to valid holes.<br>
                     To wire, click a pin, add corners in empty space, then click another pin.<br>
                     Drag blue segments or yellow corners to reshape a selected wire.<br>
@@ -645,13 +664,15 @@ class CircuitCanvas extends LitElement {
         this.boardLayer = new Konva.Layer();
         this.wireLayer = new Konva.Layer();
         this.componentLayer = new Konva.Layer();
+        this.ghostLayer = new Konva.Layer({ listening: false });
         this.interactionLayer = new Konva.Layer({ listening: false });
-        this.stage.add(this.backgroundLayer, this.boardLayer, this.componentLayer, this.wireLayer, this.interactionLayer);
+        this.stage.add(this.backgroundLayer, this.boardLayer, this.componentLayer, this.wireLayer, this.ghostLayer, this.interactionLayer);
         this._setLayerDepth(this.backgroundLayer, 0);
         this._setLayerDepth(this.boardLayer, 1);
         this._setLayerDepth(this.componentLayer, 3);
         this._setLayerDepth(this.wireLayer, 5);
-        this._setLayerDepth(this.interactionLayer, 6);
+        this._setLayerDepth(this.ghostLayer, 6);
+        this._setLayerDepth(this.interactionLayer, 7);
         Konva.dragDistance = 4;
 
         this.stage.on('wheel', event => this._onWheel(event));
@@ -669,6 +690,8 @@ class CircuitCanvas extends LitElement {
         window.addEventListener('elera-add-physical-component', this._physicalAddHandler);
         window.addEventListener('elera-select-physical-component', this._physicalSelectHandler);
         window.addEventListener('elera-component-library-change', this._componentLibraryHandler);
+        window.addEventListener('elera-lesson-ghost', this._lessonGhostHandler);
+        window.addEventListener('elera-lesson-fit', this._lessonFitHandler);
         this._renderScene();
     }
 
@@ -681,6 +704,9 @@ class CircuitCanvas extends LitElement {
         window.removeEventListener('elera-add-physical-component', this._physicalAddHandler);
         window.removeEventListener('elera-select-physical-component', this._physicalSelectHandler);
         window.removeEventListener('elera-component-library-change', this._componentLibraryHandler);
+        window.removeEventListener('elera-lesson-ghost', this._lessonGhostHandler);
+        window.removeEventListener('elera-lesson-fit', this._lessonFitHandler);
+        this._ghostAnimation?.stop();
         this.stage?.destroy();
     }
 
@@ -688,7 +714,8 @@ class CircuitCanvas extends LitElement {
         const container = this.shadowRoot.querySelector('.stage-host');
         if (!container || !this.stage) return;
         this.stage.size({ width: container.clientWidth, height: container.clientHeight });
-        this._renderBackground();
+        // A panel opening beside the canvas resizes it right after a lesson frames the view.
+        if (!this._refitLesson()) this._renderBackground();
     }
 
     _setLayerDepth(layer, depth) {
@@ -698,7 +725,7 @@ class CircuitCanvas extends LitElement {
 
     _applyCamera() {
         const scale = this.camera.pixelsPerMillimetre * this.camera.zoom;
-        for (const layer of [this.boardLayer, this.wireLayer, this.componentLayer, this.interactionLayer]) {
+        for (const layer of [this.boardLayer, this.wireLayer, this.componentLayer, this.ghostLayer, this.interactionLayer]) {
             layer.position({ x: this.camera.panX, y: this.camera.panY });
             layer.scale({ x: scale, y: scale });
         }
@@ -729,6 +756,7 @@ class CircuitCanvas extends LitElement {
         this._renderWires();
         this._renderComponents();
         this._applyNetHover();
+        this._renderLessonGhost();
         this._renderInteractionLayer();
     }
 
@@ -1376,6 +1404,7 @@ class CircuitCanvas extends LitElement {
             this._positionComponentVisual(component.id);
             this._queueArtworkPinCalibration(component.id);
         }
+        this._syncLessonGhostVisual();
         this._applyNetHover();
     }
 
@@ -1478,16 +1507,23 @@ class CircuitCanvas extends LitElement {
         };
     }
 
+    // The lesson ghost calibrates like a placed part, so its outline has the real size.
+    _visualComponent(componentId) {
+        const ghost = this._lessonGhost?.component;
+        return this.store.project.components.find(item => item.id === componentId)
+            || (ghost?.id === componentId ? ghost : null);
+    }
+
     _queueArtworkPinCalibration(componentId, retries = 40) {
         if (this._pendingPinCalibration.has(componentId)) return;
-        const component = this.store.project.components.find(item => item.id === componentId);
+        const component = this._visualComponent(componentId);
         const footprint = getFootprintDefinition(component?.footprintId);
         if (!component || footprint?.placementMode !== 'free') return;
         this._pendingPinCalibration.add(componentId);
         const inspect = remaining => requestAnimationFrame(async () => {
             const wrapper = [...(this.visualLayer?.children || [])].find(node => node.dataset.componentId === componentId);
             const artwork = wrapper?.querySelector('.component-artwork');
-            const current = this.store.project.components.find(item => item.id === componentId);
+            const current = this._visualComponent(componentId);
             const currentFootprint = getFootprintDefinition(current?.footprintId);
             if (!artwork || !current || !currentFootprint) {
                 this._pendingPinCalibration.delete(componentId);
@@ -1538,6 +1574,8 @@ class CircuitCanvas extends LitElement {
                 // frame cannot retain the temporary generated footprint.
                 this._renderComponents();
                 this.store.recomputeRoutes();
+                this._renderLessonGhost();
+                this._refitLesson();
                 this._renderInteractionLayer();
             }
         });
@@ -1548,6 +1586,10 @@ class CircuitCanvas extends LitElement {
         if (!this.visualLayer) return;
         const wrapper = [...this.visualLayer.children].find(node => node.dataset.componentId === componentId);
         const component = this.store.project.components.find(item => item.id === componentId);
+        this._placeComponentVisual(wrapper, component, overrideTransform);
+    }
+
+    _placeComponentVisual(wrapper, component, overrideTransform = null) {
         const footprint = getFootprintDefinition(component?.footprintId);
         const artwork = wrapper?.querySelector('.component-artwork');
         if (!wrapper || !component || !footprint || !artwork) return;
@@ -1566,6 +1608,116 @@ class CircuitCanvas extends LitElement {
     _positionComponentVisuals() {
         if (!this.visualLayer) return;
         for (const component of this.store.project.components) this._positionComponentVisual(component.id);
+        const ghost = this.visualLayer.querySelector('.lesson-ghost');
+        if (ghost) this._placeComponentVisual(ghost, this._lessonGhost?.component);
+    }
+
+    // Guided build: the next part or wire drawn as a glowing outline.
+    _syncLessonGhostVisual() {
+        if (!this.visualLayer) return;
+        this.visualLayer.querySelector('.lesson-ghost')?.remove();
+        const component = this._lessonGhost?.kind === 'component' ? this._lessonGhost.component : null;
+        const footprint = getFootprintDefinition(component?.footprintId);
+        if (!footprint || footprint.packageType === 'dip') return;
+        const wrapper = document.createElement('div');
+        wrapper.className = 'component-visual lesson-ghost';
+        wrapper.dataset.componentId = component.id;
+        wrapper.append(this._createComponentArtwork(component, footprint));
+        this.visualLayer.append(wrapper);
+        this._placeComponentVisual(wrapper, component);
+        this._queueArtworkPinCalibration(component.id);
+    }
+
+    _renderLessonGhost() {
+        if (!this.ghostLayer) return;
+        this._ghostAnimation?.stop();
+        this.ghostLayer.destroyChildren();
+        this._syncLessonGhostVisual();
+        const ghost = this._lessonGhost;
+        const accent = this._themeColor('--accent');
+        const rings = [], dashes = [];
+        const target = (point, radius = 1.1) => {
+            this.ghostLayer.add(new Konva.Circle({ x: point.x, y: point.y, radius: radius * .7, fill: accent, opacity: .85, listening: false }));
+            const ring = new Konva.Circle({ x: point.x, y: point.y, radius, stroke: accent, strokeWidth: .35, listening: false });
+            ring.setAttr('baseRadius', radius);
+            rings.push(ring);
+            this.ghostLayer.add(ring);
+        };
+        const outline = attrs => {
+            const shape = new Konva.Rect({ stroke: accent, strokeWidth: .5, dash: [2, 1.2], listening: false, ...attrs });
+            dashes.push(shape);
+            this.ghostLayer.add(shape);
+        };
+        if (ghost?.kind === 'surface') {
+            const definition = getSurfaceDefinition(ghost.surface);
+            outline({ ...ghost.surface.transform, width: definition?.width || 84, height: definition?.height || 57, cornerRadius: 1.5 });
+        } else if (ghost?.kind === 'component') {
+            for (const hole of ghost.holes) {
+                const surface = this.store.project.surfaces.find(item => item.id === hole.surfaceId);
+                if (!surface) continue;
+                for (const holeId of holesInElectricalGroup(surface, hole.holeId)) {
+                    const point = holeWorldPosition(surface, holeId);
+                    this.ghostLayer.add(new Konva.Circle({ x: point.x, y: point.y, radius: .9, fill: accent, opacity: .22, listening: false }));
+                }
+                target(holeWorldPosition(surface, hole.holeId));
+            }
+            const bounds = getFootprintDefinition(ghost.component.footprintId)?.routingBounds;
+            if (!ghost.holes.length && bounds) {
+                const transform = componentWorldTransform(this.store.project, ghost.component);
+                outline({
+                    x: transform.x, y: transform.y, rotation: transform.rotation, cornerRadius: 2,
+                    offsetX: -bounds.x + 1.5, offsetY: -bounds.y + 1.5, width: bounds.width + 3, height: bounds.height + 3,
+                });
+            }
+        } else if (ghost?.kind === 'wire') {
+            // An accent halo keeps dark wire colours (ground is black) visible on the dark canvas.
+            this.ghostLayer.add(new Konva.Line({
+                points: [ghost.from.x, ghost.from.y, ghost.to.x, ghost.to.y],
+                stroke: accent, strokeWidth: 1.6, lineCap: 'round', opacity: .3, listening: false,
+            }));
+            const line = new Konva.Line({
+                points: [ghost.from.x, ghost.from.y, ghost.to.x, ghost.to.y],
+                stroke: ghost.color, strokeWidth: .7, dash: [1.6, 1.1], lineCap: 'round',
+                shadowColor: accent, shadowBlur: 6, shadowOpacity: .9, listening: false,
+            });
+            dashes.push(line);
+            this.ghostLayer.add(line);
+            target(ghost.from, 1.3);
+            target(ghost.to, 1.3);
+        }
+        this.ghostLayer.batchDraw();
+        if (!ghost || globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+        this._ghostAnimation = new Konva.Animation(frame => {
+            const phase = (frame.time % 1400) / 1400;
+            for (const ring of rings) {
+                ring.radius(ring.getAttr('baseRadius') * (1 + phase * 1.3));
+                ring.opacity(1 - phase);
+            }
+            for (const item of dashes) item.dashOffset(-frame.time / 180);
+        }, this.ghostLayer);
+        this._ghostAnimation.start();
+    }
+
+    // Frames a lesson's finished circuit. The panel opening beside the canvas and
+    // the first artwork calibration both change the layout afterwards, so the
+    // frame follows them until the student pans or zooms.
+    _refitLesson() {
+        const untouched = this._fittedCamera && ['zoom', 'panX', 'panY'].every(key => this.camera[key] === this._fittedCamera[key]);
+        if (!this._lessonFit?.target || (Date.now() - this._lessonFit.at > 2500 && !untouched)) return false;
+        this._fitToBounds(lessonBounds(this._lessonFit.target));
+        this._fittedCamera = { ...this.camera };
+        return true;
+    }
+
+    _fitToBounds(bounds) {
+        if (!this.stage || !bounds) return;
+        const width = this.stage.width(), height = this.stage.height();
+        const fit = Math.min(width / (bounds.width * CAMERA.pixelsPerMillimetre), height / (bounds.height * CAMERA.pixelsPerMillimetre));
+        this.camera.zoom = Math.max(CAMERA.minZoom, Math.min(CAMERA.maxZoom, fit * .9));
+        const scale = this.camera.pixelsPerMillimetre * this.camera.zoom;
+        this.camera.panX = width / 2 - (bounds.x + bounds.width / 2) * scale;
+        this.camera.panY = height / 2 - (bounds.y + bounds.height / 2) * scale;
+        this._applyCamera();
     }
 
     _drawDipPackage(group, component, footprint) {

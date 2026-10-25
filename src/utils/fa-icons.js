@@ -48,6 +48,17 @@ const ICONS = Object.freeze({
     google: svg`<path d="M20 12h-8M20 12a8 8 0 1 1-2.34-5.66"/>`,
     cloud: svg`<path d="M7 18a4 4 0 0 1-.5-8A6 6 0 0 1 18 9a4.5 4.5 0 0 1-.5 9z"/>`,
     rightFromBracket: svg`<path d="M14 4h5v16h-5M11 8l-4 4 4 4M7 12h9"/>`,
+    graduation: svg`<path d="m2 9 10-5 10 5-10 5z"/><path d="M6 11v5c3 2.5 9 2.5 12 0v-5M22 9v6"/>`,
+    lightbulb: svg`<path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"/>`,
+    arrowLeft: svg`<path d="M19 12H5m6-6-6 6 6 6"/>`,
+    arrowRight: svg`<path d="M5 12h14m-6-6 6 6-6 6"/>`,
+    forward: svg`<path d="m5 5 7 7-7 7M13 5l7 7-7 7"/>`,
+    eye: svg`<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>`,
+    copy: svg`<rect x="8" y="8" width="12" height="12" rx="1"/><path d="M16 8V4H4v12h4"/>`,
+    trophy: svg`<path d="M8 4h8v5a4 4 0 0 1-8 0zM8 6H4a4 4 0 0 0 4 4M16 6h4a4 4 0 0 1-4 4M12 13v4M8 21h8M9 17h6v4H9z"/>`,
+    clock: svg`<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>`,
+    play: svg`<path d="M7 4v16l13-8z"/>`,
+    listCheck: svg`<path d="m3 6 2 2 3-3M3 13l2 2 3-3M11 6h10M11 13h10M11 20h10M4 20h3"/>`,
 });
 
 export function faIcon(name, className = '') {
