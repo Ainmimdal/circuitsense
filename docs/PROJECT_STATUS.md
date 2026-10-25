@@ -96,6 +96,7 @@ Gap definitions and exit conditions live in [ENGINE_CONTRACT.md](ENGINE_CONTRACT
 4. **P1, regression depth:** one focused fixture per remaining physical validation finding (`GAP-06`; the electrical findings have them in `test/physical-electrical-validation.test.js`) and an automated browser fixture for the mixed circuit (`GAP-07`).
 5. **P1, legacy rule parity:** the unused schema-v2 engine and its tests were removed; port the rules listed in `GAP-11` to the physical engine, each with a regression test.
 6. **P2, performance:** profile dense breadboard scenes and split the production bundle.
+7. **In progress, guided lessons:** `src/physical/lessons.js` turns a finished project into ordered build steps (breadboard, board, parts, then power, ground and signal wires) and checks each step against the student's build, accepting any hole in the right strip. Still to build: the lesson panel with ghost previews, about six preset lessons with copyable sketches, and a "Make lesson" button.
 
 For every engine change, name the affected contract rule, add the failing test first, and keep the command mutation boundaries.
 
