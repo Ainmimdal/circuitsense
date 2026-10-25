@@ -72,17 +72,7 @@ class LessonGuide extends LitElement {
             color: var(--text);
             background: var(--panel);
             border-left: 1px solid var(--panel-border);
-            box-shadow: -18px 0 40px color-mix(in srgb, var(--ink) 55%, transparent);
             font-family: var(--font-ui);
-            animation: slide .28s cubic-bezier(.2, .9, .3, 1);
-        }
-        @keyframes slide { from { transform: translateX(40px); opacity: 0; } }
-        @keyframes pop { 0% { transform: scale(.4); opacity: 0; } 60% { transform: scale(1.15); } 100% { transform: scale(1); } }
-        @keyframes swap { from { opacity: 0; transform: translateY(8px); } }
-        @keyframes pulse { 50% { box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 22%, transparent); } }
-        @keyframes burst {
-            0% { transform: translate(0, 0) rotate(0); opacity: 1; }
-            100% { transform: translate(var(--dx), var(--dy)) rotate(var(--r)); opacity: 0; }
         }
 
         header { padding: 18px 18px 14px; border-bottom: 1px solid var(--panel-border); }
@@ -99,7 +89,7 @@ class LessonGuide extends LitElement {
             color: var(--text-muted);
             background: transparent;
             border: 1px solid var(--panel-border);
-            border-radius: 6px;
+            border-radius: 4px;
             cursor: pointer;
         }
         .icon-btn:hover { color: var(--text); background: var(--primary); }
@@ -113,12 +103,12 @@ class LessonGuide extends LitElement {
             border: 0;
             border-radius: 3px;
             cursor: pointer;
-            transition: background .3s ease, transform .2s ease;
+            transition: background .2s ease;
         }
-        .seg:hover { transform: scaleY(1.6); }
+        .seg:hover { background: var(--primary-hover); }
         .seg.done { background: var(--accent); }
         .seg.skipped { background: repeating-linear-gradient(45deg, var(--primary-hover) 0 3px, var(--primary) 3px 6px); }
-        .seg.current { background: var(--text); animation: pulse 1.6s ease-in-out infinite; }
+        .seg.current { background: var(--text); }
         .count { display: flex; justify-content: space-between; margin-top: 8px; color: var(--text-muted); font-size: 11.5px; }
 
         .scroll { flex: 1; overflow: auto; padding: 18px; }
@@ -127,8 +117,7 @@ class LessonGuide extends LitElement {
             padding: 18px;
             background: var(--ink);
             border: 1px solid var(--panel-border);
-            border-radius: 9px;
-            animation: swap .25s ease-out;
+            border-radius: 4px;
         }
         .card.success { border-color: var(--accent); }
         .kind {
@@ -141,7 +130,7 @@ class LessonGuide extends LitElement {
             letter-spacing: .06em;
             text-transform: uppercase;
         }
-        .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--dot, var(--accent)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--dot, var(--accent)) 25%, transparent); }
+        .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--dot, var(--accent)); }
         h3 { margin: 10px 0 8px; font-size: 17px; line-height: 1.35; letter-spacing: -.01em; }
         .note { margin: 0; color: var(--text-muted); font-size: 13px; line-height: 1.55; }
         .hint {
@@ -152,10 +141,9 @@ class LessonGuide extends LitElement {
             color: var(--text);
             background: color-mix(in srgb, var(--accent) 12%, transparent);
             border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
-            border-radius: 7px;
+            border-radius: 4px;
             font-size: 12.5px;
             line-height: 1.45;
-            animation: swap .25s ease-out;
         }
         .hint .fa-icon { flex: 0 0 auto; color: var(--accent); margin-top: 1px; }
         .done-mark {
@@ -169,10 +157,9 @@ class LessonGuide extends LitElement {
             color: var(--ink);
             background: var(--accent);
             border-radius: 50%;
-            animation: pop .45s cubic-bezier(.2, .9, .3, 1.4);
         }
         .watch { display: flex; align-items: center; gap: 8px; margin-top: 14px; color: var(--text-muted); font-size: 11.5px; }
-        .watch i { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); animation: pulse 1.6s ease-in-out infinite; }
+        .watch i { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
 
         .list-toggle {
             display: flex;
@@ -220,13 +207,12 @@ class LessonGuide extends LitElement {
             color: var(--text);
             background: transparent;
             border: 1px solid var(--panel-border);
-            border-radius: 6px;
+            border-radius: 4px;
             font: 600 12px var(--font-ui);
             cursor: pointer;
-            transition: background .15s ease, transform .1s ease;
+            transition: background .15s ease;
         }
         .btn:hover:not([disabled]) { background: var(--primary); }
-        .btn:active:not([disabled]) { transform: translateY(1px); }
         .btn[disabled] { opacity: .4; cursor: default; }
         .btn.primary { margin-left: auto; color: var(--ink); background: var(--accent); border-color: var(--accent); }
         .btn.primary:hover:not([disabled]) { background: color-mix(in srgb, var(--accent) 85%, var(--text)); }
@@ -239,9 +225,9 @@ class LessonGuide extends LitElement {
             font-size: 14px;
             font-weight: 600;
             line-height: 1.45;
-            background: color-mix(in srgb, var(--accent) 10%, transparent);
-            border-left: 3px solid var(--accent);
-            border-radius: 0 6px 6px 0;
+            background: var(--ink);
+            border: 1px solid var(--panel-border);
+            border-radius: 4px;
         }
         .section-title { margin: 18px 0 8px; color: var(--text-muted); font-size: 10.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
         .bom { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; font-size: 12.5px; }
@@ -252,32 +238,20 @@ class LessonGuide extends LitElement {
 
         .finish { position: relative; text-align: center; padding-top: 6px; }
         .trophy {
-            width: 64px;
-            height: 64px;
+            width: 48px;
+            height: 48px;
             margin: 6px auto 12px;
             display: grid;
             place-items: center;
             color: var(--ink);
-            background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--accent) 60%, white), var(--accent));
+            background: var(--accent);
             border-radius: 50%;
-            box-shadow: 0 0 0 8px color-mix(in srgb, var(--accent) 16%, transparent), 0 12px 30px color-mix(in srgb, var(--accent) 35%, transparent);
-            animation: pop .6s cubic-bezier(.2, .9, .3, 1.4);
         }
-        .trophy .fa-icon { width: 30px; height: 30px; }
+        .trophy .fa-icon { width: 22px; height: 22px; }
         .finish h3 { font-size: 21px; margin: 0 0 6px; }
         .stats { display: flex; justify-content: center; gap: 18px; margin: 14px 0 4px; color: var(--text-muted); font-size: 11.5px; }
         .stats b { display: block; color: var(--text); font-size: 18px; font-family: var(--font-tech); }
-        .confetti { position: absolute; left: 50%; top: 38px; width: 0; height: 0; pointer-events: none; }
-        .confetti i {
-            position: absolute;
-            width: 7px;
-            height: 11px;
-            border-radius: 1px;
-            background: var(--c);
-            animation: burst 1.1s cubic-bezier(.1, .7, .3, 1) forwards;
-            animation-delay: var(--d);
-        }
-        .code-box { margin-top: 6px; text-align: left; background: var(--ink); border: 1px solid var(--panel-border); border-radius: 8px; overflow: hidden; }
+        .code-box { margin-top: 6px; text-align: left; background: var(--ink); border: 1px solid var(--panel-border); border-radius: 4px; overflow: hidden; }
         .code-head { display: flex; align-items: center; padding: 7px 8px 7px 12px; border-bottom: 1px solid var(--panel-border); color: var(--text-muted); font-size: 11.5px; }
         .code-head .btn { height: 28px; margin-left: auto; padding: 0 10px; }
         pre { margin: 0; padding: 12px; max-height: 280px; overflow: auto; font: 11.5px/1.6 var(--font-tech); white-space: pre; }
@@ -287,15 +261,12 @@ class LessonGuide extends LitElement {
         pre .n { color: #f78c6c; }
         pre .f { color: #82aaff; }
         .upload { margin: 0; padding-left: 18px; list-style: decimal; color: var(--text-muted); font-size: 12.5px; line-height: 1.7; text-align: left; }
-        .challenge { margin-top: 14px; padding: 11px 13px; text-align: left; font-size: 12.5px; line-height: 1.5; border: 1px dashed var(--panel-border); border-radius: 7px; }
+        .challenge { margin-top: 14px; padding: 11px 13px; text-align: left; font-size: 12.5px; line-height: 1.5; border: 1px dashed var(--panel-border); border-radius: 4px; }
         .challenge b { color: var(--accent); }
         .ok { display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; color: var(--accent-sensors); font-size: 12px; }
         .ok.warn { color: var(--accent-ics); }
 
         @media (max-width: 900px) { :host { width: min(372px, 100%); } }
-        @media (prefers-reduced-motion: reduce) {
-            :host, .card, .hint, .done-mark, .trophy, .confetti i, .seg.current, .watch i { animation: none; }
-        }
     `;
 
     constructor() {
@@ -497,15 +468,9 @@ class LessonGuide extends LitElement {
         const lesson = this.session.lesson;
         const errors = validatePhysicalProject(physicalCircuitStore.project).all.filter(item => item.severity === 'error').length;
         const minutes = Math.max(1, Math.round((Date.now() - this._startedAt) / 60000));
-        const colors = ['var(--accent)', 'var(--accent-sensors)', 'var(--accent-ics)', 'var(--accent-inputs)', 'var(--text)'];
         return html`
             <div class="scroll">
                 <div class="finish">
-                    <div class="confetti" aria-hidden="true">${Array.from({ length: 26 }, (_, index) => {
-                        const angle = (index / 26) * Math.PI * 2;
-                        const distance = 70 + (index % 5) * 22;
-                        return html`<i style="--c:${colors[index % colors.length]};--dx:${Math.cos(angle) * distance}px;--dy:${Math.sin(angle) * distance + 40}px;--r:${index * 47}deg;--d:${(index % 4) * 40}ms"></i>`;
-                    })}</div>
                     <div class="trophy">${faIcon('trophy')}</div>
                     <h3>${lesson ? `${lesson.title} built!` : 'Circuit rebuilt!'}</h3>
                     <p class="note">${lesson ? lesson.goal.replace(/\.$/, '') + ' is ready to go.' : `You rebuilt ${this.session.name || 'the circuit'} step by step.`}</p>
