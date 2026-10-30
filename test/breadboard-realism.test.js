@@ -19,7 +19,7 @@ import {
 import { defaultFootprintForComponent } from '../src/physical/footprints.js';
 import { validatePhysicalProject } from '../src/physical/validation.js';
 import { autoLayoutPhysicalStore, autoWirePhysicalStore } from '../src/physical/automation.js';
-import { inspectNetAt } from '../src/physical/net-inspector.js';
+import { inspectNetAt, resolveNetFocus } from '../src/physical/net-inspector.js';
 import { realizeAutoWireConnections } from '../src/physical/breadboard-auto-wire.js';
 
 const BOARDS = [HALF_BREADBOARD_DEFINITION, FULL_BREADBOARD_DEFINITION];
@@ -307,6 +307,18 @@ test('hovering any terminal traces its whole connection, including strips and ra
 
     const lonely = inspectNetAt(store.project, surfaceHoleRef(surface.id, 'J30'));
     assert.equal(lonely.connected, false, 'an empty strip has nothing to trace');
+});
+
+test('hover only highlights a net; Alt or a selected wire isolates it; drags show nothing', () => {
+    const pin = { type: 'component-pin', componentId: 'led0', pinId: 'A' };
+    const wireEnd = { type: 'surface-hole', surfaceId: 'bb', holeId: 'A1' };
+    assert.equal(resolveNetFocus({}), null);
+    assert.deepEqual(resolveNetFocus({ hoverRef: pin }), { ref: pin, mode: 'highlight' });
+    assert.deepEqual(resolveNetFocus({ hoverRef: pin, altHeld: true }), { ref: pin, mode: 'isolate' });
+    assert.equal(resolveNetFocus({ altHeld: true }), null, 'Alt alone has nothing to isolate');
+    assert.deepEqual(resolveNetFocus({ hoverRef: pin, selectedWireRef: wireEnd }), { ref: wireEnd, mode: 'isolate' }, 'a selected wire keeps its net isolated');
+    assert.deepEqual(resolveNetFocus({ hoverRef: pin, selectedWireRef: wireEnd, altHeld: true }), { ref: pin, mode: 'isolate' }, 'Alt traces whatever is under the pointer');
+    assert.equal(resolveNetFocus({ hoverRef: pin, selectedWireRef: wireEnd, altHeld: true, busy: true }), null, 'nothing shows while dragging or placing');
 });
 
 test('Auto Layout fits series resistors between LEDs placed close together', () => {
