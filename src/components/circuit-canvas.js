@@ -20,7 +20,7 @@ import { createFullBreadboardSurface, createHalfBreadboardSurface, getSurfaceDef
 import { applyTransform, screenToWorld } from '../physical/geometry.js';
 import { pinExitDirection } from '../physical/routing.js';
 import { editableWirePoints, insertWireWaypoint, moveWireRouteEndpoints, moveWireSegment, moveWireWaypoint, removeWireWaypoint, translateWireRoute } from '../physical/wire-edit.js';
-import { inspectNetAt, inspectWireNet } from '../physical/net-inspector.js';
+import { inspectNetAt, inspectWireNet, NET_HOVER_DELAY_MS, resolveNetFocus } from '../physical/net-inspector.js';
 import { faIcon } from '../utils/fa-icons.js';
 
 const CAMERA = Object.freeze({ pixelsPerMillimetre: 5.2, minZoom: 0.42, maxZoom: 2.5 });
@@ -112,6 +112,9 @@ class CircuitCanvas extends LitElement {
 
         .component-visual { transition: opacity 120ms ease; }
         .component-visual.net-dimmed { opacity: .28; }
+        .component-visual.net-highlight:not(.selected) .component-artwork {
+            filter: drop-shadow(0 0 3px var(--primary));
+        }
 
         .component-visual.selected .component-artwork {
             filter: drop-shadow(0 0 5px var(--primary-hover)) drop-shadow(0 0 1px var(--text));
@@ -420,6 +423,12 @@ class CircuitCanvas extends LitElement {
         this._panning = null;
         this._marquee = null;
         this._groupDrag = null;
+        this._netHoverRef = null;
+        this._netHoverTimer = null;
+        this._netFocus = null;
+        this._netFocusKey = null;
+        this._netFocusBusy = false;
+        this._altHeld = false;
         this._suppressStageClick = false;
         this._dragOver = false;
         this._pendingPinCalibration = new Set();
@@ -431,8 +440,19 @@ class CircuitCanvas extends LitElement {
             }
             this._renderScene();
         };
-        this._interactionHandler = () => this._renderInteractionLayer();
+        this._interactionHandler = () => {
+            this._syncNetFocusBusy();
+            this._renderInteractionLayer();
+        };
         this._keyHandler = event => this._onKeyDown(event);
+        this._keyUpHandler = event => {
+            if (event.key === 'Alt') {
+                // Stops Firefox on Windows from focusing its menu bar after an Alt trace.
+                event.preventDefault();
+                this._setAltHeld(false);
+            }
+        };
+        this._blurHandler = () => this._setAltHeld(false);
         this._physicalAddHandler = event => this._quickAddPhysical(event.detail?.componentId);
         this._physicalSelectHandler = event => {
             const componentId = event.detail?.componentId;
@@ -666,6 +686,8 @@ class CircuitCanvas extends LitElement {
         this.store.addEventListener('change', this._storeHandler);
         this.interaction.addEventListener('change', this._interactionHandler);
         window.addEventListener('keydown', this._keyHandler);
+        window.addEventListener('keyup', this._keyUpHandler);
+        window.addEventListener('blur', this._blurHandler);
         window.addEventListener('elera-add-physical-component', this._physicalAddHandler);
         window.addEventListener('elera-select-physical-component', this._physicalSelectHandler);
         window.addEventListener('elera-component-library-change', this._componentLibraryHandler);
@@ -678,6 +700,9 @@ class CircuitCanvas extends LitElement {
         this.store.removeEventListener('change', this._storeHandler);
         this.interaction.removeEventListener('change', this._interactionHandler);
         window.removeEventListener('keydown', this._keyHandler);
+        window.removeEventListener('keyup', this._keyUpHandler);
+        window.removeEventListener('blur', this._blurHandler);
+        clearTimeout(this._netHoverTimer);
         window.removeEventListener('elera-add-physical-component', this._physicalAddHandler);
         window.removeEventListener('elera-select-physical-component', this._physicalSelectHandler);
         window.removeEventListener('elera-component-library-change', this._componentLibraryHandler);
@@ -728,7 +753,7 @@ class CircuitCanvas extends LitElement {
         this._renderBoards();
         this._renderWires();
         this._renderComponents();
-        this._applyNetHover();
+        this._refreshNetFocus();
         this._renderInteractionLayer();
     }
 
@@ -982,6 +1007,7 @@ class CircuitCanvas extends LitElement {
         this._selectedWireId = null;
         this._clearWireSelectionVisuals();
         this._syncComponentVisualSelection();
+        this._refreshNetFocus();
         this._renderInteractionLayer();
     }
 
@@ -1030,6 +1056,7 @@ class CircuitCanvas extends LitElement {
     _refreshSelectionVisuals() {
         this._refreshWireSelectionVisuals();
         this._syncComponentVisualSelection();
+        this._refreshNetFocus();
         this._renderInteractionLayer();
         this.requestUpdate();
     }
@@ -1870,6 +1897,7 @@ class CircuitCanvas extends LitElement {
                 [wireId, points.map(point => ({ ...point }))])),
             delta: { x: 0, y: 0 },
         };
+        this._refreshNetFocus();
         this._status = `Moving ${this._selectedItemCount()} selected ${this._selectedItemCount() === 1 ? 'item' : 'items'}.`;
         this.requestUpdate();
     }
@@ -1980,35 +2008,107 @@ class CircuitCanvas extends LitElement {
         return this._hoveredHole ? surfaceHoleRef(this._hoveredHole.surfaceId, this._hoveredHole.holeId) : null;
     }
 
+    _isNetFocusBusy() {
+        return this.interaction?.state?.type !== 'idle' || Boolean(this._groupDrag || this._marquee?.active || this._panning);
+    }
+
     /**
-     * Light up everything electrically joined to the hovered wire, pin or hole
-     * and dim the rest, so a beginner can trace one connection in a busy circuit.
+     * Track the wire, pin or hole under the pointer. Its net is only lit after
+     * the pointer rests for a moment, so sweeping across a busy board stays calm
+     * and skips the net walk. Leaving a terminal or holding Alt acts at once.
      */
     _setHoverNet(ref) {
-        const busy = this.interaction?.state?.type !== 'idle' || this._groupDrag || this._marquee?.active || this._panning;
-        const net = ref && !busy ? inspectNetAt(this.store.project, ref) : null;
-        const next = net?.connected ? net : null;
-        const key = next ? JSON.stringify([next.wireIds, next.componentIds, next.holes.length]) : null;
-        if (key === this._hoverNetKey) return;
-        this._hoverNetKey = key;
-        this._hoverNet = next;
+        const same = ref && this._netHoverRef
+            ? JSON.stringify(ref) === JSON.stringify(this._netHoverRef)
+            : ref === this._netHoverRef;
+        if (same) return;
+        this._netHoverRef = ref;
+        clearTimeout(this._netHoverTimer);
+        this._netHoverTimer = null;
+        if (!ref || this._altHeld) {
+            this._refreshNetFocus();
+            return;
+        }
+        this._netHoverTimer = setTimeout(() => {
+            this._netHoverTimer = null;
+            this._refreshNetFocus();
+        }, NET_HOVER_DELAY_MS);
+        // Moving along the lit net keeps it lit; anything else clears straight away.
+        if (this._netFocus?.mode === 'highlight' && !this._netFocusContains(ref)) this._refreshNetFocus();
+    }
+
+    _netFocusContains(ref) {
+        const net = this._netFocus;
+        if (ref.type === 'component-pin') {
+            return net.terminals.some(item => item.componentId === ref.componentId && item.pinId === ref.pinId);
+        }
+        if (ref.type === 'surface-hole') {
+            return net.holes.some(item => item.surfaceId === ref.surfaceId && item.holeId === ref.holeId);
+        }
+        return false;
+    }
+
+    _syncNetFocusBusy() {
+        if (this._isNetFocusBusy() !== this._netFocusBusy) this._refreshNetFocus();
+    }
+
+    _setAltHeld(held) {
+        if (held === this._altHeld) return;
+        this._altHeld = held;
+        if (this._netHoverRef) {
+            clearTimeout(this._netHoverTimer);
+            this._netHoverTimer = null;
+            this._refreshNetFocus();
+        }
+    }
+
+    /**
+     * Hover lightly highlights a net and dims nothing. Holding Alt over a
+     * terminal, or selecting one wire, isolates its net so a beginner can trace
+     * one connection in a busy circuit. Drags and placement show neither.
+     */
+    _refreshNetFocus() {
+        const busy = this._isNetFocusBusy();
+        this._netFocusBusy = busy;
+        const selectedWire = this._selectedWireIds.size === 1 && this._selectedComponentIds.size === 0
+            ? this.store.project.wires.find(wire => wire.id === this._selectedWireId)
+            : null;
+        // A pending hover delay has not lit anything yet.
+        const hoverRef = this._netHoverTimer ? null : this._netHoverRef;
+        const focus = resolveNetFocus({ hoverRef, selectedWireRef: selectedWire?.from || null, altHeld: this._altHeld, busy });
+        const key = focus ? JSON.stringify([focus.mode, focus.ref]) : null;
+        if (key === this._netFocusKey && this._netFocusProject === this.store.project) return;
+        this._netFocusKey = key;
+        this._netFocusProject = this.store.project;
+        const net = focus ? inspectNetAt(this.store.project, focus.ref) : null;
+        this._netFocus = net?.connected ? { ...net, mode: focus.mode } : null;
         this._applyNetHover();
         this._renderInteractionLayer();
     }
 
     _applyNetHover() {
-        const net = this._hoverNet;
+        const net = this._netFocus;
+        const isolate = net?.mode === 'isolate';
+        const highlight = net?.mode === 'highlight';
         const wireIds = new Set(net?.wireIds || []);
         const componentIds = new Set(net?.componentIds || []);
+        const glow = highlight ? this._themeColor('--primary') : null;
         for (const node of this.wireLayer?.getChildren() || []) {
             const id = node.id?.() || '';
             const wireId = id.startsWith('wire:') ? id.slice(5) : id.startsWith('wire-selection:') ? id.slice(15) : null;
             if (wireId === null) continue;
-            node.opacity(!net || wireIds.has(wireId) ? 1 : .16);
+            node.opacity(!isolate || wireIds.has(wireId) ? 1 : .16);
+            if (!id.startsWith('wire:')) continue;
+            const lit = highlight && wireIds.has(wireId);
+            node.setAttrs(lit
+                ? { strokeWidth: .92, shadowColor: glow, shadowBlur: 1.4, shadowOffsetY: 0, shadowOpacity: .95 }
+                : { strokeWidth: .72, shadowColor: '#000', shadowBlur: .55, shadowOffsetY: .28, shadowOpacity: .7 });
         }
         this.wireLayer?.batchDraw();
         for (const wrapper of this.visualLayer?.children || []) {
-            wrapper.classList.toggle('net-dimmed', Boolean(net) && !componentIds.has(wrapper.dataset.componentId));
+            const member = componentIds.has(wrapper.dataset.componentId);
+            wrapper.classList.toggle('net-dimmed', isolate && !member);
+            wrapper.classList.toggle('net-highlight', highlight && member);
         }
     }
 
@@ -2035,13 +2135,14 @@ class CircuitCanvas extends LitElement {
                 listening: false,
             }));
         }
-        if (this._hoverNet) {
+        if (this._netFocus) {
             const netColor = this._themeColor('--primary');
-            for (const hole of this._hoverNet.holes) {
+            const holeOpacity = this._netFocus.mode === 'isolate' ? .42 : .3;
+            for (const hole of this._netFocus.holes) {
                 const surface = this.store.project.surfaces.find(item => item.id === hole.surfaceId);
                 const point = surface && holeWorldPosition(surface, hole.holeId);
                 if (!point) continue;
-                this.interactionLayer.add(new Konva.Circle({ x: point.x, y: point.y, radius: .95, fill: netColor, opacity: .42, listening: false }));
+                this.interactionLayer.add(new Konva.Circle({ x: point.x, y: point.y, radius: .95, fill: netColor, opacity: holeOpacity, listening: false }));
             }
         }
         if (this._hoveredHole) {
@@ -2093,7 +2194,9 @@ class CircuitCanvas extends LitElement {
         this.interactionLayer.batchDraw();
     }
 
-    _onStageMove() {
+    _onStageMove(event) {
+        // Catches Alt pressed or released while the window did not have focus.
+        if (event?.evt && 'altKey' in event.evt) this._setAltHeld(Boolean(event.evt.altKey));
         const pointer = this.stage.getPointerPosition();
         if (!pointer) return;
         if (this._panning) {
@@ -2166,7 +2269,10 @@ class CircuitCanvas extends LitElement {
 
     _onStageUp(event) {
         this._panning = null;
-        if (!this._marquee) return;
+        if (!this._marquee) {
+            this._syncNetFocusBusy();
+            return;
+        }
         if (this._marquee.active) {
             event.cancelBubble = true;
             this._applyMarqueeSelection();
@@ -2202,6 +2308,7 @@ class CircuitCanvas extends LitElement {
         this._selectedSurfaceId = null;
         this._refreshWireSelectionVisuals();
         this._syncComponentVisualSelection();
+        this._refreshNetFocus();
     }
 
     _onStageClick(event) {
@@ -2414,6 +2521,9 @@ class CircuitCanvas extends LitElement {
         } else if (modifier && event.key.toLowerCase() === 'y') {
             event.preventDefault();
             this.store.redo();
+        } else if (event.key === 'Alt') {
+            event.preventDefault();
+            this._setAltHeld(true);
         } else if (event.key === 'Escape') {
             this.interaction.cancel();
             this._status = 'Interaction cancelled.';

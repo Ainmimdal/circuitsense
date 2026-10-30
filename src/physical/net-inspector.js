@@ -138,3 +138,21 @@ export function inspectNetAt(project, ref) {
         connected: wireIds.length > 0 || terminals.length > 1,
     };
 }
+
+/** How long the pointer must rest on a wire, pin or hole before its net lights up. */
+export const NET_HOVER_DELAY_MS = 200;
+
+/**
+ * Decide which net to show and how strongly. Hovering only highlights a net,
+ * so sweeping the pointer across a busy board never dims anything. Holding
+ * Alt over a terminal, or selecting a single wire, isolates its net by
+ * dimming everything else. Nothing shows while a drag, placement or wire
+ * draw is in progress.
+ */
+export function resolveNetFocus({ hoverRef = null, selectedWireRef = null, altHeld = false, busy = false } = {}) {
+    if (busy) return null;
+    if (altHeld && hoverRef) return { ref: hoverRef, mode: 'isolate' };
+    if (selectedWireRef) return { ref: selectedWireRef, mode: 'isolate' };
+    if (hoverRef) return { ref: hoverRef, mode: 'highlight' };
+    return null;
+}
