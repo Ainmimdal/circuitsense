@@ -116,7 +116,7 @@ class CircuitCanvas extends LitElement {
         .component-visual.net-dimmed { opacity: .28; }
         .component-visual.lesson-ghost { opacity: .38; animation: lesson-ghost 1.8s ease-in-out infinite; }
         .component-visual.lesson-ghost .component-artwork {
-            filter: drop-shadow(0 0 4px var(--accent)) drop-shadow(0 0 10px color-mix(in srgb, var(--accent) 60%, transparent));
+            filter: drop-shadow(0 0 6px var(--accent));
         }
         @keyframes lesson-ghost { 50% { opacity: .62; } }
         @media (prefers-reduced-motion: reduce) { .component-visual.lesson-ghost { animation: none; } }
@@ -659,6 +659,8 @@ class CircuitCanvas extends LitElement {
     firstUpdated() {
         const container = this.shadowRoot.querySelector('.stage-host');
         this.visualLayer = this.shadowRoot.querySelector('.component-visual-layer');
+        // Six stacked full-size canvases at 3x cost 9x the pixels; 2x looks the same and halves draw time.
+        Konva.pixelRatio = Math.min(globalThis.devicePixelRatio || 1, 2);
         this.stage = new Konva.Stage({ container, width: container.clientWidth, height: container.clientHeight });
         this.backgroundLayer = new Konva.Layer({ listening: false });
         this.boardLayer = new Konva.Layer();
@@ -729,6 +731,7 @@ class CircuitCanvas extends LitElement {
             layer.position({ x: this.camera.panX, y: this.camera.panY });
             layer.scale({ x: scale, y: scale });
         }
+        if (scale * Konva.pixelRatio !== this._boardCacheRatio) this._cacheBoards();
         this._zoomLabel = `${Math.round(this.camera.zoom * 100)}%`;
         this._renderBackground();
         this._positionComponentVisuals();
@@ -771,39 +774,35 @@ class CircuitCanvas extends LitElement {
         }));
         const spacing = 2.54 * this.camera.pixelsPerMillimetre * this.camera.zoom;
         if (spacing >= 6) {
-            this.backgroundLayer.add(new Konva.Shape({
-                listening: false,
-                sceneFunc: (context, shape) => {
-                    context.beginPath();
-                    const startX = ((this.camera.panX % spacing) + spacing) % spacing;
-                    const startY = ((this.camera.panY % spacing) + spacing) % spacing;
-                    for (let x = startX; x < this.stage.width(); x += spacing) {
-                        for (let y = startY; y < this.stage.height(); y += spacing) {
-                            context.moveTo(x + .7, y);
-                            context.arc(x, y, .7, 0, Math.PI * 2);
-                        }
-                    }
-                    context.fillStrokeShape(shape);
-                },
-                fill: panelBorder,
-                opacity: .72,
-            }));
+            // One tile of 5x5 dots repeated as a pattern: thousands of arcs per frame were the main pan/zoom cost.
             const majorSpacing = spacing * 5;
-            this.backgroundLayer.add(new Konva.Shape({
-                listening: false,
-                sceneFunc: (context, shape) => {
+            const ratio = Konva.pixelRatio;
+            const key = `${spacing}|${panelBorder}|${ratio}`;
+            if (this._gridTile?.key !== key) {
+                const canvas = document.createElement('canvas');
+                canvas.width = canvas.height = Math.ceil(majorSpacing * ratio);
+                const context = canvas.getContext('2d');
+                context.scale(ratio, ratio);
+                context.fillStyle = panelBorder;
+                const dot = (x, y, radius) => {
                     context.beginPath();
-                    const startX = ((this.camera.panX % majorSpacing) + majorSpacing) % majorSpacing;
-                    const startY = ((this.camera.panY % majorSpacing) + majorSpacing) % majorSpacing;
-                    for (let x = startX; x < this.stage.width(); x += majorSpacing) {
-                        for (let y = startY; y < this.stage.height(); y += majorSpacing) {
-                            context.moveTo(x + 1.15, y);
-                            context.arc(x, y, 1.15, 0, Math.PI * 2);
-                        }
-                    }
-                    context.fillStrokeShape(shape);
-                },
-                fill: panelBorder,
+                    context.arc(x, y, radius, 0, Math.PI * 2);
+                    context.fill();
+                };
+                // Dots sit half a pitch in from the tile edge so none is clipped.
+                context.globalAlpha = .72;
+                for (let i = 0; i < 5; i++) for (let j = 0; j < 5; j++) dot((i + .5) * spacing, (j + .5) * spacing, .7);
+                context.globalAlpha = 1;
+                dot(spacing / 2, spacing / 2, 1.15);
+                this._gridTile = { key, canvas };
+            }
+            const tileScale = majorSpacing / this._gridTile.canvas.width;
+            this.backgroundLayer.add(new Konva.Rect({
+                x: 0, y: 0, width: this.stage.width(), height: this.stage.height(), listening: false,
+                fillPatternImage: this._gridTile.canvas,
+                fillPatternScale: { x: tileScale, y: tileScale },
+                fillPatternX: ((this.camera.panX % majorSpacing) + majorSpacing) % majorSpacing - spacing / 2,
+                fillPatternY: ((this.camera.panY % majorSpacing) + majorSpacing) % majorSpacing - spacing / 2,
             }));
         }
         this.backgroundLayer.batchDraw();
@@ -860,7 +859,19 @@ class CircuitCanvas extends LitElement {
             });
             this.boardLayer.add(group);
         }
+        this._cacheBoards();
         this.boardLayer.batchDraw();
+    }
+
+    // A breadboard is static while panning, so it is drawn once into a bitmap at the current zoom.
+    _cacheBoards() {
+        const ratio = this.camera.pixelsPerMillimetre * this.camera.zoom * Konva.pixelRatio;
+        for (const group of this.boardLayer.getChildren()) {
+            const rect = group.getClientRect({ skipTransform: true });
+            // shortcut: bitmap capped at 4096 px, so a full breadboard is slightly soft at max zoom on 2x screens; tile it if that shows.
+            group.cache({ pixelRatio: Math.min(ratio, 4096 / Math.max(rect.width, rect.height)) });
+        }
+        this._boardCacheRatio = ratio;
     }
 
     _previewSurfaceWires(surfaceId, delta) {
@@ -1677,8 +1688,7 @@ class CircuitCanvas extends LitElement {
             }));
             const line = new Konva.Line({
                 points: [ghost.from.x, ghost.from.y, ghost.to.x, ghost.to.y],
-                stroke: ghost.color, strokeWidth: .7, dash: [1.6, 1.1], lineCap: 'round',
-                shadowColor: accent, shadowBlur: 6, shadowOpacity: .9, listening: false,
+                stroke: ghost.color, strokeWidth: .7, dash: [1.6, 1.1], lineCap: 'round', listening: false,
             });
             dashes.push(line);
             this.ghostLayer.add(line);
@@ -1687,7 +1697,11 @@ class CircuitCanvas extends LitElement {
         }
         this.ghostLayer.batchDraw();
         if (!ghost || globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+        let lastDraw = -Infinity;
         this._ghostAnimation = new Konva.Animation(frame => {
+            // About 20 fps is plenty for a slow pulse; returning false skips the layer redraw.
+            if (frame.time - lastDraw < 50) return false;
+            lastDraw = frame.time;
             const phase = (frame.time % 1400) / 1400;
             for (const ring of rings) {
                 ring.radius(ring.getAttr('baseRadius') * (1 + phase * 1.3));
