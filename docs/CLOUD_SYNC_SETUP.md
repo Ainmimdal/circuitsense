@@ -78,6 +78,21 @@ Checked against the Supabase and Google Cloud consoles in November 2026.
    database every three days. Even if the project is paused, Elera keeps
    working on the device and syncs once it is resumed.
 
+## Hosting on Cloudflare
+
+`wrangler.jsonc` serves the built `dist/` folder as static assets. In the
+Cloudflare dashboard, open *Workers & Pages*, click *Create*, import the
+GitHub repository, and set:
+
+- Build command: `npm run build`
+- Deploy command: `npx wrangler deploy`
+- Build variables (under *Settings*, then *Build*): `VITE_SUPABASE_URL` and
+  `VITE_SUPABASE_PUBLISHABLE_KEY`. Vite reads these at build time, so they
+  have to be build variables, not runtime ones.
+
+Then add the `*.workers.dev` address (or a custom domain) to Supabase's
+redirect URLs and to the Google client's authorized JavaScript origins.
+
 ## Free-plan headroom
 
 As of October 2026, the Supabase Free plan has a 500 MB database, 50,000
