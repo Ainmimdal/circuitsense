@@ -1,7 +1,7 @@
 // Cloudflare deploy for Elera: a static Vite site served from ./dist.
 // Build with `npm run build`, then `npx wrangler deploy`.
 {
-  "name": "elera",
+  "name": "circuitsense",
   "compatibility_date": "2026-10-01",
   "assets": {
     "directory": "./dist",
