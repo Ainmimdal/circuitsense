@@ -4,6 +4,7 @@ import { autoLayoutPhysicalStore, autoWirePhysicalStore } from './physical/autom
 import { accountService } from './persistence/account.js';
 import { projectLibrary } from './persistence/project-library.js';
 import { faIcon } from './utils/fa-icons.js';
+import { confirmDialog, showToast } from './components/app-dialogs.js';
 import './components/component-builder-modal.js';
 import './components/login-modal.js';
 
@@ -311,8 +312,13 @@ class CircuitApp extends LitElement {
         this._manualWireSnap = physicalCircuitStore.toggleManualWireSnap();
     }
 
-    _clearProject() {
-        if (confirm('Clear all components and wires? This cannot be undone.')) {
+    async _clearProject() {
+        if (await confirmDialog({
+            title: 'Clear the canvas?',
+            message: 'All components and wires will be removed. This cannot be undone.',
+            confirmLabel: 'Clear',
+            danger: true,
+        })) {
             physicalCircuitStore.clear();
             projectLibrary.setCurrentProjectId(null);
         }
@@ -351,7 +357,7 @@ class CircuitApp extends LitElement {
         this._layoutInProgress = true;
         try {
             const result = autoLayoutPhysicalStore(physicalCircuitStore);
-            if (result.status !== 'success') alert(`Auto Layout could not finish: ${result.errors?.[0] || 'check the circuit components'}`);
+            if (result.status !== 'success') showToast(`Auto Layout could not finish: ${result.errors?.[0] || 'check the circuit components'}`, 'warning');
             else await physicalCircuitStore.whenRoutesSettled();
         } catch (error) {
             console.error('[CircuitSense] Auto layout failed:', error);
@@ -363,13 +369,13 @@ class CircuitApp extends LitElement {
     async _autoWireAll() {
         const result = autoWirePhysicalStore(physicalCircuitStore);
         if (result.total === 0) {
-            alert('No components to auto-wire. Add components with pins first.');
+            showToast('No components to auto-wire. Add components with pins first.', 'info');
             return;
         }
         if (result.status === 'failure') {
-            alert(result.errors?.[0] === 'NO_ARDUINO'
+            showToast(result.errors?.[0] === 'NO_ARDUINO'
                 ? 'Add an Arduino or another supported controller before using Auto Wire.'
-                : `Auto Wire could not finish: ${result.errors?.[0] || 'check the circuit'}`);
+                : `Auto Wire could not finish: ${result.errors?.[0] || 'check the circuit'}`, 'warning');
             return;
         }
         await physicalCircuitStore.whenRoutesSettled();
@@ -377,7 +383,7 @@ class CircuitApp extends LitElement {
             `Auto-wired ${result.success} connections across ${result.total} components without moving them.`,
             result.errors.length > 0 ? `${result.errors.length} errors.` : '',
         ].filter(Boolean).join(' ');
-        alert(msg);
+        showToast(msg, result.errors.length > 0 ? 'warning' : 'success');
     }
 
     _toggleAi() {
@@ -412,7 +418,7 @@ class CircuitApp extends LitElement {
                     physicalCircuitStore.importProject(event.target.result);
                     projectLibrary.setCurrentProjectId(null);
                 } catch {
-                    alert('Failed to load project file. It may be corrupted or invalid.');
+                    showToast('Failed to load project file. It may be corrupted or invalid.', 'error');
                 }
             };
             reader.readAsText(file);

@@ -4,6 +4,7 @@ import { normalizePersistedProject } from '../physical/model.js';
 import { accountService } from '../persistence/account.js';
 import { projectLibrary } from '../persistence/project-library.js';
 import { faIcon } from '../utils/fa-icons.js';
+import { confirmDialog, showToast } from './app-dialogs.js';
 
 class ProjectsModal extends LitElement {
     static properties = {
@@ -298,7 +299,12 @@ class ProjectsModal extends LitElement {
         if (!name) return;
         const existing = this._projects.find(project => project.name === name);
         if (existing && existing.id !== this._currentId
-            && !confirm(`A project called "${name}" already exists. Replace it with the current circuit?`)) return;
+            && !await confirmDialog({
+                title: 'Replace project?',
+                message: `A project called "${name}" already exists. Replace it with the current circuit?`,
+                confirmLabel: 'Replace',
+                danger: true,
+            })) return;
         physicalCircuitStore.save();
         const saved = await projectLibrary.saveAs(name, physicalCircuitStore.project);
         if (!saved) return;
@@ -312,10 +318,14 @@ class ProjectsModal extends LitElement {
     }
 
     async _loadProject(id) {
-        if (!confirm('Open this project? Changes to the circuit you have open now will be lost unless you save them first.')) return;
+        if (!await confirmDialog({
+            title: 'Open this project?',
+            message: 'Changes to the circuit you have open now will be lost unless you save them first.',
+            confirmLabel: 'Open',
+        })) return;
         const record = await projectLibrary.get(id);
         if (!record) {
-            alert('That project could not be found. It may have been deleted on another device.');
+            showToast('That project could not be found. It may have been deleted on another device.', 'error');
             await this._refreshProjects();
             return;
         }
@@ -323,7 +333,7 @@ class ProjectsModal extends LitElement {
             physicalCircuitStore.importProject(normalizePersistedProject(record.data));
         } catch (error) {
             console.error('[Elera] Saved project could not be opened:', error);
-            alert('This project could not be opened. It may be damaged.');
+            showToast('This project could not be opened. It may be damaged.', 'error');
             return;
         }
         projectLibrary.setCurrentProjectId(id);
@@ -332,7 +342,12 @@ class ProjectsModal extends LitElement {
 
     async _deleteProject(project) {
         const where = this._signedIn ? ' from this device and your account' : '';
-        if (!confirm(`Delete "${project.name}"${where}? This cannot be undone.`)) return;
+        if (!await confirmDialog({
+            title: 'Delete project?',
+            message: `"${project.name}" will be deleted${where}. This cannot be undone.`,
+            confirmLabel: 'Delete',
+            danger: true,
+        })) return;
         await projectLibrary.remove(project.id);
         await this._refreshProjects();
     }
