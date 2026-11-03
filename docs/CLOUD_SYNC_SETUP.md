@@ -24,6 +24,8 @@ to back their projects up and open them on any computer.
 
 ## One-time setup (about 15 minutes)
 
+Checked against the Supabase and Google Cloud consoles in November 2026.
+
 1. **Create a Supabase project** at <https://supabase.com/dashboard> on the
    free plan. For Malaysia, pick the Singapore region.
 2. **Create the table.** Either way works:
@@ -41,26 +43,32 @@ to back their projects up and open them on any computer.
    security, so each user only sees their own rows. It is safe to run twice.
    `supabase/config.toml` holds settings for local development. Without a
    `[remotes]` block, it never changes production auth settings.
-3. **Create a Google OAuth client** in Google Cloud Console under
-   *APIs & Services*:
-   - On the *OAuth consent screen*, choose External, app name "Elera", and only
-     the default `email`, `profile` and `openid` scopes. These are not
-     sensitive, so Google does not need to verify the app.
-   - Under *Credentials*, choose *Create credentials*, then *OAuth client ID*,
-     with type *Web application*.
-   - For the authorized redirect URI, add
-     `https://<your-project-ref>.supabase.co/auth/v1/callback`. The exact value
-     is shown on Supabase's Google provider page.
+3. **Create a Google OAuth client** in Google Cloud Console, under
+   **Google Auth Platform**:
+   - *Branding*: set the app name to "Elera" and add a support email.
+   - *Audience*: choose External, then **Publish app** so that anyone can sign
+     in, not only listed test users.
+   - *Data Access*: add the `openid` scope. Email and profile are included by
+     default, and none of these scopes need Google verification.
+   - *Clients*: click **Create** and choose *Web application*. Under
+     authorized JavaScript origins, add the production URL and
+     `http://localhost:5173`. Under authorized redirect URIs, add the
+     **Callback URL** shown on Supabase's Google provider page
+     (`https://<project-ref>.supabase.co/auth/v1/callback`). Save the client
+     ID and secret.
 4. **Turn on Google in Supabase.** Under *Authentication*, then
-   *Sign In / Providers*, then *Google*, paste the client ID and secret and
-   enable it.
+   *Sign In / Providers*, then *Google*, paste the client ID and secret, enable
+   the provider and save.
 5. **Allow your app URLs.** Under *Authentication*, then *URL Configuration*,
-   set the Site URL to the deployed address and add both the deployed address
-   and `http://localhost:5173` to the redirect URLs.
+   set the Site URL to the production address. Add these redirect URLs:
+   `http://localhost:5173/**` and, for Vercel preview deployments,
+   `https://*-<vercel-team-slug>.vercel.app/**`.
 6. **Configure the app.** Copy `.env.example` to `.env.local` and fill in
-   `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`. Both are under
-   *Project Settings*, then *API Keys*. The publishable (anon) key is meant to
-   be public, and row level security is what protects the data. Set the same
+   `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`. Both appear in the
+   project's **Connect** dialog and under *Settings*, then *API Keys*. Use the
+   publishable key (`sb_publishable_...`). The legacy `anon` JWT key still
+   works, but Supabase is retiring it at the end of 2026. The publishable key is
+   meant to be public, and row level security is what protects the data. Set the same
    two variables in your hosting provider (Vercel, Netlify, Cloudflare Pages
    and so on) before building.
 7. **Keep the free project awake.** Supabase pauses free projects after a week
@@ -69,6 +77,22 @@ to back their projects up and open them on any computer.
    `SUPABASE_PUBLISHABLE_KEY`. The `Keep Supabase awake` workflow then pings the
    database every three days. Even if the project is paused, Elera keeps
    working on the device and syncs once it is resumed.
+
+## Hosting on Cloudflare
+
+`wrangler.jsonc` serves the built `dist/` folder as static assets. In the
+Cloudflare dashboard, open *Workers & Pages*, click *Create*, import the
+GitHub repository, and set:
+
+- Build command: `npm run build`
+- Deploy command: `npx wrangler deploy`
+
+The public Supabase URL and publishable key are committed in
+`.env.production`, which Vite reads for every production build, so no host
+needs extra variables. Build variables with the same names override them.
+
+Then add the `*.workers.dev` address (or a custom domain) to Supabase's
+redirect URLs and to the Google client's authorized JavaScript origins.
 
 ## Free-plan headroom
 
