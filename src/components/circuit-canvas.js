@@ -928,7 +928,8 @@ class CircuitCanvas extends LitElement {
                 this.requestUpdate();
             });
             group.on('click tap', event => {
-                if (!isPrimaryPointer(event)) return;
+                // A click on a hole bubbles to the stage, which starts or finishes the wire there.
+                if (!isPrimaryPointer(event) || this._hoveredHole) return;
                 event.cancelBubble = true;
                 this._clearItemSelection();
                 this._selectedSurfaceId = surface.id;
