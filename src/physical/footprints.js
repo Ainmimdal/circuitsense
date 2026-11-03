@@ -236,7 +236,10 @@ function generatedPhysicalDefinition(id) {
     const calibratedFootprint = calibratedPackages.find(footprint => footprint.id === source.breadboard?.footprintId)
         || calibratedPackages.find(footprint => footprint.preferred)
         || calibratedPackages[0];
-    const footprintId = calibratedFootprint?.id || `free:${id}`;
+    // Header modules keep their free artwork off the board, like the resistor;
+    // snapping onto a breadboard switches them to their rigid header package.
+    const startsFree = source.breadboard?.defaultPlacement === 'free';
+    const footprintId = (!startsFree && calibratedFootprint?.id) || `free:${id}`;
     const size = generatedSize(source, pinIds.length);
     const definition = deepFreeze({
         id,
@@ -250,10 +253,10 @@ function generatedPhysicalDefinition(id) {
         defaultFootprintId: footprintId,
         visual: { kind: source.isControllerBoard ? 'controller-board' : 'module', label: source.name || id },
     });
-    if (calibratedFootprint) {
-        for (const packageDefinition of calibratedPackages) {
-            if (!FOOTPRINTS[packageDefinition.id]) generatedFootprints.set(packageDefinition.id, packageDefinition);
-        }
+    for (const packageDefinition of calibratedPackages) {
+        if (!FOOTPRINTS[packageDefinition.id]) generatedFootprints.set(packageDefinition.id, packageDefinition);
+    }
+    if (calibratedFootprint && !startsFree) {
         generatedComponents.set(id, definition);
         return definition;
     }

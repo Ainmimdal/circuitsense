@@ -12,7 +12,7 @@ The hand-written flowcharts after the generated block were drawn for the legacy 
 
 <!-- engine-doc-sync:start -->
 > Generated from `ENGINE_CONTRACT.md` by `npm run docs:sync`. Do not edit this block.
-> Contract fingerprint: `a717698da2f6`
+> Contract fingerprint: `1907fcd168ec`
 
 ## Contract-synchronized command pipeline
 

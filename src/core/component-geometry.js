@@ -89,6 +89,41 @@ function deepFreeze(value) {
 }
 
 /**
+ * Geometry for a breakout module with one straight row of 2.54 mm header pins.
+ * `pins` lists the Wokwi pinInfo coordinates in header order; `axis` says
+ * whether that row runs across ('row') or down ('column') the native artwork.
+ * The body bounds follow the artwork so the module covers what it really covers.
+ */
+function headerModule({ tag, size, id, pins, axis = 'row' }) {
+    const names = pins.map(([name]) => name);
+    const native = Object.fromEntries(pins.map(([name, x, y]) => [name, { x, y }]));
+    const first = native[names[0]];
+    const last = native[names[names.length - 1]];
+    const pitch = Math.hypot(last.x - first.x, last.y - first.y) / (names.length - 1);
+    const across = axis === 'row';
+    const grid = value => ({ col: across ? value : 0, row: across ? 0 : value });
+    const span = names.length - 1;
+    return {
+        tag,
+        native: { size, pins: native },
+        calibration: { from: names[0], to: names[span], gridDelta: grid(span) },
+        footprints: [{
+            id,
+            anchorPin: names[0],
+            // The header must run along the board, one pin per terminal strip.
+            rotations: across ? [0, 180] : [90, 270],
+            pins: Object.fromEntries(names.map((name, index) => [name, grid(index)])),
+            bodyBounds: {
+                minCol: Math.floor(-first.x / pitch),
+                maxCol: Math.ceil((size.width - first.x) / pitch),
+                minRow: Math.floor(-first.y / pitch),
+                maxRow: Math.ceil((size.height - first.y) / pitch),
+            },
+        }],
+    };
+}
+
+/**
  * `calibration` identifies two native pins and their intended grid delta.
  * It supplies a single component-type scale for any configured board pitch.
  */
@@ -336,6 +371,77 @@ export const componentGeometry = deepFreeze({
             bodyBounds: { minCol: -3, maxCol: 4, minRow: -9, maxRow: 1 },
         }],
     },
+
+    // Breakout modules with a straight header row. Students plug these into
+    // the breadboard in most tutorials, so they snap like any other part.
+    'hc-sr04': headerModule({
+        tag: 'wokwi-hc-sr04', id: 'header-row-4-hc-sr04',
+        size: { width: cssMm(45), height: cssMm(25) },
+        pins: [['VCC', 71.3, 94.5], ['TRIG', 81.3, 94.5], ['ECHO', 91.3, 94.5], ['GND', 101.3, 94.5]],
+    }),
+    'pir-motion': headerModule({
+        tag: 'wokwi-pir-motion-sensor', id: 'header-row-3-pir',
+        size: { width: cssMm(24), height: cssMm(24.448) },
+        pins: [['VCC', 36.178, 92], ['OUT', 45.9175, 92], ['GND', 55.6415, 92]],
+    }),
+    mpu6050: headerModule({
+        tag: 'wokwi-mpu6050', id: 'header-row-8-mpu6050',
+        size: { width: cssMm(21.6), height: cssMm(16.2) },
+        pins: [['INT', 7.28, 5.78], ['AD0', 16.9, 5.78], ['XCL', 26.4, 5.78], ['XDA', 36, 5.78],
+            ['SDA', 45.6, 5.78], ['SCL', 55.2, 5.78], ['GND', 64.8, 5.78], ['VCC', 74.4, 5.78]],
+    }),
+    ssd1306: headerModule({
+        tag: 'wokwi-ssd1306', id: 'header-row-8-ssd1306',
+        size: { width: 150, height: 116 },
+        pins: [['DATA', 36.5, 12.5], ['CLK', 45.5, 12.5], ['DC', 54.5, 12.5], ['RST', 64.5, 12.5],
+            ['CS', 74.5, 12.5], ['3V3', 83.5, 12.5], ['VIN', 93.5, 12.5], ['GND', 103.5, 12.5]],
+    }),
+    ds1307: headerModule({
+        tag: 'wokwi-ds1307', id: 'header-column-5-ds1307', axis: 'column',
+        size: { width: cssMm(25.8), height: cssMm(22.212) },
+        pins: [['GND', 9.5, 15], ['5V', 9.5, 25], ['SDA', 9.5, 34.5], ['SCL', 9.5, 44], ['SQW', 9.5, 54]],
+    }),
+    'microsd-card': headerModule({
+        tag: 'wokwi-microsd-card', id: 'header-column-7-microsd', axis: 'column',
+        size: { width: cssMm(21.6), height: cssMm(20.4) },
+        pins: [['CD', 76.734, 9.3744], ['DO', 76.734, 18.8622], ['GND', 76.734, 28.4634], ['SCK', 76.734, 38.178],
+            ['VCC', 76.734, 47.628], ['DI', 76.734, 57.456], ['CS', 76.734, 66.906]],
+    }),
+    'small-sound-sensor': headerModule({
+        tag: 'wokwi-small-sound-sensor', id: 'header-column-4-small-sound', axis: 'column',
+        size: { width: cssMm(35.211), height: cssMm(13.346) },
+        pins: [['AOUT', 0, 11], ['GND', 0, 20.5], ['VCC', 0, 30.5], ['DOUT', 0, 40.5]],
+    }),
+    'big-sound-sensor': headerModule({
+        tag: 'wokwi-big-sound-sensor', id: 'header-column-4-big-sound', axis: 'column',
+        size: { width: cssMm(37.056), height: cssMm(13.346) },
+        pins: [['AOUT', 0, 11], ['GND', 0, 20.5], ['VCC', 0, 30.5], ['DOUT', 0, 40.5]],
+    }),
+    'flame-sensor': headerModule({
+        tag: 'wokwi-flame-sensor', id: 'header-column-4-flame', axis: 'column',
+        size: { width: cssMm(52.904), height: cssMm(16.267) },
+        pins: [['VCC', 199, 14.6], ['GND', 199, 24.3], ['DOUT', 199, 34], ['AOUT', 199, 43.7]],
+    }),
+    'gas-sensor': headerModule({
+        tag: 'wokwi-gas-sensor', id: 'header-column-4-gas', axis: 'column',
+        size: { width: cssMm(36.232), height: cssMm(16.617) },
+        pins: [['AOUT', 137, 16.5], ['DOUT', 137, 26.4], ['GND', 137, 36.5], ['VCC', 137, 46.2]],
+    }),
+    'ntc-temperature-sensor': headerModule({
+        tag: 'wokwi-ntc-temperature-sensor', id: 'header-column-3-ntc', axis: 'column',
+        size: { width: cssMm(35.826), height: cssMm(19) },
+        pins: [['GND', 135, 26.2], ['VCC', 135, 35.8], ['OUT', 135, 45.5]],
+    }),
+    'photoresistor-sensor': headerModule({
+        tag: 'wokwi-photoresistor-sensor', id: 'header-column-4-photoresistor', axis: 'column',
+        size: { width: cssMm(45.95), height: cssMm(16.267) },
+        pins: [['VCC', 172, 16], ['GND', 172, 26], ['DO', 172, 35.8], ['AO', 172, 45.5]],
+    }),
+    'tilt-switch': headerModule({
+        tag: 'wokwi-tilt-switch', id: 'header-column-3-tilt', axis: 'column',
+        size: { width: cssMm(23.4), height: cssMm(14.7) },
+        pins: [['GND', 88, 18], ['VCC', 88, 27.8], ['OUT', 88, 37.5]],
+    }),
 });
 
 export function getComponentGeometry(componentId) {

@@ -664,14 +664,58 @@ const defineWokwiComponent = definition => {
     },
 ].forEach(defineWokwiComponent);
 
+// Breakout modules with one straight 2.54 mm header row plug into the
+// breadboard like any other part (geometry in core/component-geometry.js).
+const HEADER_MODULE_FOOTPRINTS = {
+    'hc-sr04': 'header-row-4-hc-sr04',
+    'pir-motion': 'header-row-3-pir',
+    mpu6050: 'header-row-8-mpu6050',
+    ssd1306: 'header-row-8-ssd1306',
+    ds1307: 'header-column-5-ds1307',
+    'microsd-card': 'header-column-7-microsd',
+    'small-sound-sensor': 'header-column-4-small-sound',
+    'big-sound-sensor': 'header-column-4-big-sound',
+    'flame-sensor': 'header-column-4-flame',
+    'gas-sensor': 'header-column-4-gas',
+    'ntc-temperature-sensor': 'header-column-3-ntc',
+    'photoresistor-sensor': 'header-column-4-photoresistor',
+    'tilt-switch': 'header-column-3-tilt',
+};
+
+// Why each remaining part sits beside the breadboard, in words a student can act on.
+const CABLE_REASON = 'connect it with jumper wires.';
+const OFF_BOARD_REASONS = {
+    servo: `A servo has a 3-wire cable, so it sits beside the board; ${CABLE_REASON}`,
+    'stepper-motor': `A stepper motor has a cable and needs a driver board; ${CABLE_REASON}`,
+    'biaxial-stepper': `A stepper motor has a cable and needs a driver board; ${CABLE_REASON}`,
+    lcd1602: `This display is too large to sit on the breadboard; ${CABLE_REASON}`,
+    lcd2004: `This display is too large to sit on the breadboard; ${CABLE_REASON}`,
+    ili9341: `This screen would cover the whole breadboard; ${CABLE_REASON}`,
+    neopixel: `NeoPixels have solder pads, not pins; ${CABLE_REASON}`,
+    'led-ring': `NeoPixels have solder pads, not pins; ${CABLE_REASON}`,
+    'neopixel-matrix': `NeoPixels have solder pads, not pins; ${CABLE_REASON}`,
+    'membrane-keypad': `The keypad plugs in through its ribbon cable; ${CABLE_REASON}`,
+    'analog-joystick': `The joystick's pins point sideways, so it sits beside the board; ${CABLE_REASON}`,
+    'rotary-encoder': `The KY-040's pins point sideways, so it sits beside the board; ${CABLE_REASON}`,
+    'rotary-dialer': `The dialer is a panel part with wire leads; ${CABLE_REASON}`,
+    'heart-beat-sensor': `The pulse sensor comes on a 3-wire cable; ${CABLE_REASON}`,
+    hx711: `This part is drawn with its load cell attached, so it sits beside the board; ${CABLE_REASON}`,
+    'slide-potentiometer': `The slide pot has pins at both ends, so it sits beside the board; ${CABLE_REASON}`,
+    'pushbutton-large': `The 12 mm button's legs don't fit the 2.54 mm holes here; use the small Push Button or ${CABLE_REASON}`,
+};
+
 for (const component of Object.values(componentLibrary)) {
     if (component.isBreadboard || component.breadboard) continue;
-    component.breadboard = {
-        mountable: false,
-        reason: component.pinless
-            ? 'This visual has no electrical pins.'
-            : 'This part is an external module, motor, display, socketed board, or non-2.54 mm package; connect it with jumper wires.',
-    };
+    const footprintId = HEADER_MODULE_FOOTPRINTS[component.id];
+    component.breadboard = footprintId
+        ? { mountable: true, required: false, footprintId, defaultPlacement: 'free' }
+        : {
+            mountable: false,
+            reason: component.pinless
+                ? 'This visual has no electrical pins.'
+                : OFF_BOARD_REASONS[component.id] ||
+                    `This part has no 2.54 mm pins that fit the breadboard; ${CABLE_REASON}`,
+        };
 }
 
 export const categories = [
