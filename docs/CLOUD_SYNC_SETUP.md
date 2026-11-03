@@ -26,10 +26,21 @@ to back their projects up and open them on any computer.
 
 1. **Create a Supabase project** at <https://supabase.com/dashboard> on the
    free plan. For Malaysia, pick the Singapore region.
-2. **Create the table.** Open the SQL editor, paste
-   `supabase/migrations/20261011000000_projects.sql` and run it. It creates the
-   `projects` table with row level security, so each user only sees their own
-   rows.
+2. **Create the table.** Either way works:
+   - **GitHub integration (recommended):** in Supabase, open
+     *Project Settings*, then *Integrations*, then *GitHub*. Connect
+     `Ainmimdal/circuitsense`, set the working directory to `.`, the
+     production branch to `main`, and turn on *Deploy to production*. Every
+     migration in `supabase/migrations/` is then applied when it reaches
+     `main`. Leave automatic branching off on the free plan, because branches
+     are billed.
+   - **By hand:** open the SQL editor, paste
+     `supabase/migrations/20261011000000_projects.sql` and run it.
+
+   Either way, the migration creates the `projects` table with row level
+   security, so each user only sees their own rows. It is safe to run twice.
+   `supabase/config.toml` holds settings for local development. Without a
+   `[remotes]` block, it never changes production auth settings.
 3. **Create a Google OAuth client** in Google Cloud Console under
    *APIs & Services*:
    - On the *OAuth consent screen*, choose External, app name "Elera", and only
