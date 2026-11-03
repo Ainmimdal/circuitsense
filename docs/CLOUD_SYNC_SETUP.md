@@ -86,9 +86,10 @@ GitHub repository, and set:
 
 - Build command: `npm run build`
 - Deploy command: `npx wrangler deploy`
-- Build variables (under *Settings*, then *Build*): `VITE_SUPABASE_URL` and
-  `VITE_SUPABASE_PUBLISHABLE_KEY`. Vite reads these at build time, so they
-  have to be build variables, not runtime ones.
+
+The public Supabase URL and publishable key are committed in
+`.env.production`, which Vite reads for every production build, so no host
+needs extra variables. Build variables with the same names override them.
 
 Then add the `*.workers.dev` address (or a custom domain) to Supabase's
 redirect URLs and to the Google client's authorized JavaScript origins.
