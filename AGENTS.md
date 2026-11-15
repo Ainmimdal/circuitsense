@@ -4,7 +4,7 @@ Guidance for coding agents (Codex, Claude Code and similar) working in this repo
 
 ## Project
 
-Elera is an IIUM IT Final Year Project: a web-based Arduino circuit builder, in the spirit of Tinkercad and Wokwi, that focuses on guidance rather than manual drawing alone. The FYP is assessed mainly on its software engineering, so architecture, tests and documentation matter as much as features. The repository is named `circuitsense` (an earlier project name); `index.html` still uses that title.
+Elera is an IIUM IT Final Year Project: a web-based Arduino circuit builder, in the spirit of Tinkercad and Wokwi, that focuses on guidance rather than manual drawing alone. Its users are complete electronics beginners, so every label, message and default should make sense to someone who has never wired a circuit. The FYP is assessed mainly on its software engineering, so architecture, tests and documentation matter as much as features. The repository is named `circuitsense` (an earlier project name); `index.html` still uses that title.
 
 Key ideas: metadata-driven components, rule-based electrical and breadboard validation, transactional Auto Wire and Auto Layout, rigid 2.54 mm breadboard footprints, and an optional bring-your-own-key AI assistant that drives the same engine through tools.
 
@@ -14,22 +14,25 @@ Key ideas: metadata-driven components, rule-based electrical and breadboard vali
 npm install
 npm run dev      # Vite dev server on http://localhost:5173
 npm test         # node --test; pretest checks the Wokwi manifest and syncs engine docs
+node --test test/lessons.test.js   # one test file, without the pretest step
 npm run build    # Vite production build
 ```
 
-There is no lint or type-check script. Run `npm test`, `npm run build` and `git diff --check` before handing work back.
+There is no lint or type-check script. Run `npm test`, `npm run build` and `git diff --check` before handing work back. GitHub Actions runs the same test and build on every pull request (`.github/workflows/ci.yml`).
+
+The site is static: `npm run build` output is served by Cloudflare (`wrangler.jsonc`) and there is no backend of our own. Anything that needs a server is new infrastructure and must be documented in `docs/`.
 
 ## What actually runs
 
 `src/index.js` loads `src/circuit-app.js`, which uses only the schema-4 physical engine:
 
-- `src/physical/`: project model (`model.js`, schema 4), command store with undo/redo and `localStorage` persistence (`circuit-store.js`, `commands.js`), breadboard surfaces and footprints, snap solver (`placement.js`), connectivity, Auto Wire (`automation.js`, `breadboard-auto-wire.js`), Auto Layout (`automation.js`, `direct-layout-v2.js`), routing (`routing.js`, run in a Web Worker) and validation (`validation.js`).
-- `src/components/circuit-canvas.js`: Konva workspace host; Lit owns the rest of the UI.
-- `src/core/`: renderer-independent definitions shared across the app (component geometry, part registry, breadboard topology, pin capabilities, the `planAutoWire` pin planner).
-- `src/ai/`: BYOK agent, provider transports and the tool registry that calls into `src/physical/`.
-- `src/lessons/catalog.js`: preset lessons (finished circuits plus story and sketch). `src/physical/lessons.js` turns any project into checked build steps; `src/components/lesson-guide.js` and `lessons-modal.js` are the UI.
+- `src/physical/`: the live engine (project model, command store with undo/redo, placement, routing, Auto Wire, Auto Layout, validation, lesson steps).
+- `src/core/`: renderer-independent definitions shared across the app (component geometry, part registry, pin capabilities).
+- `src/components/`: Lit UI. `circuit-canvas.js` hosts the Konva workspace.
+- `src/ai/`: the bring-your-own-key assistant and its tools, which call into `src/physical/`.
+- `src/lessons/catalog.js`: preset lessons (finished circuit, story and Arduino sketch as plain text).
 
-The legacy schema-v2 engine (`src/store.js`, `src/services/*` and related core modules) and its tests were removed on 2026-10-11; the last commit containing it is `a59b779`. Rules proven only there are tracked as `GAP-11` in `docs/ENGINE_CONTRACT.md`; port them into `src/physical/`.
+The legacy schema-v2 engine (`src/store.js`, `src/services/*` and related core modules) and its tests were removed on 2026-10-11; the last commit containing it is `a59b779`. Rules proven only there are tracked as `GAP-11` in `docs/ENGINE_CONTRACT.md`; port them into `src/physical/`. `REBUILD_SPEC.md` describes that deleted engine; read it as history, not as a guide to the current code.
 
 Named projects live in IndexedDB on the device. Optional Google sign-in and cloud sync go through Supabase and stay off until `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` are set (see `docs/CLOUD_SYNC_SETUP.md`). AI calls go straight from the browser to the provider.
 
@@ -47,7 +50,7 @@ Named projects live in IndexedDB on the device. Optional Google sign-in and clou
 - Geometry is in millimetres with an exact 2.54 mm pitch. Footprints are rigid; never scale pins independently.
 - Command ownership: Auto Wire never moves parts, Auto Layout owns placement, Clean only touches routes, Validation is read-only. Each toolbar command is one undo step.
 - Validation messages should be short and actionable for students (error, warning, info).
-- Prefer plain, conservative JavaScript syntax; some editor setups have mangled newer constructs before.
+- Match the syntax and style of the file you are editing.
 
 ## Planned, not built
 
