@@ -10,6 +10,7 @@ import './components/component-builder-modal.js';
 import './components/login-modal.js';
 import './components/lessons-modal.js';
 import './components/lesson-guide.js';
+import './components/code-panel.js';
 
 const COMPLETED_LESSONS_KEY = 'elera_completed_lessons';
 
@@ -39,6 +40,7 @@ class CircuitApp extends LitElement {
         _manualWireSnap: { state: true },
         _libraryOpen: { state: true },
         _lessonsOpen: { state: true },
+        _codeOpen: { state: true },
         _guideSession: { state: true },
         _completedLessons: { state: true },
     };
@@ -190,7 +192,9 @@ class CircuitApp extends LitElement {
       .main { position: relative; display: flex; flex: 1; min-height: 0; overflow: hidden; }
       .sidebar-shell { width: 276px; flex: 0 0 276px; min-width: 0; z-index: 40; }
       component-sidebar { width: 100%; height: 100%; }
-      .canvas-wrapper { position: relative; flex: 1; min-width: 0; overflow: hidden; transition: margin-right .2s ease; }
+      .canvas-wrapper { position: relative; flex: 1; min-width: 0; overflow: hidden; transition: margin-right .2s ease; display: flex; flex-direction: column; }
+      .canvas-area { position: relative; flex: 1; min-height: 0; }
+      code-panel { flex: 0 0 min(46%, 400px); }
       .canvas-wrapper.ai-open { margin-right: 380px; }
       .canvas-wrapper.guide-open { margin-right: 372px; }
       .toolbar-btn.learn { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, var(--panel-border)); }
@@ -292,6 +296,7 @@ class CircuitApp extends LitElement {
         this._manualWireSnap = physicalCircuitStore.manualWireSnap;
         this._libraryOpen = false;
         this._lessonsOpen = false;
+        this._codeOpen = false;
         this._guideSession = null;
         this._completedLessons = loadCompletedLessons();
         this._guideProjectHandler = event => this._startGuide({ target: event.detail.project, name: event.detail.name });
@@ -511,6 +516,19 @@ class CircuitApp extends LitElement {
         this._lessonsOpen = true;
     }
 
+    _toggleCode() {
+        this._codeOpen = !this._codeOpen;
+        // The canvas gets shorter, so bring the whole circuit back into view.
+        if (this._codeOpen) this._fitCircuit();
+    }
+
+    _fitCircuit() {
+        const target = this._guideSession?.target || physicalCircuitStore.project;
+        if (target.components.length || target.surfaces.length) {
+            requestAnimationFrame(() => window.dispatchEvent(new CustomEvent('elera-lesson-fit', { detail: structuredClone(target) })));
+        }
+    }
+
     _onStartLesson(event) {
         const { lessonId, current } = event.detail || {};
         this._lessonsOpen = false;
@@ -619,6 +637,7 @@ class CircuitApp extends LitElement {
             <summary>${faIcon('gear')} More</summary>
             <div class="mode-popover action-popover">
               <button class="toolbar-btn btn-action" @click=${event => this._runOverflowAction(event, this._openLessons)}>${faIcon('graduation')} Learn</button>
+              <button class="toolbar-btn btn-action" @click=${event => this._runOverflowAction(event, this._toggleCode)}>${faIcon('play')} Code and simulate</button>
               <button class="toolbar-btn btn-action" @click=${event => this._runOverflowAction(event, this._cleanupWires)}>${faIcon('wrench')} Clean wire routes</button>
               <button class="toolbar-btn btn-action" @click=${event => this._runOverflowAction(event, this._autoWireAll)}>${faIcon('bolt')} Auto Wire</button>
               <button class="toolbar-btn btn-action" @click=${event => this._runOverflowAction(event, this._autoLayoutAll)}>${faIcon('wand')} Auto Layout</button>
@@ -636,6 +655,8 @@ class CircuitApp extends LitElement {
           </div>
         </nav>
         <div class="spacer"></div>
+        <button class="toolbar-btn btn-action ${this._codeOpen ? 'ai-active' : ''}" @click=${this._toggleCode} aria-pressed=${this._codeOpen}
+          title="Write Arduino code and run it on your circuit"><span class="icon">${faIcon('play')}</span>Code</button>
         <button class="toolbar-btn learn ${this._lessonsOpen || this._guideSession ? 'active' : ''}" @click=${this._openLessons}
           title="Lessons and guided builds"><span class="icon">${faIcon('graduation')}</span>Learn</button>
         <div class="account-cluster" aria-label="Account controls">
@@ -657,11 +678,15 @@ class CircuitApp extends LitElement {
           <component-sidebar @open-component-builder=${this._openBuilder} @component-chosen=${this._closeLibrary}></component-sidebar>
         </div>
         <div class="canvas-wrapper ${this._aiOpen ? 'ai-open' : ''} ${this._guideSession ? 'guide-open' : ''}">
-          <circuit-canvas .guided=${Boolean(this._guideSession)} @edit-component-definition=${this._openBuilder}></circuit-canvas>
-          <validation-bar></validation-bar>
+          <div class="canvas-area">
+            <circuit-canvas .guided=${Boolean(this._guideSession)} @edit-component-definition=${this._openBuilder}></circuit-canvas>
+            <validation-bar></validation-bar>
+          </div>
+          ${this._codeOpen ? html`<code-panel .lesson=${this._guideSession?.lesson || null} @close=${this._toggleCode}></code-panel>` : ''}
         </div>
         ${this._guideSession ? html`<lesson-guide .session=${this._guideSession} @close=${this._closeGuide}
-          @pick-lesson=${this._openLessons} @lesson-complete=${this._onLessonComplete}></lesson-guide>` : ''}
+          @pick-lesson=${this._openLessons} @lesson-complete=${this._onLessonComplete}
+          @open-code=${() => { if (!this._codeOpen) this._toggleCode(); }}></lesson-guide>` : ''}
       </main>
       <lessons-modal .open=${this._lessonsOpen} .completed=${this._completedLessons}
         .canGuideCurrent=${physicalCircuitStore.project.components.length > 0}

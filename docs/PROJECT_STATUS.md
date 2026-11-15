@@ -45,6 +45,14 @@ The **legacy schema-v2 engine** (`src/store.js`, `src/services/*`, `src/componen
 - "Guide me" turns the circuit on the canvas, or any saved project from My projects, into the same step-by-step rebuild; leaving it early offers the original circuit back.
 - `test/lessons.test.js` checks that every lesson is a valid circuit whose footprints match their holes, that Show me completes every step, and that hints name the right leg and column.
 
+### Arduino code and simulation
+
+- The Code button opens an editor under the canvas (`src/components/code-panel.js`). Run executes the sketch on a simulated ATmega328P (avr8js, `src/simulation/avr-runner.js`) wired to the circuit on the canvas: LEDs, RGB LEDs, buzzers (with sound) and servos react; buttons can be held on the canvas; knobs and sensors get sliders; there is a Serial Monitor. Uno and Nano only.
+- Each lesson opens with its starter sketch, which is compiled ahead of time (`src/simulation/prebuilt-sketches.json`), so it runs with no server. Edited code goes to the compile server (`server/compile-server/`, `VITE_COMPILE_URL`); compiler errors are rewritten in beginner language with a jump to the line.
+- The compile server is not deployed yet. Until `VITE_COMPILE_URL` is set, edited code shows a message and starter code still runs. Hosting and limits are in [COMPILE_SERVER.md](COMPILE_SERVER.md).
+- The circuit model follows wires, switches and resistor dividers; it is not a full solver. Displays, the slide switch and I2C parts are not simulated.
+- `test/simulation.test.js` runs every lesson's program on its finished circuit and checks the parts behave as the lesson says.
+
 ### Physical model
 
 - Schema-4 projects (`src/physical/model.js`; schema 3 is also accepted on load) store surfaces, components, semantic wire endpoints and route intent. Mounted parts persist only surface, footprint, rotation and pin-to-hole bindings, so moving a board carries its parts and wire endpoints.

@@ -1,0 +1,29 @@
+name: Compile server
+
+# Builds the compile server image and compiles a real sketch through it.
+on:
+  pull_request:
+    paths: ['server/compile-server/**', '.github/workflows/compile-server.yml']
+  push:
+    branches: [main]
+    paths: ['server/compile-server/**', '.github/workflows/compile-server.yml']
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t elera-compile server/compile-server
+      - name: Compile sketches through the server
+        run: |
+          docker run -d --rm -p 8787:8787 --name compile elera-compile
+          for attempt in $(seq 1 20); do curl -sf localhost:8787/health && break; sleep 1; done
+          good=$(curl -sf -X POST localhost:8787/compile -H 'Content-Type: application/json' \
+            -d '{"sketch":"#include <Servo.h>\nServo arm;\nvoid setup() { arm.attach(9); pinMode(13, OUTPUT); }\nvoid loop() { digitalWrite(13, HIGH); delay(500); }\n"}')
+          echo "$good" | head -c 200
+          echo "$good" | grep -q '"hex":":10'
+          bad=$(curl -sf -X POST localhost:8787/compile -H 'Content-Type: application/json' \
+            -d '{"sketch":"void setup() { pinMode(13, OUTPUT) }\nvoid loop() {}\n"}')
+          echo "$bad"
+          echo "$bad" | grep -q 'sketch.ino:1:.*error'
+          docker stop compile

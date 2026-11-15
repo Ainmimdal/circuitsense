@@ -494,6 +494,14 @@ class CircuitCanvas extends LitElement {
             this._lessonFit = { target: event.detail, at: Date.now() };
             this._refitLesson();
         };
+        // While code runs, the simulator sends the properties each part should show (null when it stops).
+        this._simulation = null;
+        this._simulationHandler = event => {
+            const stopped = this._simulation && !event.detail;
+            this._simulation = event.detail || null;
+            if (stopped) this._renderComponentVisuals();
+            else this._applySimulation();
+        };
         this._keyHandler = event => this._onKeyDown(event);
         this._keyUpHandler = event => {
             if (event.key === 'Alt') {
@@ -769,6 +777,7 @@ class CircuitCanvas extends LitElement {
         window.addEventListener('elera-component-library-change', this._componentLibraryHandler);
         window.addEventListener('elera-lesson-ghost', this._lessonGhostHandler);
         window.addEventListener('elera-lesson-fit', this._lessonFitHandler);
+        window.addEventListener('elera-simulation-state', this._simulationHandler);
         this._renderScene();
     }
 
@@ -786,6 +795,7 @@ class CircuitCanvas extends LitElement {
         window.removeEventListener('elera-component-library-change', this._componentLibraryHandler);
         window.removeEventListener('elera-lesson-ghost', this._lessonGhostHandler);
         window.removeEventListener('elera-lesson-fit', this._lessonFitHandler);
+        window.removeEventListener('elera-simulation-state', this._simulationHandler);
         this._ghostAnimation?.stop();
         this.stage?.destroy();
     }
@@ -794,6 +804,8 @@ class CircuitCanvas extends LitElement {
         const container = this.shadowRoot.querySelector('.stage-host');
         if (!container || !this.stage) return;
         this.stage.size({ width: container.clientWidth, height: container.clientHeight });
+        // With the code panel open the canvas is short, and the controls list would cover the circuit.
+        if (container.clientHeight < 440) this._hintsOpen = false;
         // A panel opening beside the canvas resizes it right after a lesson frames the view.
         if (!this._refitLesson()) this._renderBackground();
     }
@@ -1499,6 +1511,20 @@ class CircuitCanvas extends LitElement {
         }
         this._syncLessonGhostVisual();
         this._applyNetHover();
+        this._applySimulation();
+    }
+
+    // Lit LEDs, servo angles and pressed buttons are properties of the part artwork.
+    _applySimulation() {
+        if (!this._simulation || !this.visualLayer) return;
+        for (const wrapper of this.visualLayer.children) {
+            const state = this._simulation[wrapper.dataset.componentId];
+            const artwork = state && wrapper.querySelector('.component-artwork');
+            if (!artwork) continue;
+            for (const [name, value] of Object.entries(state)) {
+                if (artwork[name] !== value) artwork[name] = value;
+            }
+        }
     }
 
     _fitArtworkPlacement(footprint, sourceWidth, sourceHeight, sourceBounds = null) {
@@ -2009,6 +2035,19 @@ class CircuitCanvas extends LitElement {
 
     _installComponentInteraction(group, component) {
         let grabOffset = { x: 0, y: 0 };
+        if (componentLibrary[component.definitionId]?.simulation?.kind === 'button') {
+            // While code runs, pressing the button on the canvas presses it in the circuit instead of dragging it.
+            const press = value => window.dispatchEvent(new CustomEvent('elera-simulation-input', { detail: { componentId: component.id, value } }));
+            group.on('mousedown touchstart', () => {
+                if (!this._simulation) return;
+                group.draggable(false);
+                press(1);
+                window.addEventListener('pointerup', () => {
+                    group.draggable(true);
+                    press(0);
+                }, { once: true });
+            });
+        }
         group.on('mouseenter', () => { this.stage.container().style.cursor = 'move'; });
         group.on('mouseleave', () => { this.stage.container().style.cursor = ''; });
         group.on('dragstart', event => {

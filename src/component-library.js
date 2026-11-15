@@ -124,6 +124,8 @@ export const componentLibrary = {
         connectorType: 'male',
         breadboard: { mountable: true, required: true, footprint: { pinSpan: 1 } },
         physicalSupported: true,
+        // How the part behaves while code runs; read by src/simulation/circuit-io.js.
+        simulation: { kind: 'led', anode: 'A', cathode: 'C' },
         codeTemplate: 'digitalWrite(${pin}, HIGH);',
     },
 
@@ -149,6 +151,7 @@ export const componentLibrary = {
             '2': 'right',
         },
         isPassive: true,
+        simulation: { kind: 'resistor', pins: ['1', '2'] },
         connectorType: 'male',
         breadboard: { mountable: true, required: false, footprint: { pinSpan: 6 } },
     },
@@ -178,6 +181,7 @@ export const componentLibrary = {
         needsPullup: true,
         // Terminal pairs the switch connects when operated (validation: switch-short).
         switchContacts: [['1.l', '2.l']],
+        simulation: { kind: 'button' },
         connectorType: 'male',
         breadboard: { mountable: true, required: true, footprintId: 'tactile-3x2' },
         codeTemplate: 'digitalRead(${pin})',
@@ -201,6 +205,7 @@ export const componentLibrary = {
         autoWire: { '1': PIN.PWM, '2': PIN.GND },
         connectorType: 'male',
         breadboard: { mountable: true, required: true, footprintId: 'buzzer-2.54' },
+        simulation: { kind: 'buzzer', pins: ['1', '2'] },
         codeTemplate: 'tone(${pin}, 1000);',
     },
 
@@ -252,6 +257,7 @@ export const componentLibrary = {
         },
         autoWire: { 'PWM': PIN.PWM, 'V+': PIN.VCC, 'GND': PIN.GND },
         avoidPins: ['0', '1'],
+        simulation: { kind: 'servo', signal: 'PWM', power: 'V+', ground: 'GND' },
         codeTemplate: 'myServo.write(90);',
     },
 
@@ -272,6 +278,7 @@ export const componentLibrary = {
             'VCC': PIN.VCC,
         },
         autoWire: { GND: PIN.GND, SIG: PIN.ANALOG, VCC: PIN.VCC },
+        simulation: { kind: 'dial', label: 'Knob', output: 'SIG', power: 'VCC', ground: 'GND', visual: { prop: 'value', scale: 1023 } },
         codeTemplate: 'int val = analogRead(${pin});',
         connectorType: 'male',
         breadboard: { mountable: true, required: true, footprintId: 'pot-linear-3' },
@@ -611,11 +618,14 @@ const defineWokwiComponent = definition => {
         id: 'ntc-temperature-sensor', name: 'NTC Temperature Sensor', tag: 'wokwi-ntc-temperature-sensor', category: 'sensor',
         size: { width: 136, height: 72 }, currentDraw_mA: 1,
         autoWire: { GND: PIN.GND, VCC: PIN.VCC, OUT: PIN.ANALOG },
+        simulation: { kind: 'dial', label: 'Temperature', output: 'OUT', power: 'VCC', ground: 'GND', inverted: true },
     },
     {
         id: 'photoresistor-sensor', name: 'Photoresistor Sensor', tag: 'wokwi-photoresistor-sensor', category: 'sensor',
         size: { width: 174, height: 62 }, currentDraw_mA: 1,
         autoWire: { VCC: PIN.VCC, GND: PIN.GND, DO: PIN.DIGITAL, AO: PIN.ANALOG },
+        // The module's output voltage falls as the light gets brighter.
+        simulation: { kind: 'dial', label: 'Light', output: 'AO', digitalOutput: 'DO', power: 'VCC', ground: 'GND', inverted: true },
     },
     {
         id: 'pushbutton-large', name: 'Large Push Button', tag: 'wokwi-pushbutton', category: 'input',
@@ -623,12 +633,13 @@ const defineWokwiComponent = definition => {
         pinMeta: { '1.l': PIN.SIGNAL, '2.l': PIN.SIGNAL, '1.r': PIN.SIGNAL, '2.r': PIN.SIGNAL },
         pinGroups: [['1.l', '1.r'], ['2.l', '2.r']],
         autoWire: { '1.l': PIN.DIGITAL, '2.l': PIN.GND }, needsPullup: true,
-        switchContacts: [['1.l', '2.l']],
+        switchContacts: [['1.l', '2.l']], simulation: { kind: 'button' },
     },
     {
         id: 'rgb-led', name: 'RGB LED', tag: 'wokwi-rgb-led', category: 'output',
         size: { width: 43, height: 73 }, currentDraw_mA: 60,
         pinMeta: { R: PIN.SIGNAL, COM: PIN.GND, G: PIN.SIGNAL, B: PIN.SIGNAL }, needsResistor: true,
+        simulation: { kind: 'rgb-led', channels: { ledRed: 'R', ledGreen: 'G', ledBlue: 'B' }, common: 'COM' },
         breadboard: { mountable: true, required: true, footprintId: 'rgb-led-bent-4' },
     },
     {
@@ -640,6 +651,7 @@ const defineWokwiComponent = definition => {
         id: 'slide-potentiometer', name: 'Slide Potentiometer', tag: 'wokwi-slide-potentiometer', category: 'input',
         size: { width: 208, height: 110 }, currentDraw_mA: 1,
         autoWire: { VCC: PIN.VCC, SIG: PIN.ANALOG, GND: PIN.GND },
+        simulation: { kind: 'dial', label: 'Slider', output: 'SIG', power: 'VCC', ground: 'GND', visual: { prop: 'value', scale: 100 } },
     },
     {
         id: 'small-sound-sensor', name: 'Small Sound Sensor', tag: 'wokwi-small-sound-sensor', category: 'sensor',
