@@ -104,7 +104,7 @@ Gap definitions and exit conditions live in [ENGINE_CONTRACT.md](ENGINE_CONTRACT
 3. **P1, command completion:** decide the Auto Wire route-dirty versus baseline-routing behavior (`GAP-03`).
 4. **P1, regression depth:** one focused fixture per remaining physical validation finding (`GAP-06`; the electrical findings have them in `test/physical-electrical-validation.test.js`) and an automated browser fixture for the mixed circuit (`GAP-07`).
 5. **P1, legacy rule parity:** the unused schema-v2 engine and its tests were removed; port the rules listed in `GAP-11` to the physical engine, each with a regression test.
-6. **P2, performance:** profile dense breadboard scenes and split the production bundle.
+6. **P2, performance:** split the production bundle. Canvas pan and zoom were profiled and fixed in November 2026 (two Konva canvases instead of six, CSS dot grid, one camera update per frame, no hit testing mid-pan); re-profile if scenes grow past a full breadboard with about 30 parts.
 
 For every engine change, name the affected contract rule, add the failing test first, and keep the command mutation boundaries.
 

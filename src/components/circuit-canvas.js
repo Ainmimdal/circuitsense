@@ -84,7 +84,16 @@ class CircuitCanvas extends LitElement {
             border-radius: 4px;
             box-shadow: inset 0 0 24px color-mix(in srgb, var(--panel-border) 32%, transparent);
         }
-        .stage-host { touch-action: none; }
+        /* The dot grid is two CSS gradients, so panning it costs no canvas redraw. */
+        .stage-host {
+            touch-action: none;
+            background-image:
+                radial-gradient(circle, var(--panel-border) 1.15px, transparent 1.65px),
+                radial-gradient(circle, color-mix(in srgb, var(--panel-border) 72%, transparent) .7px, transparent 1.2px);
+        }
+
+        /* Panning moves this one element; the parts inside only move when the zoom changes. */
+        .visual-pan { position: absolute; left: 0; top: 0; will-change: transform; }
 
         .component-visual-layer {
             z-index: 4;
@@ -531,7 +540,7 @@ class CircuitCanvas extends LitElement {
                 @dragleave=${this._onDragLeave}
                 @drop=${this._onDrop}>
                 <div class="stage-host"></div>
-                <div class="component-visual-layer" aria-hidden="true"></div>
+                <div class="component-visual-layer" aria-hidden="true"><div class="visual-pan"></div></div>
                 ${showStatus ? html`<div class="mode-pill"><span>${this._status}</span></div>` : ''}
                 ${this._hoveredPinView ? html`
                     <aside class="pin-readout" aria-live="polite" aria-label="Hovered pin">
@@ -731,23 +740,28 @@ class CircuitCanvas extends LitElement {
 
     firstUpdated() {
         const container = this.shadowRoot.querySelector('.stage-host');
-        this.visualLayer = this.shadowRoot.querySelector('.component-visual-layer');
-        // Six stacked full-size canvases at 3x cost 9x the pixels; 2x looks the same and halves draw time.
+        this.visualLayer = this.shadowRoot.querySelector('.visual-pan');
+        // Full-size canvases at 3x cost 9x the pixels; 2x looks the same and halves draw time.
         Konva.pixelRatio = Math.min(globalThis.devicePixelRatio || 1, 2);
         this.stage = new Konva.Stage({ container, width: container.clientWidth, height: container.clientHeight });
-        this.backgroundLayer = new Konva.Layer({ listening: false });
-        this.boardLayer = new Konva.Layer();
-        this.wireLayer = new Konva.Layer();
-        this.componentLayer = new Konva.Layer();
-        this.ghostLayer = new Konva.Layer({ listening: false });
-        this.interactionLayer = new Konva.Layer({ listening: false });
-        this.stage.add(this.backgroundLayer, this.boardLayer, this.componentLayer, this.wireLayer, this.ghostLayer, this.interactionLayer);
-        this._setLayerDepth(this.backgroundLayer, 0);
-        this._setLayerDepth(this.boardLayer, 1);
-        this._setLayerDepth(this.componentLayer, 3);
-        this._setLayerDepth(this.wireLayer, 5);
-        this._setLayerDepth(this.ghostLayer, 6);
-        this._setLayerDepth(this.interactionLayer, 7);
+        // Every canvas is repainted and composited on each pan frame, so there are only two:
+        // one under the DOM part artwork and one over it. The old per-purpose layers are groups.
+        this.lowerLayer = new Konva.Layer();
+        this.upperLayer = new Konva.Layer();
+        this.stage.add(this.lowerLayer, this.upperLayer);
+        this._setLayerDepth(this.lowerLayer, 1);
+        this._setLayerDepth(this.upperLayer, 5);
+        const group = (layer, config) => {
+            const node = new Konva.Group(config);
+            node.batchDraw = () => layer.batchDraw();
+            layer.add(node);
+            return node;
+        };
+        this.boardLayer = group(this.lowerLayer);
+        this.componentLayer = group(this.lowerLayer);
+        this.wireLayer = group(this.upperLayer);
+        this.ghostLayer = group(this.upperLayer, { listening: false });
+        this.interactionLayer = group(this.upperLayer, { listening: false });
         Konva.dragDistance = 4;
 
         this.stage.on('wheel', event => this._onWheel(event));
@@ -787,6 +801,8 @@ class CircuitCanvas extends LitElement {
         window.removeEventListener('elera-lesson-ghost', this._lessonGhostHandler);
         window.removeEventListener('elera-lesson-fit', this._lessonFitHandler);
         this._ghostAnimation?.stop();
+        cancelAnimationFrame(this._cameraFrame);
+        clearTimeout(this._boardCacheTimer);
         this.stage?.destroy();
     }
 
@@ -805,15 +821,34 @@ class CircuitCanvas extends LitElement {
 
     _applyCamera() {
         const scale = this.camera.pixelsPerMillimetre * this.camera.zoom;
-        for (const layer of [this.boardLayer, this.wireLayer, this.componentLayer, this.ghostLayer, this.interactionLayer]) {
+        for (const layer of [this.lowerLayer, this.upperLayer]) {
             layer.position({ x: this.camera.panX, y: this.camera.panY });
             layer.scale({ x: scale, y: scale });
         }
-        if (scale * Konva.pixelRatio !== this._boardCacheRatio) this._cacheBoards();
+        // Mid-zoom the old board bitmap is stretched; it is redrawn sharp once the zoom rests.
+        if (scale * Konva.pixelRatio !== this._boardCacheRatio) {
+            clearTimeout(this._boardCacheTimer);
+            this._boardCacheTimer = setTimeout(() => {
+                this._cacheBoards();
+                this.boardLayer.batchDraw();
+            }, 140);
+        }
         this._zoomLabel = `${Math.round(this.camera.zoom * 100)}%`;
         this._renderBackground();
-        this._positionComponentVisuals();
-        this.requestUpdate();
+        this.visualLayer.style.transform = `translate(${this.camera.panX}px, ${this.camera.panY}px)`;
+        if (scale !== this._visualScale) {
+            this._visualScale = scale;
+            this._positionComponentVisuals();
+        }
+    }
+
+    // Pointer and wheel events can arrive several times per frame; the camera is applied once.
+    _scheduleCamera() {
+        if (this._cameraFrame) return;
+        this._cameraFrame = requestAnimationFrame(() => {
+            this._cameraFrame = 0;
+            this._applyCamera();
+        });
     }
 
     _pointerWorld() {
@@ -840,51 +875,19 @@ class CircuitCanvas extends LitElement {
         this._applyNetHover();
         this._renderLessonGhost();
         this._renderInteractionLayer();
+        this.requestUpdate();
     }
 
     _renderBackground() {
-        if (!this.backgroundLayer || !this.stage) return;
-        this.backgroundLayer.destroyChildren();
-        const editorStyles = getComputedStyle(this);
-        const ink = editorStyles.getPropertyValue('--ink').trim();
-        const panelBorder = editorStyles.getPropertyValue('--panel-border').trim();
-        this.backgroundLayer.add(new Konva.Rect({
-            x: 0, y: 0, width: this.stage.width(), height: this.stage.height(), fill: ink, listening: false,
-        }));
+        const host = this.stage?.container();
+        if (!host) return;
         const spacing = 2.54 * this.camera.pixelsPerMillimetre * this.camera.zoom;
-        if (spacing >= 6) {
-            // One tile of 5x5 dots repeated as a pattern: thousands of arcs per frame were the main pan/zoom cost.
-            const majorSpacing = spacing * 5;
-            const ratio = Konva.pixelRatio;
-            const key = `${spacing}|${panelBorder}|${ratio}`;
-            if (this._gridTile?.key !== key) {
-                const canvas = document.createElement('canvas');
-                canvas.width = canvas.height = Math.ceil(majorSpacing * ratio);
-                const context = canvas.getContext('2d');
-                context.scale(ratio, ratio);
-                context.fillStyle = panelBorder;
-                const dot = (x, y, radius) => {
-                    context.beginPath();
-                    context.arc(x, y, radius, 0, Math.PI * 2);
-                    context.fill();
-                };
-                // Dots sit half a pitch in from the tile edge so none is clipped.
-                context.globalAlpha = .72;
-                for (let i = 0; i < 5; i++) for (let j = 0; j < 5; j++) dot((i + .5) * spacing, (j + .5) * spacing, .7);
-                context.globalAlpha = 1;
-                dot(spacing / 2, spacing / 2, 1.15);
-                this._gridTile = { key, canvas };
-            }
-            const tileScale = majorSpacing / this._gridTile.canvas.width;
-            this.backgroundLayer.add(new Konva.Rect({
-                x: 0, y: 0, width: this.stage.width(), height: this.stage.height(), listening: false,
-                fillPatternImage: this._gridTile.canvas,
-                fillPatternScale: { x: tileScale, y: tileScale },
-                fillPatternX: ((this.camera.panX % majorSpacing) + majorSpacing) % majorSpacing - spacing / 2,
-                fillPatternY: ((this.camera.panY % majorSpacing) + majorSpacing) % majorSpacing - spacing / 2,
-            }));
-        }
-        this.backgroundLayer.batchDraw();
+        const major = spacing * 5;
+        const { panX, panY } = this.camera;
+        // Below 6 px the dots merge into noise, so the grid is hidden.
+        host.style.backgroundImage = spacing >= 6 ? '' : 'none';
+        host.style.backgroundSize = `${major}px ${major}px, ${spacing}px ${spacing}px`;
+        host.style.backgroundPosition = `${panX - major / 2}px ${panY - major / 2}px, ${panX - spacing / 2}px ${panY - spacing / 2}px`;
     }
 
     _renderBoards() {
@@ -1691,7 +1694,7 @@ class CircuitCanvas extends LitElement {
         const sourceWidth = Number(artwork.dataset.sourceWidth || 120);
         const sourceHeight = Number(artwork.dataset.sourceHeight || 80);
         const placement = this._artworkPlacement(component, footprint, sourceWidth, sourceHeight);
-        wrapper.style.transform = `translate(${this.camera.panX + transform.x * scale}px, ${this.camera.panY + transform.y * scale}px) rotate(${transform.rotation || 0}deg)`;
+        wrapper.style.transform = `translate(${transform.x * scale}px, ${transform.y * scale}px) rotate(${transform.rotation || 0}deg)`;
         artwork.style.transform = `translate(${placement.x * scale}px, ${placement.y * scale}px) rotate(${placement.rotation}deg) scale(${placement.scale * scale})`;
         for (const terminal of wrapper.querySelectorAll('.visual-terminal')) {
             terminal.style.transform = `translate(${Number(terminal.dataset.pinX) * scale - 3.5}px, ${Number(terminal.dataset.pinY) * scale - 3.5}px)`;
@@ -1790,7 +1793,7 @@ class CircuitCanvas extends LitElement {
                 ring.opacity(1 - phase);
             }
             for (const item of dashes) item.dashOffset(-frame.time / 180);
-        }, this.ghostLayer);
+        }, this.upperLayer);
         this._ghostAnimation.start();
     }
 
@@ -1914,6 +1917,8 @@ class CircuitCanvas extends LitElement {
             const circle = new Konva.Circle({
                 name: 'semantic-terminal', x: projected.x, y: projected.y, radius: .82,
                 fill: this._themeColor('--text'), stroke: this._themeColor('--primary-hover'), strokeWidth: .3, opacity: .94,
+                // Otherwise Konva draws every translucent pin through a stage-sized buffer canvas.
+                perfectDrawEnabled: false,
                 hitStrokeWidth: 1.3,
             });
             circle.setAttr('connectionRef', componentPinRef(component.id, pin.pinId));
@@ -2424,7 +2429,7 @@ class CircuitCanvas extends LitElement {
         if (this._panning) {
             this.camera.panX = this._panning.panX + pointer.x - this._panning.x;
             this.camera.panY = this._panning.panY + pointer.y - this._panning.y;
-            this._applyCamera();
+            this._scheduleCamera();
             return;
         }
         this._lastPointerWorld = this._pointerWorld();
@@ -2469,6 +2474,7 @@ class CircuitCanvas extends LitElement {
             event.evt.preventDefault();
             const pointer = this.stage.getPointerPosition();
             this._panning = { x: pointer.x, y: pointer.y, panX: this.camera.panX, panY: this.camera.panY };
+            this._setHitTesting(false);
             return;
         }
         if ((button === undefined || button === 0) && event.target === this.stage &&
@@ -2489,7 +2495,16 @@ class CircuitCanvas extends LitElement {
         }
     }
 
+    // Nothing under the pointer matters mid-pan, so Konva skips its hit canvases and pixel readbacks.
+    _setHitTesting(enabled) {
+        for (const layer of [this.lowerLayer, this.upperLayer]) {
+            layer.listening(enabled);
+            layer.batchDraw();
+        }
+    }
+
     _onStageUp(event) {
+        if (this._panning) this._setHitTesting(true);
         this._panning = null;
         if (!this._marquee) {
             this._syncNetFocusBusy();
@@ -2613,7 +2628,7 @@ class CircuitCanvas extends LitElement {
         const scale = this.camera.pixelsPerMillimetre * this.camera.zoom;
         this.camera.panX = pointer.x - worldBefore.x * scale;
         this.camera.panY = pointer.y - worldBefore.y * scale;
-        this._applyCamera();
+        this._scheduleCamera();
     }
 
     _zoomBy(factor) {
