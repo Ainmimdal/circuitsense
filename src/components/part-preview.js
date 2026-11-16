@@ -41,13 +41,30 @@ class PartPreview extends LitElement {
         const width = Math.max(1, Number(component.size?.width || 120));
         const height = Math.max(1, Number(component.size?.height || 80));
         const content = normalizeContentBounds(component.contentBounds, { width, height });
-        const scale = Math.min(1, 76 / content.width, 48 / content.height);
-        const left = 38 - (content.x + content.width / 2) * scale;
-        const top = 29 - (content.y + content.height / 2) * scale;
-        visual.style.cssText = `position:absolute;top:${top}px;left:${left}px;width:${width}px;height:${height}px;` +
-            `transform:scale(${scale});transform-origin:0 0;pointer-events:none;`;
-        if (visual.tagName === 'IMG') visual.style.objectFit = 'contain';
+        const place = box => {
+            // Small parts are enlarged and big ones shrunk so every card shows its part at a similar size.
+            const room = { width: Math.max(40, mount.clientWidth - 16), height: Math.max(30, mount.clientHeight - 8) };
+            const scale = Math.min(3, room.width / box.width, room.height / box.height);
+            const left = mount.clientWidth / 2 - (box.x + box.width / 2) * scale;
+            const top = mount.clientHeight / 2 - (box.y + box.height / 2) * scale;
+            visual.style.cssText = `position:absolute;top:${top}px;left:${left}px;width:${width}px;height:${height}px;` +
+                `transform:scale(${scale});transform-origin:0 0;pointer-events:none;`;
+            if (visual.tagName === 'IMG') visual.style.objectFit = 'contain';
+        };
+        place(content);
         mount.replaceChildren(visual);
+        if (visual.tagName === 'IMG') return;
+        // A Wokwi element draws at its own size, which often differs from the declared one, so measure the drawing.
+        Promise.resolve(visual.updateComplete).then(() => requestAnimationFrame(() => {
+            // Some elements hold a second, tiny drawing (the buzzer's music note); frame the biggest.
+            const area = node => { const box = node.getBoundingClientRect(); return box.width * box.height; };
+            const drawing = [...(visual.shadowRoot?.querySelectorAll('svg') || [])].sort((a, b) => area(b) - area(a))[0];
+            if (!drawing || !visual.isConnected) return;
+            visual.style.transform = 'none';
+            const outer = visual.getBoundingClientRect(), inner = drawing.getBoundingClientRect();
+            if (inner.width > 1 && inner.height > 1) place({ x: inner.left - outer.left, y: inner.top - outer.top, width: inner.width, height: inner.height });
+            else place(content);
+        }));
     }
 }
 

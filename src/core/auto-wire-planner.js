@@ -256,7 +256,9 @@ export function planAutoWire({
         const definition = getComponentDef(component.componentId);
         for (const { pinId, type, boardPin } of plan.assignments) {
             if (addLedResistors && definition.needsResistor && [PIN.DIGITAL, PIN.PWM, PIN.SIGNAL].includes(type)) {
-                const resistorId = `generated-resistor:${component.id}`;
+                // One resistor per driven leg: an RGB LED gets three.
+                const firstId = `generated-resistor:${component.id}`;
+                const resistorId = addedComponents.includes(firstId) ? `${firstId}:${pinId}` : firstId;
                 const ledColor = canonicalLedColor(component.properties?.color);
                 const supplyVoltage = getComponentDef(plan.controller.componentId)?.autoWirePins?.logicVoltage || 5;
                 const resistorValue = recommendedLedResistorOhms(ledColor, supplyVoltage);

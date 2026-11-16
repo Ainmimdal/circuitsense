@@ -321,6 +321,58 @@ void loop() {
         ),
     },
     {
+        id: 'distance-alarm',
+        title: 'Parking sensor',
+        level: 'Intermediate',
+        minutes: 20,
+        goal: 'Light the LED when something comes closer than 20 cm.',
+        summary: 'Measure distance with sound, the way a car parking sensor does.',
+        concepts: ['Ultrasonic sensor', 'pulseIn', 'Serial Monitor'],
+        explanation: 'The distance sensor sends out a short burst of sound when TRIG is pulsed, then holds ECHO HIGH until the sound bounces back. pulseIn measures that time in microseconds; sound takes about 58 microseconds to travel one centimetre and back, so dividing by 58 gives the distance.',
+        notes: {
+            sonar: 'This sensor stays off the breadboard so it can point at things. Wire it straight to the rails and the Arduino.',
+            'w-sonar-5v': 'The sensor needs 5 V to run.',
+            'w-sonar-gnd': 'And a ground connection.',
+            'w-trig': 'TRIG is how the Arduino asks for a measurement.',
+            'w-echo': 'ECHO is how the sensor answers.',
+        },
+        code: `// Parking sensor: LED turns on when something is close
+const int TRIG_PIN = 7;
+const int ECHO_PIN = 6;
+const int LED_PIN = 9;
+
+void setup() {
+  pinMode(TRIG_PIN, OUTPUT);
+  pinMode(ECHO_PIN, INPUT);
+  pinMode(LED_PIN, OUTPUT);
+  Serial.begin(9600);
+}
+
+void loop() {
+  digitalWrite(TRIG_PIN, HIGH);        // send a burst of sound
+  delayMicroseconds(10);
+  digitalWrite(TRIG_PIN, LOW);
+  long echoTime = pulseIn(ECHO_PIN, HIGH, 30000);
+  int cm = echoTime / 58;              // sound: 58 microseconds per cm, there and back
+  Serial.println(cm);
+  digitalWrite(LED_PIN, cm > 0 && cm < 20 ? HIGH : LOW);
+  delay(100);
+}`,
+        challenge: 'Add a buzzer that beeps faster as the object gets closer.',
+        build: () => project(
+            [resistor('r1', 'H5', 'H9'), led('led', 'red', 'G9', 'G10'), free('sonar', 'hc-sr04', 128, 30)],
+            [
+                powerRail(), groundRail(),
+                wire('w-sonar-5v', pin('sonar', 'VCC'), hole('BP24'), POWER),
+                wire('w-sonar-gnd', pin('sonar', 'GND'), hole('BN24'), GROUND),
+                wire('w-led-gnd', hole('J10'), hole('BN9'), GROUND),
+                wire('w-sig', pin('uno', '9'), hole('J5'), '#22d3ee'),
+                wire('w-trig', pin('sonar', 'TRIG'), pin('uno', '7'), '#f97316'),
+                wire('w-echo', pin('sonar', 'ECHO'), pin('uno', '6'), '#a78bfa'),
+            ],
+        ),
+    },
+    {
         id: 'rgb-mixer',
         title: 'Colour mixer',
         level: 'Intermediate',

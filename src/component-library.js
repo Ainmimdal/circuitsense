@@ -9,6 +9,7 @@
 
 import { normalizeContentBounds } from './core/image-content-bounds.js';
 import { deriveAutoWirePins, derivePinExitOverride, getBoardPinTable } from './core/board-pins.js';
+import { PART_GUIDE } from './part-guide.js';
 
 // ─── Pin-type constants ────────────────────────────────
 export const PIN = {
@@ -384,7 +385,7 @@ export const componentLibrary = {
 
     'neopixel': {
         id: 'neopixel',
-        name: 'NeoPixel Ring',
+        name: 'NeoPixel (single)',
         tag: 'wokwi-neopixel',
         category: 'output',
         description: 'WS2812B addressable RGB LED',
@@ -597,7 +598,7 @@ const defineWokwiComponent = definition => {
     },
     {
         id: 'membrane-keypad', name: 'Membrane Keypad', tag: 'wokwi-membrane-keypad', category: 'input',
-        size: { width: 266, height: 338 },
+        size: { width: 266, height: 338 }, attrs: { connector: 'true' },
     },
     {
         id: 'microsd-card', name: 'MicroSD Card', tag: 'wokwi-microsd-card', category: 'output',
@@ -646,6 +647,7 @@ const defineWokwiComponent = definition => {
         id: 'rgb-led', name: 'RGB LED', tag: 'wokwi-rgb-led', category: 'output',
         size: { width: 43, height: 73 }, currentDraw_mA: 60,
         pinMeta: { R: PIN.SIGNAL, COM: PIN.GND, G: PIN.SIGNAL, B: PIN.SIGNAL }, needsResistor: true,
+        autoWire: { R: PIN.PWM, G: PIN.PWM, B: PIN.PWM, COM: PIN.GND },
         simulation: { kind: 'rgb-led', channels: { ledRed: 'R', ledGreen: 'G', ledBlue: 'B' }, common: 'COM' },
         breadboard: { mountable: true, required: true, footprintId: 'rgb-led-bent-4' },
     },
@@ -681,6 +683,57 @@ const defineWokwiComponent = definition => {
         size: { width: 89, height: 56 }, currentDraw_mA: 1,
         autoWire: { GND: PIN.GND, VCC: PIN.VCC, OUT: PIN.DIGITAL },
     },
+    // Basic parts drawn by Elera (src/components/basic-part-elements.js).
+    {
+        id: 'photoresistor', name: 'Photoresistor (LDR)', tag: 'elera-photoresistor', category: 'sensor',
+        size: { width: 28.8, height: 48 }, isPassive: true, keywords: ['ldr', 'light sensor', 'light dependent resistor'],
+        pinMeta: { '1': PIN.SIGNAL, '2': PIN.SIGNAL },
+        simulation: { kind: 'light-resistor', label: 'Light', pins: ['1', '2'] },
+        breadboard: { mountable: true, required: true, footprintId: 'photoresistor-2.54' },
+        codeTemplate: 'int light = analogRead(${pin});',
+    },
+    {
+        id: 'capacitor-ceramic', name: 'Ceramic Capacitor', tag: 'elera-ceramic-capacitor', category: 'passive',
+        size: { width: 28.8, height: 44 }, isPassive: true, keywords: ['100nF', '104', 'cap'],
+        pinMeta: { '1': PIN.SIGNAL, '2': PIN.SIGNAL },
+        breadboard: { mountable: true, required: true, footprintId: 'ceramic-capacitor-2.54' },
+    },
+    {
+        id: 'capacitor-electrolytic', name: 'Electrolytic Capacitor', tag: 'elera-electrolytic-capacitor', category: 'passive',
+        size: { width: 28.8, height: 52 }, isPassive: true, keywords: ['100uF', 'cap', 'polarised', 'polarized'],
+        pinMeta: { '+': PIN.SIGNAL, '-': PIN.SIGNAL },
+        breadboard: { mountable: true, required: true, footprintId: 'electrolytic-capacitor-2.54' },
+    },
+    {
+        id: 'diode', name: 'Diode', tag: 'elera-diode', category: 'passive',
+        size: { width: 38.4, height: 11.52 }, isPassive: true, keywords: ['1N4007', '1N4148', 'rectifier', 'flyback'],
+        pinMeta: { A: PIN.SIGNAL, C: PIN.SIGNAL },
+        simulation: { kind: 'diode', anode: 'A', cathode: 'C' },
+        breadboard: { mountable: true, required: true, footprintId: 'diode-axial-4' },
+    },
+    {
+        id: 'transistor-npn', name: 'NPN Transistor', tag: 'elera-transistor', category: 'passive',
+        size: { width: 28.8, height: 48 }, keywords: ['2N2222', 'BC547', 'switch', 'bjt'],
+        pinMeta: { E: PIN.SIGNAL, B: PIN.SIGNAL, C: PIN.SIGNAL },
+        simulation: { kind: 'transistor', base: 'B', collector: 'C', emitter: 'E' },
+        breadboard: { mountable: true, required: true, footprintId: 'to92-3' },
+    },
+    {
+        id: 'a4988', name: 'Stepper Driver (A4988)', tag: 'elera-a4988', category: 'actuator',
+        size: { width: 86.4, height: 67.2 }, currentDraw_mA: 8, keywords: ['stepper driver', 'pololu', 'nema 17', 'step', 'dir'],
+        // The other pins (ENABLE, MS1 to MS3, RESET, SLEEP, VMOT) are optional, so they stay undeclared.
+        pinMeta: { STEP: PIN.DIGITAL, DIR: PIN.DIGITAL, VDD: PIN.VCC, 'GND.1': PIN.GND, '1A': PIN.SIGNAL, '1B': PIN.SIGNAL, '2A': PIN.SIGNAL, '2B': PIN.SIGNAL },
+        simulation: { kind: 'pin-device', device: 'stepper-driver', pins: { step: 'STEP', direction: 'DIR' }, optional: ['direction'], outputs: ['1A', '1B', '2A', '2B'] },
+        description: 'Driver board that turns STEP and DIR signals into stepper motor movement',
+        beginnerNote: 'Sits between the Arduino and a stepper motor. Each pulse on STEP moves the motor one step; DIR chooses the direction. Join RESET to SLEEP, and give VMOT the motor\'s own power supply.',
+        breadboard: { mountable: true, required: true, footprintId: 'a4988-16' },
+    },
+    {
+        id: 'dc-motor', name: 'DC Motor', tag: 'elera-dc-motor', category: 'actuator',
+        size: { width: 116, height: 60 }, currentDraw_mA: 200, keywords: ['hobby motor', 'fan'],
+        pinMeta: { '+': PIN.SIGNAL, '-': PIN.SIGNAL },
+        simulation: { kind: 'motor', pins: ['+', '-'] },
+    },
 ].forEach(defineWokwiComponent);
 
 // Breakout modules with one straight 2.54 mm header row plug into the
@@ -704,6 +757,7 @@ const HEADER_MODULE_FOOTPRINTS = {
 // Why each remaining part sits beside the breadboard, in words a student can act on.
 const CABLE_REASON = 'connect it with jumper wires.';
 const OFF_BOARD_REASONS = {
+    'dc-motor': `A motor has two wire leads, so it sits beside the board; ${CABLE_REASON}`,
     servo: `A servo has a 3-wire cable, so it sits beside the board; ${CABLE_REASON}`,
     'stepper-motor': `A stepper motor has a cable and needs a driver board; ${CABLE_REASON}`,
     'biaxial-stepper': `A stepper motor has a cable and needs a driver board; ${CABLE_REASON}`,
@@ -722,6 +776,12 @@ const OFF_BOARD_REASONS = {
     'slide-potentiometer': `The slide pot has pins at both ends, so it sits beside the board; ${CABLE_REASON}`,
     'pushbutton-large': `The 12 mm button's legs don't fit the 2.54 mm holes here; use the small Push Button or ${CABLE_REASON}`,
 };
+
+// Beginner text and the pin roles the definitions above leave out.
+for (const [id, guide] of Object.entries(PART_GUIDE)) {
+    const component = componentLibrary[id];
+    Object.assign(component, guide, { pinMeta: { ...guide.pinMeta, ...component.pinMeta } });
+}
 
 for (const component of Object.values(componentLibrary)) {
     if (component.isBreadboard || component.breadboard) continue;

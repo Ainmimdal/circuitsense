@@ -1,6 +1,6 @@
 import { LitElement, html, css } from 'lit';
 import { physicalCircuitStore } from './physical/circuit-store.js';
-import { autoLayoutPhysicalStore, autoWirePhysicalStore } from './physical/automation.js';
+import { autoLayoutPhysicalStore, autoWirePhysicalStore, describeAutomationFailure } from './physical/automation.js';
 import { accountService } from './persistence/account.js';
 import { projectLibrary } from './persistence/project-library.js';
 import { faIcon } from './utils/fa-icons.js';
@@ -9,9 +9,9 @@ import { getLesson } from './lessons/catalog.js';
 import './components/component-builder-modal.js';
 import './components/login-modal.js';
 import './components/lessons-modal.js';
+import { buildGoalProject } from './lessons/goal-build.js';
 import { billOfMaterials } from './components/lesson-guide.js';
-import { decodeShareHash, encodeShareHash, MAX_SHARE_LINK_LENGTH } from './persistence/share-link.js';
-import './components/code-panel.js';
+import { decodeShareHash, encodeShareHash, MAX_SHARE_LINK_LENGTH, publishedProjectId } from './persistence/share-link.js';
 
 const COMPLETED_LESSONS_KEY = 'elera_completed_lessons';
 
@@ -323,12 +323,15 @@ class CircuitApp extends LitElement {
 
     async _openSharedLink() {
         let shared = null;
+        const publishedId = publishedProjectId(location.hash);
         try {
-            shared = await decodeShareHash(location.hash);
+            shared = publishedId ? (await accountService.openSharedProject(publishedId))?.data : await decodeShareHash(location.hash);
+            if (publishedId && !shared) showToast('This shared circuit no longer exists, or sharing is switched off here.', 'error');
         } catch {
-            showToast('This share link is damaged or incomplete. Ask for it to be sent again.', 'error');
+            showToast(publishedId ? 'The shared circuit could not be loaded. Check your connection and open the link again.'
+                : 'This share link is damaged or incomplete. Ask for it to be sent again.', 'error');
         }
-        if (location.hash.startsWith('#p=')) history.replaceState(null, '', location.pathname + location.search);
+        if (publishedId || location.hash.startsWith('#p=')) history.replaceState(null, '', location.pathname + location.search);
         if (!shared) return;
         const current = physicalCircuitStore.project;
         // A lone breadboard is the starting canvas, not work worth asking about.
@@ -354,9 +357,21 @@ class CircuitApp extends LitElement {
             showToast('Add something to the canvas first, then share it.', 'info');
             return;
         }
-        const link = location.origin + location.pathname + await encodeShareHash(physicalCircuitStore.exportProject());
+        let link = '';
+        if (accountService.user) {
+            // Signed in: publish a copy and share a short link to it.
+            try {
+                const id = await accountService.publishProject(this._currentProjectName, JSON.parse(physicalCircuitStore.exportProject()));
+                link = `${location.origin}${location.pathname}#s=${id}`;
+            } catch (error) {
+                console.warn('[Elera] Publishing failed, falling back to a link that carries the circuit:', error);
+            }
+        }
+        link ||= location.origin + location.pathname + await encodeShareHash(physicalCircuitStore.exportProject());
         if (link.length > MAX_SHARE_LINK_LENGTH) {
-            showToast('This circuit is too big for a link. Use Export and send the file instead.', 'warning');
+            showToast(accountService.cloudConfigured && !accountService.user
+                ? 'This circuit is too big for a plain link. Sign in to share it with a short link, or use Export and send the file.'
+                : 'This circuit is too big for a link. Use Export and send the file instead.', 'warning');
             return;
         }
         try {
@@ -458,7 +473,7 @@ class CircuitApp extends LitElement {
         this._layoutInProgress = true;
         try {
             const result = autoLayoutPhysicalStore(physicalCircuitStore);
-            if (result.status !== 'success') showToast(`Auto Layout could not finish: ${result.errors?.[0] || 'check the circuit components'}`, 'warning');
+            if (result.status !== 'success') showToast(`Auto Layout could not finish. ${describeAutomationFailure(result)}`, 'warning');
             else await physicalCircuitStore.whenRoutesSettled();
         } catch (error) {
             console.error('[CircuitSense] Auto layout failed:', error);
@@ -474,9 +489,7 @@ class CircuitApp extends LitElement {
             return;
         }
         if (result.status === 'failure') {
-            showToast(result.errors?.[0] === 'NO_ARDUINO'
-                ? 'Add an Arduino or another supported controller before using Auto Wire.'
-                : `Auto Wire could not finish: ${result.errors?.[0] || 'check the circuit'}`, 'warning');
+            showToast(`Auto Wire could not finish. ${describeAutomationFailure(result)}`, 'warning');
             return;
         }
         await physicalCircuitStore.whenRoutesSettled();
@@ -589,6 +602,8 @@ class CircuitApp extends LitElement {
 
     _toggleCode() {
         this._codeOpen = !this._codeOpen;
+        // The code panel brings the simulator with it, so it only loads when first opened.
+        if (this._codeOpen) import('./components/code-panel.js');
         // The canvas gets shorter, so bring the whole circuit back into view.
         if (this._codeOpen) this._fitCircuit();
     }
@@ -601,14 +616,44 @@ class CircuitApp extends LitElement {
     }
 
     _onStartLesson(event) {
-        const { lessonId, current } = event.detail || {};
+        const { lessonId, current, goal, guided } = event.detail || {};
         this._lessonsOpen = false;
+        if (goal) {
+            this._buildGoal(goal, guided);
+            return;
+        }
         if (current) {
             this._startGuide({ target: structuredClone(physicalCircuitStore.project), name: this._currentProjectName });
             return;
         }
         const lesson = getLesson(lessonId);
         if (lesson) this._startGuide({ target: lesson.build(), lesson });
+    }
+
+    // A circuit and its code for "when this, then that": rebuilt step by step, or put straight on the canvas.
+    async _buildGoal(goal, guided) {
+        const built = buildGoalProject(goal);
+        if (built.error) {
+            showToast(built.error, 'warning');
+            return;
+        }
+        if (guided) {
+            await this._startGuide({ target: built.project, name: built.name });
+            // The guide starts from an empty canvas, so the code goes in separately.
+            if (this._guideSession?.target === built.project) physicalCircuitStore.setSketch(built.project.properties.sketch);
+            return;
+        }
+        const project = physicalCircuitStore.project;
+        if ((project.components.length || project.wires.length) && !(await confirmDialog({
+            title: 'Replace the circuit on the canvas?',
+            message: 'The new circuit takes its place, so save first if you want to keep yours.',
+            confirmLabel: 'Build it',
+        }))) return;
+        physicalCircuitStore.importProject(built.project);
+        projectLibrary.setCurrentProjectId(null);
+        if (!this._codeOpen) this._toggleCode();
+        else this._fitCircuit();
+        showToast(`Built: ${built.name}. Press Run to try it.`, 'success');
     }
 
     // Clears the canvas down to the target's breadboards, then hands the

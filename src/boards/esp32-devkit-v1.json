@@ -28,6 +28,7 @@
     {"name": "RX2", "capabilities": ["uart_rx"]},
     {"name": "TX2", "capabilities": ["uart_tx"]},
     {"name": "3V3", "capabilities": ["power"]},
+    {"name": "VIN", "capabilities": ["power"]},
     {"name": "GND.1", "capabilities": ["ground"]},
     {"name": "GND.2", "capabilities": ["ground"]}
   ]

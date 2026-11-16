@@ -41,6 +41,26 @@ export function toAccountUser(user) {
     };
 }
 
+// Published circuits (the `shared_projects` table): anyone with the link id can
+// read one through the get_shared_project function; only its owner can add it.
+export function createSharedProjects(client) {
+    return {
+        /** Publishes a copy and resolves to its link id. */
+        async publish(name, data) {
+            const id = crypto.randomUUID().replace(/-/g, '').slice(0, 16);
+            const { error } = await client.from('shared_projects').insert({ id, name: String(name || 'Untitled circuit').slice(0, 200), data });
+            if (error) throw error;
+            return id;
+        },
+        /** Resolves to { name, data }, or null when no circuit has that id. */
+        async open(id) {
+            const { data, error } = await client.rpc('get_shared_project', { project_id: id });
+            if (error) throw error;
+            return data?.[0] || null;
+        },
+    };
+}
+
 const toMillis = value => (value ? Date.parse(value) : null);
 const toIso = value => (value ? new Date(value).toISOString() : null);
 const FETCH_CHUNK = 25;

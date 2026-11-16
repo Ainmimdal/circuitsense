@@ -4,6 +4,7 @@ import { physicalCircuitStore } from '../physical/circuit-store.js';
 import { advance, AvrRunner, CPU_HZ } from '../simulation/avr-runner.js';
 import { createCircuitSimulation } from '../simulation/circuit-io.js';
 import { compileServerUrl, compileSketch, DEFAULT_SKETCH } from '../simulation/compile.js';
+import { writeSketch } from '../simulation/sketch-writer.js';
 import { faIcon } from '../utils/fa-icons.js';
 import { confirmDialog } from './app-dialogs.js';
 
@@ -69,6 +70,7 @@ class CodePanel extends LitElement {
         .inputs label { display: grid; gap: 4px; font-size: 12px; }
         .inputs input[type="range"] { width: 100%; accent-color: var(--accent); }
         .inputs .hold { justify-content: center; user-select: none; touch-action: none; }
+        .inputs .keypad { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
         .inputs .hold.down { color: var(--ink); background: var(--accent); border-color: var(--accent); }
 
         .serial { flex: 1; min-height: 70px; display: flex; flex-direction: column; }
@@ -286,6 +288,24 @@ class CodePanel extends LitElement {
         this._syncFromProject();
     }
 
+    // Replaces the code with a sketch written from the wiring on the canvas.
+    async _writeFromCircuit() {
+        const written = writeSketch(this.store.project);
+        if (written.error) {
+            this._notice = written.error;
+            return;
+        }
+        if (this._code !== this._starter && this._code !== written.code && !(await confirmDialog({
+            title: 'Write new code for this circuit?',
+            message: 'Your changes to the code will be replaced.',
+            confirmLabel: 'Replace my code',
+        }))) return;
+        this._stop();
+        this._notice = written.skipped.length ? `Code written. Left out: ${written.skipped.join('; ')}.` : '';
+        this.store.setSketch(written.code);
+        this._syncFromProject();
+    }
+
     _goToLine(lineNumber) {
         if (!this._view || !lineNumber) return;
         const line = this._view.state.doc.line(Math.min(lineNumber, this._view.state.doc.lines));
@@ -300,13 +320,22 @@ class CodePanel extends LitElement {
             return html`<button class="hold ${value ? 'down' : ''}" @pointerdown=${press(true)} @pointerup=${press(false)}
                 @pointerleave=${press(false)} @pointercancel=${press(false)}
                 @keydown=${event => { if (event.key === ' ' || event.key === 'Enter') this._setValue(input.id, 1); }}
-                @keyup=${() => this._setValue(input.id, 0)}>Hold to press ${input.label}</button>`;
+                @keyup=${() => this._setValue(input.id, 0)}>Hold to ${input.action || `press ${input.label}`}</button>`;
+        }
+        if (input.kind === 'keypad') {
+            const press = key => () => this._setValue(input.id, key);
+            return html`<div class="keypad" role="group" aria-label=${input.label}>${[...input.keys].map((label, index) => html`
+                <button class="hold ${value === index + 1 ? 'down' : ''}" aria-label="Key ${label}" @pointerdown=${press(index + 1)} @pointerup=${press(0)}
+                    @pointerleave=${press(0)} @pointercancel=${press(0)}
+                    @keydown=${event => { if (event.key === ' ' || event.key === 'Enter') this._setValue(input.id, index + 1); }}
+                    @keyup=${press(0)}>${label}</button>`)}</div>`;
         }
         if (input.kind === 'switch') {
             return html`<button class="hold ${value ? 'down' : ''}" aria-pressed=${Boolean(value)}
                 @click=${() => this._setValue(input.id, value ? 0 : 1)}>Flip ${input.label} (now ${value ? 'right' : 'left'})</button>`;
         }
-        return html`<label>${input.label}: ${Math.round(value * 100)}%
+        const shown = input.range ? `${Math.round(input.range[0] + value * (input.range[1] - input.range[0]))}${input.unit}` : `${Math.round(value * 100)}%`;
+        return html`<label>${input.label}: ${shown}
             <input type="range" min="0" max="1" step="0.01" .value=${String(value)}
                 @input=${event => this._setValue(input.id, event.currentTarget.value)} /></label>`;
     }
@@ -321,6 +350,7 @@ class CodePanel extends LitElement {
                 ${running ? html`<span class="state" role="status"><i></i>Running on the Arduino</span>` : ''}
                 ${building ? html`<span class="state" role="status">Building your code…</span>` : ''}
                 <span class="spacer"></span>
+                <button @click=${this._writeFromCircuit} title="Write code that matches the parts and wires on the canvas">${faIcon('wand')} Write code for my circuit</button>
                 <button @click=${this._restoreStarter} title="Replace the code with the starter code">${faIcon('rotateLeft')} Starter code</button>
                 ${running
                     ? html`<button @click=${this._stop}><span class="stop-mark"></span> Stop</button>`

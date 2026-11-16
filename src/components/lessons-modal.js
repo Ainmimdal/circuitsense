@@ -1,12 +1,14 @@
 import { LitElement, html, css } from 'lit';
 import { listLessons } from '../lessons/catalog.js';
+import { GOAL_OUTPUTS, GOAL_SENSORS } from '../lessons/goal-build.js';
 import { buildLessonSteps } from '../physical/lessons.js';
 import { billOfMaterials } from './lesson-guide.js';
 import { faIcon } from '../utils/fa-icons.js';
 import './circuit-canvas.js';
 
 // Lesson picker: the course on the left, the selected lesson's finished
-// circuit and facts on the right. Emits `start-lesson` with { lessonId } or { current: true }.
+// circuit and facts on the right. Emits `start-lesson` with { lessonId }, { current: true }
+// or { goal: { sensor, output }, guided } for a circuit built from the student's own idea.
 
 let lessonCache = null;
 function lessons() {
@@ -103,6 +105,14 @@ class LessonsModal extends LitElement {
         }
         .guide button:hover:not([disabled]) { color: var(--accent); }
         .guide button[disabled] { color: var(--text-muted); cursor: default; }
+        .idea label { display: grid; gap: 3px; margin: 8px 0 0; color: var(--text-muted); font-size: 12px; }
+        .idea select {
+            width: 100%; padding: 6px 8px; color: var(--text); background: var(--ink);
+            border: 1px solid var(--panel-border); border-radius: 4px; font: 13px var(--font-ui);
+        }
+        .idea select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+        .idea .actions { display: flex; gap: 14px; margin-top: 10px; }
+        .idea .actions button { width: auto; }
         .guide p { margin: 4px 0 0 22px; color: var(--text-muted); font-size: 12px; line-height: 1.45; }
 
         /* Detail */
@@ -200,6 +210,11 @@ class LessonsModal extends LitElement {
         this.dispatchEvent(new CustomEvent('start-lesson', { detail }));
     }
 
+    _startGoal(event, guided) {
+        const form = event.target.closest('form');
+        this._start({ goal: { sensor: form.sensor.value, output: form.output.value }, guided });
+    }
+
     _onListKey(event) {
         if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
         event.preventDefault();
@@ -237,6 +252,15 @@ class LessonsModal extends LitElement {
                             </li>`;
                         })}
                     </ol>
+                    <form class="guide idea" @submit=${event => event.preventDefault()}>
+                        <strong>${faIcon('wand')} Build my own idea</strong>
+                        <label>When <select name="sensor">${GOAL_SENSORS.map(item => html`<option value=${item.id}>${item.label}</option>`)}</select></label>
+                        <label>then <select name="output">${GOAL_OUTPUTS.map(item => html`<option value=${item.id}>${item.label}</option>`)}</select></label>
+                        <div class="actions">
+                            <button type="button" @click=${event => this._startGoal(event, true)}>${faIcon('listCheck')} Guide me</button>
+                            <button type="button" @click=${event => this._startGoal(event, false)}>${faIcon('arrowRight')} Just build it</button>
+                        </div>
+                    </form>
                     <div class="guide">
                         <button ?disabled=${!this.canGuideCurrent} @click=${() => this._start({ current: true })}>
                             ${faIcon('listCheck')} Guide me through my circuit

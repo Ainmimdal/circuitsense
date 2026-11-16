@@ -1,8 +1,8 @@
 {
   "format": "elera-fritzing-part-v1",
   "id": "fritzing-esp32-hi-letgo",
-  "name": "ESP32S-HiLetgo",
-  "description": "HiLetgo ESP-WROOM-32 ESP32 ESP-32S Development Board 2.4GHz Dual-Mode WiFi + Bluetooth Dual Cores Microcontroller The ESP32 integrated with Antenna switches, RF Balun, power amplifiers, low-noise amplifiers, filters, and management modules, and the entire solution occupies the least area of PCB. 2.4 GHz Wi-Fi plus Bluetooth dual-mode chip, with TSMC Ultra-low power consumption 40nm technology, power dissipation performance and RF performance is the best, safe and reliable, easy to extend to a variety of applications.",
+  "name": "ESP32 HiLetgo",
+  "description": "HiLetgo ESP-32S Wi-Fi and Bluetooth board. Its pins are 3.3 V.",
   "category": "board",
   "sourcePart": "part.ESP32-HiLetgo.fzp",
   "library": {

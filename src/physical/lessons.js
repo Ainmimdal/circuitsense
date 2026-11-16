@@ -116,16 +116,35 @@ function pairByDefinition(wanted, available, prefer) {
     return pairs;
 }
 
+// Parts whose two legs are the same, so either way round is right.
+const EITHER_WAY = new Set(['resistor', 'photoresistor', 'capacitor-ceramic']);
+
+// The student's leg that stands in for the target's `pinId`: the other leg when a two-legged part is turned round.
+function legFor(want, pinId, flipped) {
+    return flipped ? Object.keys(want.placement.bindings).find(id => id !== pinId) : pinId;
+}
+
+// The target's [pinId, holeId] pairs whose leg is not in the right strip.
+function misplacedLegs(target, current, surface, want, have, flipped = false) {
+    return Object.entries(want.placement.bindings || {}).filter(([pinId, holeId]) => {
+        const wantGroup = holeGroup(target, want.placement.surfaceId, holeId);
+        return wantGroup === null || wantGroup !== holeGroup(current, surface?.id, have.placement.bindings?.[legFor(want, pinId, flipped)]);
+    });
+}
+
+function isTurnedRound(target, current, surfaces, want, have) {
+    const surface = surfaces.get(want.placement?.surfaceId);
+    return EITHER_WAY.has(want.definitionId) && want.placement?.type === 'surface' && have.placement?.type === 'surface'
+        && Boolean(surface) && misplacedLegs(target, current, surface, want, have, true).length === 0;
+}
+
 // A part counts when it sits in the same breadboard strips as the target,
 // so any hole of the right strip is accepted.
 function inRightStrips(target, current, surfaces, want, have) {
     if (want.placement?.type !== 'surface') return true;
     const surface = surfaces.get(want.placement.surfaceId);
     if (!surface || have.placement?.type !== 'surface' || have.placement.surfaceId !== surface.id) return false;
-    return Object.entries(want.placement.bindings || {}).every(([pinId, holeId]) => {
-        const wantGroup = holeGroup(target, want.placement.surfaceId, holeId);
-        return wantGroup !== null && wantGroup === holeGroup(current, surface.id, have.placement.bindings?.[pinId]);
-    });
+    return misplacedLegs(target, current, surface, want, have).length === 0 || isTurnedRound(target, current, surfaces, want, have);
 }
 
 // Works on any build: the student's parts and breadboards are matched to the
@@ -134,7 +153,10 @@ export function matchLessonBuild(target, current) {
     const surfaces = pairByDefinition(target.surfaces || [], current.surfaces || [], () => true);
     const components = pairByDefinition(target.components || [], current.components || [],
         (want, have) => inRightStrips(target, current, surfaces, want, have));
-    return { surfaces, components, resolver: new ConnectivityResolver(current) };
+    // Target parts the student mounted the other way round, so wires to their legs follow.
+    const turned = new Map((target.components || []).filter(want => components.has(want.id)
+        && isTurnedRound(target, current, surfaces, want, components.get(want.id))).map(want => [want.id, want]));
+    return { surfaces, components, turned, resolver: new ConnectivityResolver(current) };
 }
 
 function translateRef(ref, match) {
@@ -143,7 +165,8 @@ function translateRef(ref, match) {
         return surface ? surfaceHoleRef(surface.id, ref.holeId) : null;
     }
     const component = match.components.get(ref?.componentId);
-    return component ? componentPinRef(component.id, ref.pinId) : null;
+    const turned = match.turned?.get(ref.componentId);
+    return component ? componentPinRef(component.id, turned ? legFor(turned, ref.pinId, true) : ref.pinId) : null;
 }
 
 export function isLessonStepComplete(step, target, current, match = matchLessonBuild(target, current)) {
@@ -202,9 +225,8 @@ export function lessonStepHint(step, target, current, match = matchLessonBuild(t
             return `Drag the ${partName(target, step.id)} onto the breadboard so it snaps into the holes.`;
         }
         const surface = match.surfaces.get(want.placement.surfaceId);
-        const wrongPin = Object.entries(want.placement.bindings).find(([pinId, holeId]) =>
-            holeGroup(target, want.placement.surfaceId, holeId)
-                !== holeGroup(current, surface?.id, have.placement.bindings?.[pinId]));
+        if (inRightStrips(target, current, match.surfaces, want, have)) return null;
+        const wrongPin = misplacedLegs(target, current, surface, want, have)[0];
         if (!wrongPin) return null;
         const leg = pinName(target, step.id, wrongPin[0]) || `pin ${wrongPin[0]}`;
         return `Close! The ${leg} belongs ${describeHole(wrongPin[1])}. Rotate the part if it is the wrong way round.`;

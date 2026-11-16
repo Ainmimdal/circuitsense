@@ -1,8 +1,8 @@
 {
   "format": "elera-fritzing-part-v1",
   "id": "fritzing-esp32-38-pin-wide",
-  "name": "ESP32-38PinWide",
-  "description": "Generic 38-Pin ESP32 with wide format (only access to one side of pins on a breadboard) based on Stephen Lilley's HiLetgo ESP-WROOM-32 ESP32 ESP-32S Development Board.",
+  "name": "ESP32 DevKit (38 pin)",
+  "description": "ESP32 Wi-Fi and Bluetooth board, 38-pin wide layout. Its pins are 3.3 V.",
   "category": "board",
   "sourcePart": "part.ESP32-38PinWide.fzp",
   "library": {

@@ -10,8 +10,8 @@ This is the current status source of truth. Engine behavior is governed by [ENGI
 
 | Check | Status |
 | --- | --- |
-| Node test suite (`npm test`) | All 207 passing. |
-| Production build (`npm run build`) | Passing. The main chunk is about 1,147 kB (293 kB gzip) and triggers Vite's 500 kB warning; the routing worker is a separate 89 kB chunk. |
+| Node test suite (`npm test`) | All 287 passing. |
+| Production build (`npm run build`) | Passing. The main chunk is about 650 kB (179 kB gzip) and still triggers Vite's 500 kB warning. Konva, the Wokwi elements, avr8js and Supabase are separate vendor chunks (`vite.config.js`); the code panel with the simulator loads when Code is first opened; the routing worker is its own chunk. |
 | Lint / type check | Not configured |
 | Browser acceptance | Manual only (`GAP-07`). Pointer events cannot be driven reliably into the nested Konva canvas by the current browser harness, so add/move/delete behavior is covered at command and controller level. |
 
@@ -36,22 +36,32 @@ The **legacy schema-v2 engine** (`src/store.js`, `src/services/*`, `src/componen
 - The toolbar Save button updates the open project; an unnamed circuit opens My projects to name it.
 - Accounts stay switched off until `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` are set. The schema, Google setup, free-tier notes and the keep-awake workflow are covered in [CLOUD_SYNC_SETUP.md](CLOUD_SYNC_SETUP.md); library and sync coverage is in `test/project-library.test.js`.
 - Share copies a link that carries the whole circuit, compressed, in the address (`src/persistence/share-link.js`, `test/share-link.test.js`); opening it gives the visitor their own copy, so no backend is involved. Parts shows the bill of materials and downloads it as a CSV.
-- Not yet built: read-only public projects (they need a backend table).
+- Signed-in users get a short share link instead (`#s=<id>`): Share publishes a copy to the `shared_projects` table (`supabase/migrations/20261116000000_shared_projects.sql`), and anyone with the link opens their own copy through the `get_shared_project` function, so the original cannot be changed and published circuits cannot be listed. Needs that migration applied to the Supabase project.
+- As of 2026-11-16 the Supabase project in `.env.production` does not resolve (most likely paused), so sign-in, sync and short links are down until it is restored and the keep-awake secrets are set.
 
 ### Lessons and guided builds
 
-- The Learn button opens eight preset lessons (`src/lessons/catalog.js`): Blink, Push to light, Traffic light, Knob dimmer, Doorbell, Night light, Colour mixer and Servo steering. Each has a goal, an explanation, a parts list, per-step notes, an Arduino sketch and a follow-up challenge.
+- The Learn button opens nine preset lessons (`src/lessons/catalog.js`): Blink, Push to light, Traffic light, Knob dimmer, Doorbell, Night light, Parking sensor, Colour mixer and Servo steering. Each has a goal, an explanation, a parts list, per-step notes, an Arduino sketch and a follow-up challenge.
 - `src/physical/lessons.js` turns any finished project into ordered steps (breadboards, boards, parts, then power, ground and signal wires) and checks each step against the student's build. Parts are matched by definition rather than id, and any hole in the right strip counts.
 - The guide panel (`src/components/lesson-guide.js`) shows step N of M, a one-line reason for each step, gentle hints after a wrong placement, and Show me, Back and Skip. The canvas draws the next part or wire as a glowing ghost. The finish screen shows the sketch with a copy button and upload steps.
 - "Guide me" turns the circuit on the canvas, or any saved project from My projects, into the same step-by-step rebuild; leaving it early offers the original circuit back.
+- "Build my own idea" in the Learn dialog (`src/lessons/goal-build.js`) takes a "when this, then that" goal (seven triggers, six outputs), places the parts, wires them with Auto Layout and writes the code; the student can be guided through it step by step or get the finished circuit. `test/goal-build.test.js` builds all 42 combinations and checks they validate cleanly.
+- A resistor, photoresistor or ceramic capacitor counts either way round in a lesson, and wires to its legs follow.
 - `test/lessons.test.js` checks that every lesson is a valid circuit whose footprints match their holes, that Show me completes every step, and that hints name the right leg and column.
+
+### Parts library
+
+- Every built-in part has a one-line description and a beginner note (`src/part-guide.js`); cards say how the part connects ("Plugs into breadboard", "Connect with wires", "Runs your code") and frame the artwork by its drawn size.
+- Elera draws the basic parts Wokwi does not ship (`src/components/basic-part-elements.js`): photoresistor, ceramic and electrolytic capacitor, diode, NPN transistor and DC motor. They snap to the breadboard through `src/core/component-geometry.js` like any other part.
+- A pin listed in `pinMeta` is reported as floating until it is wired, so optional terminals (spare relay contacts, unused display pins) are deliberately left out of it.
 
 ### Arduino code and simulation
 
-- The Code button opens an editor under the canvas (`src/components/code-panel.js`). Run executes the sketch on a simulated ATmega328P (avr8js, `src/simulation/avr-runner.js`) wired to the circuit on the canvas: LEDs, RGB LEDs, buzzers (with sound) and servos react; buttons can be held on the canvas; knobs and sensors get sliders; there is a Serial Monitor. Uno and Nano only.
+- The Code button opens an editor under the canvas (`src/components/code-panel.js`). Run executes the sketch on a simulated ATmega328P (avr8js, `src/simulation/avr-runner.js`) wired to the circuit on the canvas: LEDs, RGB LEDs, buzzers (with sound), servos and DC motors react; buttons can be held on the canvas; knobs, the joystick and sensor modules (light, sound, flame, gas, temperature, motion, tilt) get sliders or hold buttons; the HC-SR04 answers `pulseIn` with a real echo pulse for the distance on its slider; there is a Serial Monitor. Uno and Nano only.
 - Each lesson opens with its starter sketch, which is compiled ahead of time (`src/simulation/prebuilt-sketches.json`), so it runs with no server. Edited code goes to the compile server (`server/compile-server/`, `VITE_COMPILE_URL`); compiler errors are rewritten in beginner language with a jump to the line.
 - The compile server is not deployed yet. Until `VITE_COMPILE_URL` is set, edited code shows a message and starter code still runs. Hosting and limits are in [COMPILE_SERVER.md](COMPILE_SERVER.md).
-- Voltages and LED currents come from a DC solver (`src/simulation/dc-solver.js`, `test/dc-solver.test.js`): resistor values change brightness and too many LEDs in series stay dark. It is DC only, and displays and I2C parts are not simulated.
+- Voltages and LED currents come from a DC solver (`src/simulation/dc-solver.js`, `test/dc-solver.test.js`): resistor values change brightness and too many LEDs in series stay dark. Diodes conduct one way, a photoresistor's resistance follows its Light slider and an NPN transistor acts as a switch that closes when base current flows (`test/simulation-basic-parts.test.js`). Capacitors charge and discharge over time, one solver step per frame. The simulated Arduino has an I2C bus (`src/simulation/i2c-devices.js`, `test/simulation-i2c.test.js`): the 16x2 and 20x4 LCD show text, the SSD1306 OLED shows graphics, the DS1307 answers with the time and the MPU6050 with its tilt slider. A PWM pin that reaches a capacitor settles at its average voltage. The SPI bus drives the ILI9341 colour screen and a MicroSD card the SD library can really write to (`src/simulation/spi-devices.js`, `test/simulation-spi.test.js`); NeoPixels, rings and matrices decode the real WS2812 signal (`test/simulation-pixels.test.js`); the 7-segment display, LED bar graph and keypad work. The test programs are compiled by `scripts/compile-test-programs.mjs` into `test/fixtures/programs.json`. The DHT22, IR remote, HX711 load cell and stepper motors work by pin timing (`src/simulation/pin-devices.js`), the relay and rotary encoder in the DC solver (`test/simulation-timed-parts.test.js`), an A4988 driver (`elera-a4988`, our own artwork) moves the stepper on its outputs one full step per STEP pulse, and the SD card keeps its files in the browser's storage. The DHT, IRremote and HX711 libraries are installed on the compile server but have only been tested against hand-written readers of the same signals.
+- "Write code for my circuit" in the code panel writes a sketch from the wiring (`src/simulation/sketch-writer.js`): the first sensor gives a level from 0 to 1 that every output follows, or each output is tried in turn when there is no sensor. Recipes cover LEDs, the RGB LED, buzzer, servo, buttons and switches, the sensor modules, the distance sensor, the I2C LCD, NeoPixels and the DHT22; other parts are named in a comment. `test/sketch-writer.test.js` runs the written code for four lesson circuits on the simulator.
 - `test/simulation.test.js` runs every lesson's program on its finished circuit and checks the parts behave as the lesson says.
 
 ### Physical model
@@ -106,14 +116,12 @@ The electrical checks read the resolved connectivity graph, so a connection thro
 
 ## Known gaps and next priorities
 
-Gap definitions and exit conditions live in [ENGINE_CONTRACT.md](ENGINE_CONTRACT.md#known-contract-drift). `GAP-01`, `GAP-02`, `GAP-04`, `GAP-05`, `GAP-08` and `GAP-09` are closed: the live validator now runs the logical checks with shared-bus awareness and per-board hole lookup.
+Gap definitions and exit conditions live in [ENGINE_CONTRACT.md](ENGINE_CONTRACT.md#known-contract-drift). `GAP-01` to `GAP-06`, `GAP-08` and `GAP-09` are closed. `GAP-03` was settled as a deliberate choice: Auto Wire leaves each wire in automatic routing with no waypoints, and the store routes those on every change, so Clean is not needed (`test/auto-wire-routing.test.js`). The rest are closed (every physical finding has a fixture in `test/physical-validation-findings.test.js` or `test/physical-core.test.js`, every electrical one in `test/physical-electrical-validation.test.js`): the live validator now runs the logical checks with shared-bus awareness and per-board hole lookup.
 
-1. **P1, board data:** the ESP32 DevKit table has no `VIN`/5 V pin, so 5 V parts on it can only be powered from 3V3 and always show `under-voltage`.
-2. **P1, capacity alternatives:** when a scene does not fit, live Auto Layout fails without offering a proven larger or additional board (`GAP-10`).
-3. **P1, command completion:** decide the Auto Wire route-dirty versus baseline-routing behavior (`GAP-03`).
-4. **P1, regression depth:** one focused fixture per remaining physical validation finding (`GAP-06`; the electrical findings have them in `test/physical-electrical-validation.test.js`) and an automated browser fixture for the mixed circuit (`GAP-07`).
-5. **P1, legacy rule parity:** the unused schema-v2 engine and its tests were removed; port the rules listed in `GAP-11` to the physical engine, each with a regression test.
-6. **P2, performance:** profile dense breadboard scenes and split the production bundle.
+1. **P1, capacity alternatives:** live Auto Layout offers no proven larger or additional board (`GAP-10`). In practice the board runs out of pins before the breadboard runs out of room, and a failed Auto Wire or Auto Layout now explains that in plain words (`describeAutomationFailure`).
+2. **P1, regression depth:** an automated browser fixture for the mixed circuit (`GAP-07`).
+3. **P1, legacy rule parity:** the unused schema-v2 engine and its tests were removed; port the rules listed in `GAP-11` to the physical engine, each with a regression test.
+4. **P2, performance:** the bundle is split by vendor and the simulator is lazy; the AI assistant and the dialogs could load on first use too.
 
 For every engine change, name the affected contract rule, add the failing test first, and keep the command mutation boundaries.
 

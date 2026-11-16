@@ -1,8 +1,8 @@
 {
   "format": "elera-fritzing-part-v1",
   "id": "fritzing-drv8834-1",
-  "name": "DRV8834",
-  "description": "DRV8834 Low-Voltage Stepper Motor Driver Carrier.",
+  "name": "DRV8834 Stepper Driver",
+  "description": "Driver board that lets a microcontroller run a small stepper motor.",
   "category": "actuator",
   "sourcePart": "part.DRV8834_1.fzp",
   "library": {

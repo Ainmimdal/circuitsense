@@ -2,6 +2,7 @@
 import '@wokwi/elements';
 import './components/elera-breadboard.js';
 import './components/elera-full-breadboard.js';
+import './components/basic-part-elements.js';
 
 // Import our app components
 import './circuit-app.js';

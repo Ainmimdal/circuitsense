@@ -1,8 +1,8 @@
 {
   "format": "elera-fritzing-part-v1",
   "id": "fritzing-cytron-rekabit-1",
-  "name": "Cytron Rekabit",
-  "description": "Imported Fritzing part: Cytron Rekabit",
+  "name": "Cytron REKA:BIT",
+  "description": "Robot expansion board for the micro:bit with motor and servo ports.",
   "category": "board",
   "sourcePart": "part.cytron_rekabit.fzp",
   "library": {

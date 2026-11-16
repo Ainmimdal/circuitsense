@@ -1,8 +1,8 @@
 {
   "format": "elera-fritzing-part-v1",
   "id": "fritzing-esp32-p30-w11-9de09df6ee672a047957b8e804927eb5-1",
-  "name": "DOIT Esp32 DevKit v1 (30 pins long, 11 pins width)",
-  "description": "The DOIT Esp32 DevKit v1 is one of the development board created by DOIT to evaluate the ESP-WROOM-32 module. It is based on the ESP32 microcontroller that boasts Wifi, Bluetooth, Ethernet and Low Power support all in a single chip. (vanepp) made breadboard work, adjusted pin numbering and labels and reduced size of schematic and cleaned up pcb. This chip is 30pins long (2 x15) and 11 pins width. Note in pcb view the mounting holes (2.8mm diameter) are only shown on silkscreen. If you want mounting holes drilled in the pcb, drag a hole (from core parts->pcb View->hole) over the hole in silkscreen and set the diameter to 2.8 mm.",
+  "name": "ESP32 DOIT (30 pin)",
+  "description": "DOIT ESP32 DevKit v1 Wi-Fi and Bluetooth board, 30-pin layout. Its pins are 3.3 V.",
   "category": "board",
   "sourcePart": "part.esp32_p30_w11_9de09df6ee672a047957b8e804927eb5_1.fzp",
   "library": {

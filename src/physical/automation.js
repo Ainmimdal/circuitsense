@@ -11,7 +11,9 @@ import { pinExitDirection, ROUTING_COMPONENT_MARGIN, ROUTING_WIRE_SEPARATION } f
 import { realizeAutoWireConnections } from './breadboard-auto-wire.js';
 import { validatePhysicalProject } from './validation.js';
 
-const SIGNAL_COLORS = Object.freeze(['#22d3ee', '#a78bfa', '#f59e0b', '#10b981', '#f472b6', '#60a5fa']);
+// Twelve, so a circuit with up to twelve signal wires gives each its own colour (AW-08).
+const SIGNAL_COLORS = Object.freeze(['#22d3ee', '#a78bfa', '#f59e0b', '#10b981', '#f472b6', '#60a5fa',
+    '#84cc16', '#fb923c', '#2dd4bf', '#e879f9', '#facc15', '#94a3b8']);
 const COMPONENT_GAP = 12;
 const ROW_GAP = 24;
 const CLUSTER_GAP = 42;
@@ -158,6 +160,24 @@ function publicWireResult(result, eligible) {
 }
 
 /** Apply metadata-driven Auto Wire to the active physical project without moving anything. */
+/** Why Auto Wire or Auto Layout stopped, in words a student can act on. */
+export function describeAutomationFailure(result) {
+    const codes = result?.errors || [];
+    const count = code => codes.filter(item => item === code).length;
+    if (codes.includes('NO_ARDUINO')) return 'Add an Arduino or another controller board first.';
+    if (count('NO_COMPATIBLE_CONTROLLER_CAPACITY')) {
+        const parts = count('NO_COMPATIBLE_CONTROLLER_CAPACITY');
+        return `The board has no suitable free pins left for ${parts} ${parts === 1 ? 'part' : 'parts'}. Remove some parts, or add a second board such as an Arduino Mega.`;
+    }
+    if (codes.includes('breadboard-no-free-hole')) {
+        return 'A breadboard strip that needs a wire has no free hole left. Move a part or a wire out of that strip, or use a full-size breadboard.';
+    }
+    if (codes.includes('breadboard-postcondition-failed')) {
+        return 'The wires would not fit on the breadboard as the parts sit now. Spread the parts out and try again.';
+    }
+    return 'Check the circuit for errors in the bar below, then try again.';
+}
+
 export function autoWirePhysicalStore(store, { componentIds = null, preferences = loadEditorPreferences() } = {}) {
     const { result, eligible } = buildAutoWirePlan(store.project, componentIds, preferences);
     if (result.status !== 'success') return publicWireResult(result, eligible);

@@ -1,6 +1,6 @@
 import {
-    AVRADC, AVRIOPort, AVRTimer, AVRUSART, CPU, PinState, adcConfig, avrInstruction,
-    portBConfig, portCConfig, portDConfig, timer0Config, timer1Config, timer2Config, usart0Config,
+    AVRADC, AVRIOPort, AVRSPI, AVRTimer, AVRTWI, AVRUSART, CPU, PinState, adcConfig, avrInstruction,
+    portBConfig, portCConfig, portDConfig, spiConfig, timer0Config, timer1Config, timer2Config, twiConfig, usart0Config,
 } from 'avr8js';
 
 // Runs a compiled sketch on a simulated ATmega328P (Arduino Uno and Nano).
@@ -9,6 +9,9 @@ import {
 
 export const CPU_HZ = 16_000_000;
 const FLASH_BYTES = 0x8000;
+// WS2812 timing at 16 MHz: a 1 is HIGH for about 13 cycles, a 0 for about 5; 50 us of LOW ends an update.
+const PIXEL_ONE_CYCLES = 9;
+const PIXEL_RESET_CYCLES = 800;
 
 // Arduino pin name -> [port, bit].
 const PIN_MAP = Object.freeze({
@@ -48,11 +51,47 @@ export class AvrRunner {
         this.adc = new AVRADC(this.cpu, adcConfig);
         this.usart = new AVRUSART(this.cpu, usart0Config, CPU_HZ);
         this.usart.onByteTransmit = byte => onSerial?.(String.fromCharCode(byte));
+        // SPI: a byte goes to every device whose chip-select pin is held LOW.
+        this.spiDevices = [];
+        this.spi = new AVRSPI(this.cpu, spiConfig, CPU_HZ);
+        const pinIs = (name, wanted) => { const [port, bit] = PIN_MAP[name]; return this.ports[port].pinState(bit) === wanted; };
+        this.spi.onTransfer = value => {
+            let answer = 0xff;
+            for (const { select, command, device } of this.spiDevices) {
+                if (pinIs(select, PinState.Low)) answer = device.transfer(value, command ? pinIs(command, PinState.High) : true);
+            }
+            return answer;
+        };
+        // I2C (Wire): bytes go to the device registered at the address; nobody home means no acknowledge.
+        this.i2c = new Map();
+        this.twi = new AVRTWI(this.cpu, twiConfig, CPU_HZ);
+        let device = null;
+        this.twi.eventHandler = {
+            start: () => this.twi.completeStart(),
+            stop: () => this.twi.completeStop(),
+            connectToSlave: address => {
+                device = this.i2c.get(address) || null;
+                device?.begin();
+                this.twi.completeConnect(Boolean(device));
+            },
+            writeByte: value => {
+                device?.write(value);
+                this.twi.completeWrite(Boolean(device));
+            },
+            readByte: () => this.twi.completeRead(device ? device.read() : 0xff),
+        };
         // Per pin: cycles spent high since the last sample(), plus the last high pulse and the gap between rising edges.
         this.tracks = Object.fromEntries(SIMULATED_PINS.map(name => [name, { mode: PinState.Input, high: false, since: 0, highCycles: 0, pulse: 0, lastRise: -Infinity, period: 0 }]));
         // Set when a pin switches between input, pull-up and output, so the circuit can react before the next read.
         this.modesChanged = false;
         this.sampledAt = 0;
+        // Ultrasonic sensors: echo pins are driven by timed events, not by the circuit's settled voltage.
+        this.echoes = [];
+        // Parts that set a pin's level themselves (see pin-devices.js); the circuit's voltage does not override them.
+        this.driven = new Set();
+        this.watchers = [];
+        // NeoPixel strips: the bits clocked out on a data pin, collected until the line rests.
+        this.strips = [];
         for (const [portName, port] of Object.entries(this.ports)) {
             port.addListener(() => this.#trackPort(portName));
         }
@@ -68,19 +107,86 @@ export class AvrRunner {
             if (mode !== track.mode) {
                 track.mode = mode;
                 this.modesChanged = true;
+                for (const watcher of this.watchers) if (watcher.pin === name) watcher.mode?.(mode === PinState.High);
             }
             const high = state === PinState.High;
             if (high === track.high) continue;
+            for (const watcher of this.watchers) if (watcher.pin === name) watcher.edge?.(high);
             if (high) {
                 track.period = now - track.lastRise;
                 track.lastRise = now;
+                for (const strip of this.strips) if (strip.pin === name && now - track.since > PIXEL_RESET_CYCLES) this.#showPixels(strip);
+                for (const entry of this.spiDevices) if (entry.select === name) entry.device.deselect();
             } else {
                 track.pulse = now - track.since;
+                // WS2812: a long HIGH is a 1, a short HIGH is a 0.
+                for (const strip of this.strips) if (strip.pin === name) strip.bits.push(track.pulse > PIXEL_ONE_CYCLES ? 1 : 0);
                 track.highCycles += now - Math.max(track.since, this.sampledAt);
+                for (const echo of this.echoes) if (echo.trigger === name) this.#ping(echo);
             }
             track.high = high;
             track.since = now;
         }
+    }
+
+    watch(pin, handlers) {
+        this.watchers.push({ pin, ...handlers });
+    }
+
+    drive(name, high) {
+        const [port, bit] = PIN_MAP[name];
+        this.driven.add(name);
+        this.ports[port].setPin(bit, high);
+    }
+
+    after(micros, callback) {
+        this.cpu.addClockEvent(callback, Math.max(1, Math.round(micros * CPU_HZ / 1e6)));
+    }
+
+    /** true or false while the sketch drives the pin, null while it is an input. */
+    outputLevel(name) {
+        const [port, bit] = PIN_MAP[name];
+        const state = this.ports[port].pinState(bit);
+        return state === PinState.High ? true : state === PinState.Low ? false : null;
+    }
+
+    get micros() {
+        return this.cpu.cycles * 1e6 / CPU_HZ;
+    }
+
+    /** NeoPixels on `pin`: `show(bytes)` receives the colour bytes (green, red, blue per pixel) of each update. */
+    addPixels(pin, show) {
+        this.strips.push({ pin, show, bits: [] });
+    }
+
+    #showPixels(strip) {
+        const bytes = new Uint8Array(strip.bits.length >> 3);
+        strip.bits.forEach((bit, index) => { bytes[index >> 3] |= bit << (7 - (index & 7)); });
+        strip.bits = [];
+        if (bytes.length) strip.show(bytes);
+    }
+
+    /** Hand over any update whose data line has gone quiet. */
+    flushPixels() {
+        for (const strip of this.strips) {
+            const track = this.tracks[strip.pin];
+            if (strip.bits.length && !track.high && this.cpu.cycles - track.since > PIXEL_RESET_CYCLES) this.#showPixels(strip);
+        }
+    }
+
+    /** HC-SR04: a pulse on `trigger` is answered by `echo` held HIGH for the sound's round trip (58 us per cm). */
+    addEcho(trigger, echo, centimetres) {
+        this.echoes.push({ trigger, echo, centimetres });
+        this.driven.add(echo);
+    }
+
+    #ping(echo) {
+        const [port, bit] = PIN_MAP[echo.echo];
+        const micros = value => Math.round(value * CPU_HZ / 1e6);
+        this.cpu.addClockEvent(() => {
+            this.ports[port].setPin(bit, true);
+            this.cpu.addClockEvent(() => this.ports[port].setPin(bit, false), micros(echo.centimetres() * 58));
+        }, micros(450));
     }
 
     /** Advance the program by up to `cycles`, stopping early after `budgetMs` of real time or when a pin changes mode. */
@@ -132,7 +238,7 @@ export class AvrRunner {
     /** Apply the voltage the circuit puts on a pin, as a share of 5 V (null = nothing connected). */
     setInput(name, level) {
         const [port, bit] = PIN_MAP[name] || [];
-        if (!port) return;
+        if (!port || this.driven.has(name)) return;
         this.ports[port].setPin(bit, (level ?? 0) > .5);
         if (port === 'C') this.adc.channelValues[bit] = (level ?? 0) * 5;
     }
@@ -146,8 +252,20 @@ export class AvrRunner {
 export function advance(runner, circuit, values, cycles, budgetMs = Infinity) {
     const target = runner.cpu.cycles + cycles;
     const deadline = performance.now() + budgetMs;
-    const settle = pins => {
-        const state = circuit.evaluate(pins, values);
+    runner.values = values;
+    if (!runner.circuit) {
+        runner.circuit = circuit;
+        for (const echo of circuit.echoes || []) runner.addEcho(echo.trigger, echo.echo, () => echo.centimetres(runner.values));
+        runner.spiDevices.push(...(circuit.spi || []));
+        for (const { device } of circuit.pinDevices || []) device.attach(runner);
+        for (const strip of circuit.pixelStrips || []) runner.addPixels(strip.pin, strip.show);
+        for (const { address, device } of circuit.i2c || []) if (!runner.i2c.has(address)) runner.i2c.set(address, device);
+    }
+    for (const { device, read } of circuit.pinDevices || []) device.tick?.(index => read(values, index));
+    const started = runner.cpu.cycles;
+    // Capacitors move on by the simulated time since the last full frame; mid-frame settles take no time.
+    const settle = (pins, seconds = 0) => {
+        const state = circuit.evaluate(pins, values, seconds);
         for (const [pin, level] of Object.entries(state.pinLevels)) runner.setInput(pin, level);
         return state;
     };
@@ -158,5 +276,6 @@ export function advance(runner, circuit, values, cycles, budgetMs = Infinity) {
         runner.modesChanged = false;
         settle(runner.sample({ reset: false }));
     }
-    return settle(runner.sample());
+    runner.flushPixels();
+    return settle(runner.sample(), (runner.cpu.cycles - started) / CPU_HZ);
 }

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { PhysicalCircuitStore } from '../src/physical/circuit-store.js';
-import { arrangePhysicalStore, autoLayoutPhysicalStore, autoWirePhysicalStore } from '../src/physical/automation.js';
+import { arrangePhysicalStore, autoLayoutPhysicalStore, autoWirePhysicalStore, describeAutomationFailure } from '../src/physical/automation.js';
 import { addComponentCommand } from '../src/physical/commands.js';
 import { createFullBreadboardSurface, createHalfBreadboardSurface, getSurfaceDefinition } from '../src/physical/breadboard.js';
 import {
@@ -604,4 +604,20 @@ test('Auto Layout keeps ground intent in step with wires when free parts share a
     const result = autoLayoutPhysicalStore(store);
     assert.equal(result.status, 'success', JSON.stringify(result.diagnostics));
     assert.deepEqual(validatePhysicalProject(store.project).errors, []);
+});
+
+test('a failed Auto Layout says what to do instead of showing an error code', () => {
+    const store = new PhysicalCircuitStore({ load: false, routingWorker: null });
+    const parts = ['arduino-uno', ...Array(20).fill('led')].map((definitionId, index) => createComponentInstance({
+        id: `many-${index}`, definitionId, footprintId: defaultFootprintForComponent(definitionId).id, x: 140 + index * 10, y: 20,
+    }));
+    store.importProject(createPhysicalProject({ surfaces: [createHalfBreadboardSurface()], components: parts }));
+    const before = structuredClone(store.project);
+    const result = autoLayoutPhysicalStore(store);
+    assert.equal(result.status, 'failure');
+    assert.deepEqual(store.project, before, 'a failed command leaves the project alone');
+    assert.match(describeAutomationFailure(result), /no suitable free pins left for \d+ parts/);
+    assert.doesNotMatch(describeAutomationFailure(result), /[A-Z_]{6,}/);
+    assert.match(describeAutomationFailure({ errors: ['NO_ARDUINO'] }), /Add an Arduino/);
+    assert.match(describeAutomationFailure({ errors: ['something-new'] }), /Check the circuit/);
 });

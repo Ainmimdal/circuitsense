@@ -11,14 +11,14 @@ import { faIcon } from '../utils/fa-icons.js';
 import './part-preview.js';
 
 const DISPLAY_CATEGORIES = Object.freeze([
-  { id: 'controller', label: 'Controller boards', descriptor: 'MCU · host', accent: 'var(--accent-boards)' },
+  { id: 'controller', label: 'Controller boards', descriptor: 'run your code', accent: 'var(--accent-boards)' },
   { id: 'breadboard', label: 'Breadboards', descriptor: 'prototype · connect', accent: 'var(--accent-breadboards)' },
   { id: 'sensor', label: 'Sensors', descriptor: 'sense · measure', accent: 'var(--accent-sensors)' },
-  { id: 'ic', label: 'ICs', descriptor: 'logic · package', accent: 'var(--accent-ics)' },
+  { id: 'ic', label: 'Chips', descriptor: 'logic', accent: 'var(--accent-ics)' },
   { id: 'input', label: 'Inputs', descriptor: 'switch · control', accent: 'var(--accent-inputs)' },
   { id: 'output', label: 'Indicators & displays', descriptor: 'show · signal', accent: 'var(--accent-displays)' },
-  { id: 'actuator', label: 'Actuators', descriptor: 'drive · motion', accent: 'var(--accent-actuators)' },
-  { id: 'passive', label: 'Passive parts', descriptor: 'resist · filter', accent: 'var(--accent-passives)' },
+  { id: 'actuator', label: 'Motors & drivers', descriptor: 'move things', accent: 'var(--accent-actuators)' },
+  { id: 'passive', label: 'Basic parts', descriptor: 'resist · store', accent: 'var(--accent-passives)' },
   { id: 'custom', label: 'Custom', descriptor: 'local · reusable', accent: 'var(--accent-custom)' },
 ]);
 
@@ -287,15 +287,19 @@ class ComponentSidebar extends LitElement {
     }
 
     .component-name {
+      /* Two lines, so long names ("Photoresistor Sensor") are readable instead of cut off. */
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
       min-width: 0;
+      min-height: 30px;
       overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+      overflow-wrap: anywhere;
       align-self: center;
       color: var(--text);
       font-size: 12px;
       font-weight: 600;
-      line-height: 20px;
+      line-height: 15px;
       text-align: center;
     }
 
@@ -452,9 +456,10 @@ class ComponentSidebar extends LitElement {
     const sourceBadge = metadata.source === 'fritzing'
       ? 'Fritzing'
       : metadata.source === 'custom' ? 'My part' : '';
-    const detail = [metadata.variant, metadata.technology].filter(Boolean).join(' · ') ||
-      (metadata.mounting === 'breadboard' ? 'Breadboard ready' :
-        metadata.mounting === 'surface' ? 'Prototype surface' : 'Jumper wired');
+    // How the part connects is what a beginner needs here; importer variant codes are not.
+    const detail = metadata.mounting === 'breadboard' ? 'Plugs into breadboard' :
+      metadata.mounting === 'surface' ? 'Build on this' :
+        component.isControllerBoard || component.category === 'board' ? 'Runs your code' : 'Connect with wires';
     return html`
       <div class="component-card" style="--category-accent:${category.accent}"
         draggable="true" tabindex="0"

@@ -1,4 +1,4 @@
-import { createSupabaseProjectRemote, getSupabaseClient, isCloudConfigured, toAccountUser } from './cloud.js';
+import { createSharedProjects, createSupabaseProjectRemote, getSupabaseClient, isCloudConfigured, toAccountUser } from './cloud.js';
 import { projectLibrary } from './project-library.js';
 
 const LEGACY_MOCK_USER_STORAGE_KEY = 'elera_mock_user';
@@ -110,6 +110,18 @@ export class AccountService extends EventTarget {
         this.user = null;
         this.#emit();
         await this._client.auth.signOut();
+    }
+
+    /** Publishes a copy of the project for a short link; needs a signed-in user. Resolves to the link id. */
+    async publishProject(name, project) {
+        if (!this._client || !this.user) throw new Error('Sign in to publish a circuit.');
+        return createSharedProjects(this._client).publish(name, project);
+    }
+
+    /** A published circuit as { name, data }, or null when the id is unknown or the cloud is switched off. */
+    async openSharedProject(id) {
+        await this.init();
+        return this._client ? createSharedProjects(this._client).open(id) : null;
     }
 
     syncNow() {

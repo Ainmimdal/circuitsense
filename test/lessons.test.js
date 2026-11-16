@@ -11,7 +11,7 @@ import {
     buildLessonSteps, isLessonStepComplete, lessonBounds, lessonProgress, lessonStepBounds, lessonStepGhost, lessonStepHint, lessonStepMutation,
 } from '../src/physical/lessons.js';
 import { validatePhysicalProject } from '../src/physical/validation.js';
-import { listLessons } from '../src/lessons/catalog.js';
+import { getLesson, listLessons } from '../src/lessons/catalog.js';
 
 function part(id, definitionId) {
     return createComponentInstance({ id, definitionId, footprintId: defaultFootprintForComponent(definitionId).id });
@@ -60,6 +60,23 @@ test('lesson progress accepts any hole in the right strip', () => {
     assert.equal(lessonProgress(steps, target, current), 4);
     current.wires.push(wire('mine2', componentPinRef('uno', '13'), surfaceHoleRef(surfaceId, 'E11')));
     assert.equal(lessonProgress(steps, target, current), steps.length);
+});
+
+test('a resistor counts either way round, and wires to its legs follow', () => {
+    const target = getLesson('blink').build();
+    const want = target.components.find(component => component.definitionId === 'resistor');
+    const step = buildLessonSteps(target).find(item => item.id === want.id);
+    const current = structuredClone(target);
+    const have = current.components.find(component => component.id === want.id);
+    const [first, second] = Object.keys(have.placement.bindings);
+    [have.placement.bindings[first], have.placement.bindings[second]] = [have.placement.bindings[second], have.placement.bindings[first]];
+    assert.equal(isLessonStepComplete(step, target, current), true);
+    assert.equal(lessonStepHint(step, target, current), null);
+    assert.equal(lessonProgress(buildLessonSteps(target), target, current), buildLessonSteps(target).length);
+    // An LED the wrong way round is still wrong.
+    const led = current.components.find(component => component.definitionId === 'led');
+    [led.placement.bindings.A, led.placement.bindings.C] = [led.placement.bindings.C, led.placement.bindings.A];
+    assert.equal(isLessonStepComplete(buildLessonSteps(target).find(item => item.id === led.id), target, current), false);
 });
 
 test('a part in the wrong strip does not complete its step', () => {

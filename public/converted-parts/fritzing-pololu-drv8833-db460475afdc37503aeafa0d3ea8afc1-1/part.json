@@ -1,8 +1,8 @@
 {
   "format": "elera-fritzing-part-v1",
   "id": "fritzing-pololu-drv8833-db460475afdc37503aeafa0d3ea8afc1-1",
-  "name": "Pololu DRV 8833 Dual Motor Driver Carrier",
-  "description": "Imported Fritzing part: Pololu DRV 8833 Dual Motor Driver Carrier",
+  "name": "DRV8833 Motor Driver",
+  "description": "Small driver board for two low-voltage DC motors.",
   "category": "actuator",
   "sourcePart": "part.Pololu-DRV8833_db460475afdc37503aeafa0d3ea8afc1_1.fzp",
   "library": {
