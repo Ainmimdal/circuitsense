@@ -1,9 +1,9 @@
-// Compiles the sketches below into test/fixtures/i2c-programs.json for
-// test/simulation-i2c.test.js. Run after changing a sketch:
+// Compiles the sketches below into test/fixtures/programs.json for
+// test/simulation-i2c.test.js and test/simulation-pixels.test.js. Run after changing a sketch:
 //
-//   node scripts/compile-i2c-test-programs.mjs http://localhost:8787
+//   node scripts/compile-test-programs.mjs http://localhost:8787
 //
-// The compile server needs the Adafruit SSD1306 library (see its Dockerfile).
+// The compile server needs the libraries its Dockerfile installs.
 
 import { writeFileSync } from 'node:fs';
 
@@ -58,6 +58,17 @@ void loop() {
   Serial.println(x);
   delay(50);
 }`,
+    // 17 pixels: a 16-pixel ring with one more pixel chained after it.
+    pixels: `#include <Adafruit_NeoPixel.h>
+Adafruit_NeoPixel strip(17, 6, NEO_GRB + NEO_KHZ800);
+void setup() {
+  strip.begin();
+  strip.setPixelColor(0, strip.Color(255, 0, 0));
+  strip.setPixelColor(3, strip.Color(0, 0, 255));
+  strip.setPixelColor(16, strip.Color(0, 255, 0));
+  strip.show();
+}
+void loop() {}`,
 };
 
 const server = (process.argv[2] || '').replace(/\/$/, '');
@@ -70,5 +81,5 @@ for (const [name, sketch] of Object.entries(sketches)) {
     if (!result.hex) throw new Error(`${name}: ${result.errors || result.error}`);
     programs[name] = result.hex.replace(/\r\n/g, '\n');
 }
-writeFileSync(new URL('../test/fixtures/i2c-programs.json', import.meta.url), `${JSON.stringify(programs, null, 1)}\n`);
+writeFileSync(new URL('../test/fixtures/programs.json', import.meta.url), `${JSON.stringify(programs, null, 1)}\n`);
 console.log(`Wrote ${Object.keys(programs).length} programs.`);

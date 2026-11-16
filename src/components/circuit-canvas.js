@@ -1559,7 +1559,10 @@ class CircuitCanvas extends LitElement {
             const artwork = state && wrapper.querySelector('.component-artwork');
             if (!artwork) continue;
             for (const [name, value] of Object.entries(state)) {
-                if (artwork[name] !== value) artwork[name] = value;
+                if (artwork[name] === value) continue;
+                artwork[name] = value;
+                // Pixels and screens are drawn by a function instead of a property.
+                if (typeof value === 'function') value(artwork);
             }
         }
     }

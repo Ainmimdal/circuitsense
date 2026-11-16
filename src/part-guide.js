@@ -63,13 +63,16 @@ export const PART_GUIDE = {
         beginnerNote: 'Reads the invisible light pulses sent by a TV-style remote control.',
     },
     neopixel: {
+        simulation: { kind: 'pixels', count: 1, input: 'DIN', output: 'DOUT', power: 'VDD', ground: 'VSS' },
         beginnerNote: 'An LED that can show any colour and needs only one data pin. Many can be chained from DOUT to the next DIN.',
     },
     'led-ring': {
+        simulation: { kind: 'pixels', count: 16, input: 'DIN', output: 'DOUT', power: 'VCC', ground: 'GND' },
         description: 'Ring of 16 addressable RGB LEDs',
         beginnerNote: '16 colour LEDs in a circle, all controlled from one data pin. They can draw a lot of current at full brightness.',
     },
     'neopixel-matrix': {
+        simulation: { kind: 'pixels', count: 64, input: 'DIN', output: 'DOUT', power: 'VCC', ground: 'GND' },
         description: '8x8 grid of addressable RGB LEDs',
         beginnerNote: '64 colour LEDs in a grid, all controlled from one data pin. At full brightness it needs its own 5 V supply.',
     },

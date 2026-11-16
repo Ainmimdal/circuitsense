@@ -29,12 +29,20 @@ const SERVO_MAX_MICROS = 2400;
 
 const clamp = value => Math.max(0, Math.min(1, value));
 
+// Wokwi's single pixel has r, g, b; the ring takes setPixel(index) and the matrix setPixel(row, column).
+function paintPixels(artwork, colors) {
+    if (!artwork.setPixel) Object.assign(artwork, colors[0]);
+    else colors.forEach((color, index) => artwork.cols ? artwork.setPixel(Math.floor(index / artwork.cols), index % artwork.cols, color) : artwork.setPixel(index, color));
+}
+
 /**
  * Prepare a project for simulation. Returns `{ error }` in beginner language
  * when it cannot run, otherwise `{ boardId, inputs, evaluate }`. `inputs`
  * lists the parts a person operates (buttons and dials) with a starting value;
  * `echoes` lists ultrasonic sensors as { trigger, echo, centimetres(values) }
- * and `i2c` the devices on the I2C bus as { address, device }.
+ * and `i2c` the devices on the I2C bus as { address, device }; `pixelStrips`
+ * lists NeoPixel chains as { pin, show(bytes) }. A `paint` entry in a part's
+ * state is a function that draws on its artwork.
  */
 export function createCircuitSimulation(project) {
     const controllers = project.components.filter(component => getComponentDef(component.definitionId)?.isControllerBoard);
@@ -92,6 +100,29 @@ export function createCircuitSimulation(project) {
             }
         });
     }
+    // NeoPixels: the part on an Arduino pin takes the first colours and passes the rest out of DOUT to the next part.
+    const pixelParts = parts.filter(part => part.simulation.kind === 'pixels');
+    const pixelStrips = pixelParts.flatMap(head => {
+        const pinName = ioPins.find(io => io.net === head.pin(head.simulation.input))?.name;
+        if (!pinName) return [];
+        const chain = [head];
+        for (let next; (next = pixelParts.find(part => !chain.includes(part) &&
+            part.pin(part.simulation.input) === chain[chain.length - 1].pin(chain[chain.length - 1].simulation.output)));) chain.push(next);
+        return [{ pin: pinName, show(bytes) {
+            let offset = 0;
+            for (const part of chain) {
+                const colors = Array.from({ length: part.simulation.count }, (_, index) => {
+                    const [green = 0, red = 0, blue = 0] = bytes.subarray(offset + index * 3, offset + index * 3 + 3);
+                    // Real pixels look bright long before full power, so lift the low values.
+                    return { r: (red / 255) ** .45, g: (green / 255) ** .45, b: (blue / 255) ** .45 };
+                });
+                offset += part.simulation.count * 3;
+                part.colors = colors;
+                part.paint = artwork => paintPixels(artwork, colors);
+            }
+        } }];
+    });
+
     // Two knobs become "Knob 1" and "Knob 2".
     for (const input of inputs) {
         const same = inputs.filter(other => other.kind === input.kind && other.label.replace(/ \d+$/, '') === input.label);
@@ -284,6 +315,9 @@ export function createCircuitSimulation(project) {
             if (part.simulation.kind === 'capacitor') {
                 const [a, b] = [solved.voltage(part.source.a), solved.voltage(part.source.b)];
                 if (a != null && b != null) part.volts = a - b;
+            } else if (part.simulation.kind === 'pixels') {
+                const powered = volts(part.pin(part.simulation.power)) > 3 && grounded(part.pin(part.simulation.ground));
+                if (powered && part.paint) components[part.id] = { paint: part.paint };
             } else if (part.simulation.kind === 'i2c') {
                 part.tilt = values[part.key];
                 const powered = volts(part.pin(part.simulation.power)) > 3 && grounded(part.pin(part.simulation.ground));
@@ -299,5 +333,5 @@ export function createCircuitSimulation(project) {
         return { components, pinLevels, sound };
     }
 
-    return { boardId: board.definitionId, inputs, echoes, i2c, evaluate };
+    return { boardId: board.definitionId, inputs, echoes, i2c, pixelStrips, parts, evaluate };
 }

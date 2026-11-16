@@ -8,8 +8,8 @@ import { createCircuitSimulation } from '../src/simulation/circuit-io.js';
 import { createI2cDevice } from '../src/simulation/i2c-devices.js';
 import { componentPinRef } from '../src/physical/model.js';
 
-// Programs built by scripts/compile-i2c-test-programs.mjs.
-const programs = JSON.parse(readFileSync(new URL('./fixtures/i2c-programs.json', import.meta.url), 'utf8'));
+// Programs built by scripts/compile-test-programs.mjs.
+const programs = JSON.parse(readFileSync(new URL('./fixtures/programs.json', import.meta.url), 'utf8'));
 
 function circuit(parts, links) {
     const project = getLesson('blink').build();
