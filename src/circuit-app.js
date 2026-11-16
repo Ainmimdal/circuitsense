@@ -1,6 +1,6 @@
 import { LitElement, html, css } from 'lit';
 import { physicalCircuitStore } from './physical/circuit-store.js';
-import { autoLayoutPhysicalStore, autoWirePhysicalStore } from './physical/automation.js';
+import { autoLayoutPhysicalStore, autoWirePhysicalStore, describeAutomationFailure } from './physical/automation.js';
 import { accountService } from './persistence/account.js';
 import { projectLibrary } from './persistence/project-library.js';
 import { faIcon } from './utils/fa-icons.js';
@@ -12,7 +12,6 @@ import './components/lessons-modal.js';
 import { buildGoalProject } from './lessons/goal-build.js';
 import { billOfMaterials } from './components/lesson-guide.js';
 import { decodeShareHash, encodeShareHash, MAX_SHARE_LINK_LENGTH, publishedProjectId } from './persistence/share-link.js';
-import './components/code-panel.js';
 
 const COMPLETED_LESSONS_KEY = 'elera_completed_lessons';
 
@@ -474,7 +473,7 @@ class CircuitApp extends LitElement {
         this._layoutInProgress = true;
         try {
             const result = autoLayoutPhysicalStore(physicalCircuitStore);
-            if (result.status !== 'success') showToast(`Auto Layout could not finish: ${result.errors?.[0] || 'check the circuit components'}`, 'warning');
+            if (result.status !== 'success') showToast(`Auto Layout could not finish. ${describeAutomationFailure(result)}`, 'warning');
             else await physicalCircuitStore.whenRoutesSettled();
         } catch (error) {
             console.error('[CircuitSense] Auto layout failed:', error);
@@ -490,9 +489,7 @@ class CircuitApp extends LitElement {
             return;
         }
         if (result.status === 'failure') {
-            showToast(result.errors?.[0] === 'NO_ARDUINO'
-                ? 'Add an Arduino or another supported controller before using Auto Wire.'
-                : `Auto Wire could not finish: ${result.errors?.[0] || 'check the circuit'}`, 'warning');
+            showToast(`Auto Wire could not finish. ${describeAutomationFailure(result)}`, 'warning');
             return;
         }
         await physicalCircuitStore.whenRoutesSettled();
@@ -605,6 +602,8 @@ class CircuitApp extends LitElement {
 
     _toggleCode() {
         this._codeOpen = !this._codeOpen;
+        // The code panel brings the simulator with it, so it only loads when first opened.
+        if (this._codeOpen) import('./components/code-panel.js');
         // The canvas gets shorter, so bring the whole circuit back into view.
         if (this._codeOpen) this._fitCircuit();
     }

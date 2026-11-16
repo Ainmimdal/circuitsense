@@ -10,8 +10,8 @@ This is the current status source of truth. Engine behavior is governed by [ENGI
 
 | Check | Status |
 | --- | --- |
-| Node test suite (`npm test`) | All 207 passing. |
-| Production build (`npm run build`) | Passing. The main chunk is about 1,147 kB (293 kB gzip) and triggers Vite's 500 kB warning; the routing worker is a separate 89 kB chunk. |
+| Node test suite (`npm test`) | All 277 passing. |
+| Production build (`npm run build`) | Passing. The main chunk is about 650 kB (179 kB gzip) and still triggers Vite's 500 kB warning. Konva, the Wokwi elements, avr8js and Supabase are separate vendor chunks (`vite.config.js`); the code panel with the simulator loads when Code is first opened; the routing worker is its own chunk. |
 | Lint / type check | Not configured |
 | Browser acceptance | Manual only (`GAP-07`). Pointer events cannot be driven reliably into the nested Konva canvas by the current browser harness, so add/move/delete behavior is covered at command and controller level. |
 
