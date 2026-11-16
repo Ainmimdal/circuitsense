@@ -1,8 +1,8 @@
 {
   "format": "elera-fritzing-part-v1",
   "id": "fritzing-l298-n-motor-driver-ed29594eba4fbd330bd92441a17764ea-15",
-  "name": "L298N DC motor driver",
-  "description": "2x DC motor driver with 78M05 positive voltage regulator (7..35 V) L298N: max 46 V, 2 A Set 5 V Enable jumper to enable 5 V regultor (needed for the L298N) and +5 V output at screw terminal or supply external +5 V at screw terminal Set ENA and/or ENB to +5 V to enable motor permanently or supply ENA and/or ENB with PWM signal IN1 and IN2 set rotation directory for motor A (OUT1/OUT2) IN2 and IN3 set rotation directory for motor A (OUT1/OUT2)",
+  "name": "L298N Motor Driver",
+  "description": "Driver board for two DC motors or one stepper. Motors need more current than Arduino pins can give.",
   "category": "actuator",
   "sourcePart": "part.L298N motor driver_ed29594eba4fbd330bd92441a17764ea_15.fzp",
   "library": {

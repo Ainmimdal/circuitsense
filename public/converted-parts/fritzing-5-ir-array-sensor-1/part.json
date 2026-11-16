@@ -1,8 +1,8 @@
 {
   "format": "elera-fritzing-part-v1",
   "id": "fritzing-5-ir-array-sensor-1",
-  "name": "5-ir-array-sensor",
-  "description": "5 IR array sensor.",
+  "name": "5-Way Line Sensor",
+  "description": "Five infrared sensors in a row, used by line-following robots to see a dark line.",
   "category": "sensor",
   "sourcePart": "part.5-ir-array-sensor_1.fzp",
   "library": {

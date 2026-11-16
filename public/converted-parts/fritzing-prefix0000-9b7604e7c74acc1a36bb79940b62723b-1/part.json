@@ -1,8 +1,8 @@
 {
   "format": "elera-fritzing-part-v1",
   "id": "fritzing-prefix0000-9b7604e7c74acc1a36bb79940b62723b-1",
-  "name": "KY-026",
-  "description": "ky-026 flame sensor module",
+  "name": "Flame Sensor KY-026",
+  "description": "Detects the infrared light of a flame. Has an analog and a digital output.",
   "category": "sensor",
   "sourcePart": "part.prefix0000_9b7604e7c74acc1a36bb79940b62723b_1.fzp",
   "library": {

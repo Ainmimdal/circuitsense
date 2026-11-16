@@ -1,8 +1,8 @@
 {
   "format": "elera-fritzing-part-v1",
   "id": "fritzing-mdd10-a-improved-1",
-  "name": "MDD10A",
-  "description": "Imported Fritzing part: MDD10A",
+  "name": "MDD10A Motor Driver",
+  "description": "Cytron 10 A driver board for two DC motors.",
   "category": "actuator",
   "sourcePart": "part.MDD10A-improved_1.fzp",
   "library": {

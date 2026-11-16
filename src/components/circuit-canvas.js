@@ -2765,7 +2765,9 @@ class CircuitCanvas extends LitElement {
 
     _quickAddPhysical(definitionId) {
         if (this._addBreadboardSurface(definitionId)) return;
-        const footprint = defaultFootprintForComponent(definitionId);
+        // A clicked resistor lands in the breadboard like every other small part, not loose beside it.
+        const footprint = (definitionId === 'resistor' && this.store.project.surfaces.length && getFootprintDefinition('axial-4')) ||
+            defaultFootprintForComponent(definitionId);
         if (!footprint) {
             this._status = 'That library item cannot be placed as a movable component.';
             this.requestUpdate();

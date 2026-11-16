@@ -1,8 +1,8 @@
 {
   "format": "elera-fritzing-part-v1",
   "id": "fritzing-upright-resistor-module-id",
-  "name": "Resistor upright",
-  "description": "A generic upright standing resistor (0.25W)",
+  "name": "Resistor (upright)",
+  "description": "A resistor standing on end, so both legs sit in neighbouring holes.",
   "category": "passive",
   "sourcePart": "part.resistor-upright.fzp",
   "library": {

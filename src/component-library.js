@@ -9,6 +9,7 @@
 
 import { normalizeContentBounds } from './core/image-content-bounds.js';
 import { deriveAutoWirePins, derivePinExitOverride, getBoardPinTable } from './core/board-pins.js';
+import { PART_GUIDE } from './part-guide.js';
 
 // ─── Pin-type constants ────────────────────────────────
 export const PIN = {
@@ -384,7 +385,7 @@ export const componentLibrary = {
 
     'neopixel': {
         id: 'neopixel',
-        name: 'NeoPixel Ring',
+        name: 'NeoPixel (single)',
         tag: 'wokwi-neopixel',
         category: 'output',
         description: 'WS2812B addressable RGB LED',
@@ -597,7 +598,7 @@ const defineWokwiComponent = definition => {
     },
     {
         id: 'membrane-keypad', name: 'Membrane Keypad', tag: 'wokwi-membrane-keypad', category: 'input',
-        size: { width: 266, height: 338 },
+        size: { width: 266, height: 338 }, attrs: { connector: 'true' },
     },
     {
         id: 'microsd-card', name: 'MicroSD Card', tag: 'wokwi-microsd-card', category: 'output',
@@ -722,6 +723,12 @@ const OFF_BOARD_REASONS = {
     'slide-potentiometer': `The slide pot has pins at both ends, so it sits beside the board; ${CABLE_REASON}`,
     'pushbutton-large': `The 12 mm button's legs don't fit the 2.54 mm holes here; use the small Push Button or ${CABLE_REASON}`,
 };
+
+// Beginner text and the pin roles the definitions above leave out.
+for (const [id, guide] of Object.entries(PART_GUIDE)) {
+    const component = componentLibrary[id];
+    Object.assign(component, guide, { pinMeta: { ...guide.pinMeta, ...component.pinMeta } });
+}
 
 for (const component of Object.values(componentLibrary)) {
     if (component.isBreadboard || component.breadboard) continue;
