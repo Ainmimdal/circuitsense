@@ -68,7 +68,7 @@ test('Night light switches on in the dark and prints readings', () => {
 
 test('Colour mixer starts red and fades toward green', () => {
     const session = runLesson('rgb-mixer', .1);
-    assert.ok(session.state.components.rgb.ledRed > .8 && session.state.components.rgb.ledBlue < .1);
+    assert.ok(session.state.components.rgb.ledRed > .8 && session.state.components.rgb.ledBlue < .1, JSON.stringify(session.state.components.rgb));
     runLesson('rgb-mixer', 1.8, {}, session);
     assert.ok(session.state.components.rgb.ledGreen > .7, `green ${session.state.components.rgb.ledGreen}`);
 });

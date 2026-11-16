@@ -418,6 +418,7 @@ export const componentLibrary = {
         },
         autoWire: { '1': PIN.VCC, '2': PIN.DIGITAL, '3': PIN.GND },
         switchContacts: [['1', '2'], ['2', '3']],
+        simulation: { kind: 'switch' },
         codeTemplate: 'int state = digitalRead(${pin});',
         connectorType: 'male',
         breadboard: { mountable: true, required: true, footprintId: 'spdt-linear-3' },

@@ -101,7 +101,10 @@ class CodePanel extends LitElement {
             this._syncFromProject();
             if (this._status === 'running') this._rewire();
         };
-        this._inputHandler = event => this._setValue(event.detail?.componentId, event.detail?.value);
+        this._inputHandler = event => {
+            const { componentId, value, toggle } = event.detail || {};
+            this._setValue(componentId, toggle ? (this._values[componentId] ? 0 : 1) : value);
+        };
     }
 
     connectedCallback() {
@@ -298,6 +301,10 @@ class CodePanel extends LitElement {
                 @pointerleave=${press(false)} @pointercancel=${press(false)}
                 @keydown=${event => { if (event.key === ' ' || event.key === 'Enter') this._setValue(input.id, 1); }}
                 @keyup=${() => this._setValue(input.id, 0)}>Hold to press ${input.label}</button>`;
+        }
+        if (input.kind === 'switch') {
+            return html`<button class="hold ${value ? 'down' : ''}" aria-pressed=${Boolean(value)}
+                @click=${() => this._setValue(input.id, value ? 0 : 1)}>Flip ${input.label} (now ${value ? 'right' : 'left'})</button>`;
         }
         return html`<label>${input.label}: ${Math.round(value * 100)}%
             <input type="range" min="0" max="1" step="0.01" .value=${String(value)}

@@ -50,7 +50,7 @@ The **legacy schema-v2 engine** (`src/store.js`, `src/services/*`, `src/componen
 - The Code button opens an editor under the canvas (`src/components/code-panel.js`). Run executes the sketch on a simulated ATmega328P (avr8js, `src/simulation/avr-runner.js`) wired to the circuit on the canvas: LEDs, RGB LEDs, buzzers (with sound) and servos react; buttons can be held on the canvas; knobs and sensors get sliders; there is a Serial Monitor. Uno and Nano only.
 - Each lesson opens with its starter sketch, which is compiled ahead of time (`src/simulation/prebuilt-sketches.json`), so it runs with no server. Edited code goes to the compile server (`server/compile-server/`, `VITE_COMPILE_URL`); compiler errors are rewritten in beginner language with a jump to the line.
 - The compile server is not deployed yet. Until `VITE_COMPILE_URL` is set, edited code shows a message and starter code still runs. Hosting and limits are in [COMPILE_SERVER.md](COMPILE_SERVER.md).
-- The circuit model follows wires, switches and resistor dividers; it is not a full solver. Displays, the slide switch and I2C parts are not simulated.
+- Voltages and LED currents come from a DC solver (`src/simulation/dc-solver.js`, `test/dc-solver.test.js`): resistor values change brightness and too many LEDs in series stay dark. It is DC only, and displays and I2C parts are not simulated.
 - `test/simulation.test.js` runs every lesson's program on its finished circuit and checks the parts behave as the lesson says.
 
 ### Physical model

@@ -2048,6 +2048,12 @@ class CircuitCanvas extends LitElement {
                 }, { once: true });
             });
         }
+        if (componentLibrary[component.definitionId]?.simulation?.kind === 'switch') {
+            // While code runs, a click flips the switch.
+            group.on('click tap', () => {
+                if (this._simulation) window.dispatchEvent(new CustomEvent('elera-simulation-input', { detail: { componentId: component.id, toggle: true } }));
+            });
+        }
         group.on('mouseenter', () => { this.stage.container().style.cursor = 'move'; });
         group.on('mouseleave', () => { this.stage.container().style.cursor = ''; });
         group.on('dragstart', event => {

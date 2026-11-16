@@ -19,11 +19,11 @@ The site itself stays static. The only thing that needs a server is turning *edi
 
 ## What is simulated
 
-Arduino Uno and Nano. LED, RGB LED, resistor, push button, potentiometer, slide potentiometer, buzzer (with sound), servo, photoresistor module, NTC module and the Serial Monitor. PWM (`analogWrite`), `tone()`, `analogRead`, `INPUT_PULLUP` and the Servo library work because the real compiled program runs.
+Arduino Uno and Nano. LED, RGB LED, resistor, push button, slide switch, potentiometer, slide potentiometer, buzzer (with sound), servo, photoresistor module, NTC module and the Serial Monitor. PWM (`analogWrite`), `tone()`, `analogRead`, `INPUT_PULLUP` and the Servo library work because the real compiled program runs.
 
-Limits: the circuit model follows wires, closed switches and resistor dividers. It is not a full circuit solver, so LEDs in series and resistor networks are approximate (the planned DC solver replaces `level()` in `circuit-io.js`). Parts without `simulation` metadata (displays, the slide switch, I2C sensors) do nothing yet. Only `Servo.h` is installed on the compile server.
+Voltages and LED currents come from a small DC solver (`src/simulation/dc-solver.js`, nodal analysis with LEDs as diodes), so resistor values change brightness, dividers read correctly on analog pins and too many LEDs in series stay dark. Limits: DC only (no capacitors), Arduino pins are ideal sources with no current limit, and buzzers and servos draw no current. Parts without `simulation` metadata (displays, I2C sensors) do nothing yet. Only `Servo.h` is installed on the compile server.
 
-To make a new part react, add a `simulation` entry to its definition in `src/component-library.js` using one of the existing kinds (`led`, `rgb-led`, `button`, `dial`, `buzzer`, `servo`, `resistor`).
+To make a new part react, add a `simulation` entry to its definition in `src/component-library.js` using one of the existing kinds (`led`, `rgb-led`, `button`, `switch`, `dial`, `buzzer`, `servo`, `resistor`).
 
 ## The compile server
 

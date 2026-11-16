@@ -1,18 +1,22 @@
 import { getComponentDef } from '../component-library.js';
 import { getBoardPinTable } from '../core/board-pins.js';
+import { LED_COLOR_PROFILES } from '../core/led-resistor.js';
 import { ConnectivityResolver, UnionFind } from '../physical/connectivity.js';
 import { componentPinRef, connectionRefKey } from '../physical/model.js';
+import { solveDc } from './dc-solver.js';
 
 // Connects the running program to the circuit on the canvas: which parts light
 // up, move or sound for the current pin activity, and what voltage each input
 // pin sees. Voltages are a share of 5 V (0 to 1); null means nothing connected.
 //
-// shortcut: this follows wires, closed switches and resistor dividers, not a
-// full circuit solver, so LEDs in series and resistor meshes are approximate;
-// replace `level` with the DC solver when it lands.
+// Voltages and LED currents come from the DC solver; buzzers and servos are
+// treated as drawing no current and follow the signal on their pin.
 
 const SIMULATED_BOARDS = ['arduino-uno', 'arduino-nano'];
+const SUPPLY_VOLTS = 5;
 const PULLUP_OHMS = 35_000;
+const DIAL_OHMS = 10_000;
+const FULL_BRIGHTNESS_AMPS = .008;
 const INTERNAL_5V = 'internal-5v';
 const SERVO_MIN_MICROS = 544;
 const SERVO_MAX_MICROS = 2400;
@@ -53,6 +57,7 @@ export function createCircuitSimulation(project) {
         const pin = pinId => net(component.id, pinId);
         parts.push({ id: component.id, definition, simulation, pin, properties: component.properties || {} });
         if (simulation.kind === 'button') inputs.push({ id: component.id, kind: 'button', label: definition.name, value: 0 });
+        if (simulation.kind === 'switch') inputs.push({ id: component.id, kind: 'switch', label: definition.name, value: 0 });
         if (simulation.kind === 'dial') inputs.push({ id: component.id, kind: 'dial', label: simulation.label, value: .5 });
     }
     // Two knobs become "Knob 1" and "Knob 2".
@@ -70,96 +75,88 @@ export function createCircuitSimulation(project) {
         const merged = new UnionFind();
         const root = id => merged.find(id);
         for (const part of parts) {
-            if (part.simulation.kind !== 'button' || !values[part.id]) continue;
-            for (const [a, b] of part.definition.switchContacts || []) merged.union(part.pin(a), part.pin(b));
+            const contacts = part.definition.switchContacts || [];
+            // A button closes all its contacts while held; a slide switch always closes one pair.
+            const closed = part.simulation.kind === 'button' ? (values[part.id] ? contacts : [])
+                : part.simulation.kind === 'switch' ? [contacts[values[part.id] ? 1 : 0]] : [];
+            for (const [a, b] of closed) merged.union(part.pin(a), part.pin(b));
         }
 
-        const driven = new Map([[INTERNAL_5V, 1]]);
-        const drive = (id, level) => { if (!driven.has(root(id))) driven.set(root(id), level); };
-        for (const [id, level] of supplies) drive(id, level);
-        for (const pin of ioPins) if (pins[pin.name]?.output) drive(pin.net, pins[pin.name].level);
+        // Supplies and output pins hold their net at a voltage; the first claim wins, ground first.
+        const fixed = new Map([[INTERNAL_5V, SUPPLY_VOLTS]]);
+        const hold = (id, volts) => { if (!fixed.has(root(id))) fixed.set(root(id), volts); };
+        for (const [id, share] of supplies) hold(id, share * SUPPLY_VOLTS);
+        // A PWM pin is solved at its HIGH level; LEDs it feeds are dimmed by its duty afterwards.
+        for (const pin of ioPins) if (pins[pin.name]?.output) hold(pin.net, pins[pin.name].level > 0 ? SUPPLY_VOLTS : 0);
 
+        const resistors = [];
+        const diodes = [];
         const links = new Map();
-        const link = (a, b, ohms) => {
+        const resistor = (a, b, ohms) => {
+            resistors.push({ a: root(a), b: root(b), ohms });
             for (const [from, to] of [[root(a), root(b)], [root(b), root(a)]]) {
                 if (!links.has(from)) links.set(from, []);
-                links.get(from).push({ to, ohms });
+                links.get(from).push(to);
             }
         };
-        const dials = new Map();
         for (const part of parts) {
-            const { simulation } = part;
+            const { simulation, pin } = part;
             if (simulation.kind === 'resistor') {
-                link(part.pin(simulation.pins[0]), part.pin(simulation.pins[1]), Math.max(1, Number(part.properties.value) || 220));
+                resistor(pin(simulation.pins[0]), pin(simulation.pins[1]), Math.max(1, Number(part.properties.value) || 220));
             } else if (simulation.kind === 'dial') {
                 const position = clamp(values[part.id] ?? .5);
                 const share = simulation.inverted ? 1 - position : position;
-                dials.set(root(part.pin(simulation.output)), { part, share });
-                if (simulation.digitalOutput) dials.set(root(part.pin(simulation.digitalOutput)), { part, share: share > .5 ? 1 : 0 });
-            }
-        }
-        for (const pin of ioPins) if (pins[pin.name]?.pullup) link(pin.net, INTERNAL_5V, PULLUP_OHMS);
-
-        const settled = new Map();
-        function level(id, visiting = new Set()) {
-            const key = root(id);
-            if (driven.has(key)) return driven.get(key);
-            if (settled.has(key)) return settled.get(key);
-            if (visiting.has(key)) return null;
-            visiting.add(key);
-            let result = null;
-            const dial = dials.get(key);
-            if (dial) {
-                const high = level(dial.part.pin(dial.part.simulation.power), visiting);
-                const low = level(dial.part.pin(dial.part.simulation.ground), visiting);
-                if (high != null && low != null) result = low + (high - low) * dial.share;
-            }
-            if (result == null) {
-                let conductance = 0, sum = 0;
-                for (const { to, ohms } of links.get(key) || []) {
-                    const other = level(to, visiting);
-                    if (other == null) continue;
-                    conductance += 1 / ohms;
-                    sum += other / ohms;
+                const [power, ground] = [pin(simulation.power), pin(simulation.ground)];
+                resistors.push({ a: root(power), b: root(pin(simulation.output)), ohms: Math.max(1, (1 - share) * DIAL_OHMS) });
+                resistors.push({ a: root(pin(simulation.output)), b: root(ground), ohms: Math.max(1, share * DIAL_OHMS) });
+                // A sensor module's digital pin snaps to one rail.
+                if (simulation.digitalOutput) resistors.push({ a: root(pin(simulation.digitalOutput)), b: root(share > .5 ? power : ground), ohms: 100 });
+            } else if (simulation.kind === 'led') {
+                diodes.push({ part, prop: null, anode: root(pin(simulation.anode)), cathode: root(pin(simulation.cathode)),
+                    forwardVoltage: LED_COLOR_PROFILES[part.properties.color]?.forwardVoltage || 2 });
+            } else if (simulation.kind === 'rgb-led') {
+                for (const [prop, channel] of Object.entries(simulation.channels)) {
+                    diodes.push({ part, prop, anode: root(pin(channel)), cathode: root(pin(simulation.common)), forwardVoltage: prop === 'ledRed' ? 2 : 3 });
                 }
-                if (conductance) result = sum / conductance;
             }
-            visiting.delete(key);
-            // A value found while part of the loop was still being walked may be incomplete.
-            if (!visiting.size) settled.set(key, result);
-            return result;
         }
+        for (const pin of ioPins) if (pins[pin.name]?.pullup) resistors.push({ a: root(pin.net), b: INTERNAL_5V, ohms: PULLUP_OHMS });
+
+        const solved = solveDc({ fixed, resistors, diodes });
+        const volts = id => solved.voltage(root(id));
+        const grounded = id => { const value = volts(id); return value != null && value < .1; };
 
         // The Arduino output that reaches this terminal directly or through one resistor.
         const outputPins = ioPins.filter(pin => pins[pin.name]?.output);
         const driver = id => {
-            const reach = new Set([root(id), ...(links.get(root(id)) || []).map(item => item.to)]);
+            const reach = new Set([root(id), ...(links.get(root(id)) || [])]);
             return pins[outputPins.find(pin => reach.has(root(pin.net)))?.name] || null;
         };
-        const glow = (anode, cathode) => {
-            const high = level(anode), low = level(cathode);
-            return high == null || low == null ? 0 : clamp(high - low);
-        };
+        // Brightness from the current through each LED: full at about 8 mA.
+        const glow = new Map();
+        diodes.forEach((diode, i) => {
+            const duty = (driver(diode.anode)?.level ?? 1) * (1 - (driver(diode.cathode)?.level ?? 0));
+            glow.set(`${diode.part.id}:${diode.prop}`, clamp(solved.diodeCurrents[i] / FULL_BRIGHTNESS_AMPS) * duty);
+        });
 
         const components = {};
         let sound = null;
         for (const part of parts) {
             const { simulation, pin } = part;
             if (simulation.kind === 'led') {
-                const brightness = glow(pin(simulation.anode), pin(simulation.cathode));
+                const brightness = glow.get(`${part.id}:null`);
                 components[part.id] = { value: brightness > .02, brightness: Math.max(.25, brightness) };
             } else if (simulation.kind === 'rgb-led') {
-                components[part.id] = Object.fromEntries(Object.entries(simulation.channels)
-                    .map(([prop, channel]) => [prop, glow(pin(channel), pin(simulation.common))]));
+                components[part.id] = Object.fromEntries(Object.keys(simulation.channels).map(prop => [prop, glow.get(`${part.id}:${prop}`)]));
             } else if (simulation.kind === 'buzzer') {
                 const [a, b] = simulation.pins.map(pin);
-                const signal = level(b) === 0 ? driver(a) : level(a) === 0 ? driver(b) : null;
+                const signal = grounded(b) ? driver(a) : grounded(a) ? driver(b) : null;
                 const frequency = signal?.frequency > 20 ? signal.frequency : 0;
                 components[part.id] = { hasSignal: frequency > 0 };
                 if (frequency) sound = { frequency };
             } else if (simulation.kind === 'servo') {
                 const signal = driver(pin(simulation.signal));
-                const powered = level(pin(simulation.power)) > .8 && level(pin(simulation.ground)) === 0;
+                const powered = volts(pin(simulation.power)) > 4 && grounded(pin(simulation.ground));
                 if (powered && signal && signal.pulseMicros > 400 && signal.pulseMicros < 2600 && signal.frequency > 20) {
                     components[part.id] = {
                         angle: Math.round(clamp((signal.pulseMicros - SERVO_MIN_MICROS) / (SERVO_MAX_MICROS - SERVO_MIN_MICROS)) * 180),
@@ -167,13 +164,18 @@ export function createCircuitSimulation(project) {
                 }
             } else if (simulation.kind === 'button') {
                 components[part.id] = { pressed: Boolean(values[part.id]) };
+            } else if (simulation.kind === 'switch') {
+                components[part.id] = { value: values[part.id] ? 1 : 0 };
             } else if (simulation.kind === 'dial' && simulation.visual) {
                 components[part.id] = { [simulation.visual.prop]: clamp(values[part.id] ?? .5) * simulation.visual.scale };
             }
         }
 
         const pinLevels = {};
-        for (const pin of ioPins) if (!pins[pin.name]?.output) pinLevels[pin.name] = level(pin.net);
+        for (const pin of ioPins) if (!pins[pin.name]?.output) {
+            const value = volts(pin.net);
+            pinLevels[pin.name] = value == null ? null : value / SUPPLY_VOLTS;
+        }
         return { components, pinLevels, sound };
     }
 
