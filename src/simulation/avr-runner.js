@@ -87,6 +87,9 @@ export class AvrRunner {
         this.sampledAt = 0;
         // Ultrasonic sensors: echo pins are driven by timed events, not by the circuit's settled voltage.
         this.echoes = [];
+        // Parts that set a pin's level themselves (see pin-devices.js); the circuit's voltage does not override them.
+        this.driven = new Set();
+        this.watchers = [];
         // NeoPixel strips: the bits clocked out on a data pin, collected until the line rests.
         this.strips = [];
         for (const [portName, port] of Object.entries(this.ports)) {
@@ -104,9 +107,11 @@ export class AvrRunner {
             if (mode !== track.mode) {
                 track.mode = mode;
                 this.modesChanged = true;
+                for (const watcher of this.watchers) if (watcher.pin === name) watcher.mode?.(mode === PinState.High);
             }
             const high = state === PinState.High;
             if (high === track.high) continue;
+            for (const watcher of this.watchers) if (watcher.pin === name) watcher.edge?.(high);
             if (high) {
                 track.period = now - track.lastRise;
                 track.lastRise = now;
@@ -122,6 +127,31 @@ export class AvrRunner {
             track.high = high;
             track.since = now;
         }
+    }
+
+    watch(pin, handlers) {
+        this.watchers.push({ pin, ...handlers });
+    }
+
+    drive(name, high) {
+        const [port, bit] = PIN_MAP[name];
+        this.driven.add(name);
+        this.ports[port].setPin(bit, high);
+    }
+
+    after(micros, callback) {
+        this.cpu.addClockEvent(callback, Math.max(1, Math.round(micros * CPU_HZ / 1e6)));
+    }
+
+    /** true or false while the sketch drives the pin, null while it is an input. */
+    outputLevel(name) {
+        const [port, bit] = PIN_MAP[name];
+        const state = this.ports[port].pinState(bit);
+        return state === PinState.High ? true : state === PinState.Low ? false : null;
+    }
+
+    get micros() {
+        return this.cpu.cycles * 1e6 / CPU_HZ;
     }
 
     /** NeoPixels on `pin`: `show(bytes)` receives the colour bytes (green, red, blue per pixel) of each update. */
@@ -147,6 +177,7 @@ export class AvrRunner {
     /** HC-SR04: a pulse on `trigger` is answered by `echo` held HIGH for the sound's round trip (58 us per cm). */
     addEcho(trigger, echo, centimetres) {
         this.echoes.push({ trigger, echo, centimetres });
+        this.driven.add(echo);
     }
 
     #ping(echo) {
@@ -207,7 +238,7 @@ export class AvrRunner {
     /** Apply the voltage the circuit puts on a pin, as a share of 5 V (null = nothing connected). */
     setInput(name, level) {
         const [port, bit] = PIN_MAP[name] || [];
-        if (!port || this.echoes.some(echo => echo.echo === name)) return;
+        if (!port || this.driven.has(name)) return;
         this.ports[port].setPin(bit, (level ?? 0) > .5);
         if (port === 'C') this.adc.channelValues[bit] = (level ?? 0) * 5;
     }
@@ -226,9 +257,11 @@ export function advance(runner, circuit, values, cycles, budgetMs = Infinity) {
         runner.circuit = circuit;
         for (const echo of circuit.echoes || []) runner.addEcho(echo.trigger, echo.echo, () => echo.centimetres(runner.values));
         runner.spiDevices.push(...(circuit.spi || []));
+        for (const { device } of circuit.pinDevices || []) device.attach(runner);
         for (const strip of circuit.pixelStrips || []) runner.addPixels(strip.pin, strip.show);
         for (const { address, device } of circuit.i2c || []) if (!runner.i2c.has(address)) runner.i2c.set(address, device);
     }
+    for (const { device, read } of circuit.pinDevices || []) device.tick?.(index => read(values, index));
     const started = runner.cpu.cycles;
     // Capacitors move on by the simulated time since the last full frame; mid-frame settles take no time.
     const settle = (pins, seconds = 0) => {

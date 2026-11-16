@@ -23,11 +23,13 @@ Arduino Uno and Nano. LED, RGB LED, resistor, push button, slide switch, potenti
 
 Voltages and LED currents come from a small DC solver (`src/simulation/dc-solver.js`, nodal analysis with LEDs as diodes), so resistor values change brightness, dividers read correctly on analog pins and too many LEDs in series stay dark. Capacitors charge and discharge one time step per frame. Limits: Arduino pins are ideal sources with no current limit, and buzzers and servos draw no current. A PWM pin that reaches a capacitor is held at its average voltage, so an RC filter settles at the duty cycle.
 
-I2C parts on A4 (SDA) and A5 (SCL) receive the bytes the program sends (`src/simulation/i2c-devices.js`): the 16x2 and 20x4 LCD, the SSD1306 OLED, the DS1307 clock (answers with the computer's time) and the MPU6050 (tilt slider). SPI parts on pins 11, 12 and 13 work the same way (`src/simulation/spi-devices.js`): the ILI9341 colour screen and a MicroSD card (an empty FAT16 card the SD library can write to and read back; its files are lost when the simulation stops). NeoPixels, rings and matrices decode the WS2812 signal on their data pin and can be chained. The 7-segment display (common cathode) and LED bar graph are LEDs in the DC solver; the keypad has a 4x4 grid of keys in the code panel.
+I2C parts on A4 (SDA) and A5 (SCL) receive the bytes the program sends (`src/simulation/i2c-devices.js`): the 16x2 and 20x4 LCD, the SSD1306 OLED, the DS1307 clock (answers with the computer's time) and the MPU6050 (tilt slider). SPI parts on pins 11, 12 and 13 work the same way (`src/simulation/spi-devices.js`): the ILI9341 colour screen and a MicroSD card (an empty FAT16 card the SD library can write to and read back; its files are kept in the browser's storage, one card shared by all projects). NeoPixels, rings and matrices decode the WS2812 signal on their data pin and can be chained. The 7-segment display (common cathode) and LED bar graph are LEDs in the DC solver; the keypad has a 4x4 grid of keys in the code panel.
 
-The compile server installs Servo, SD, LiquidCrystal I2C, Adafruit SSD1306, Adafruit ILI9341, Adafruit NeoPixel, RTClib and Adafruit MPU6050; `Wire.h` and `SPI.h` are built in. Parts without `simulation` metadata (stepper motors, relay, DHT22, IR remote, rotary encoder, load cell) do nothing yet.
+The compile server installs Servo, SD, LiquidCrystal I2C, Adafruit SSD1306, Adafruit ILI9341, Adafruit NeoPixel, RTClib, Adafruit MPU6050, DHT sensor library, IRremote, HX711 and Stepper; `Wire.h` and `SPI.h` are built in.
 
-To make a new part react, add a `simulation` entry to its definition in `src/component-library.js` using one of the existing kinds (`led`, `rgb-led`, `button`, `switch`, `signal`, `dial`, `buzzer`, `servo`, `resistor`, `light-resistor`, `capacitor`, `diode`, `transistor`, `motor`, `distance`, `led-array`, `keypad`, `pixels`, `i2c`, `spi`). The beginner text and the simulation entries of the compact parts live in `src/part-guide.js`.
+Parts that work by timing on plain pins live in `src/simulation/pin-devices.js`: the DHT22 answers with the temperature and humidity on its sliders, the IR receiver gets a NEC frame for each key of the remote in the code panel, the HX711 clocks out the weight on its slider, and stepper motors turn 1.8 degrees for each change of their four coil pins (wired straight to the Arduino). The relay pulls in above 3.5 V across its coil and moves both poles; the rotary encoder steps its two signals one click at a time. Still without `simulation` metadata: the 8-way DIP switch, the rotary dialer, the bare chips, and boards other than the Uno (the simulator runs an Uno only).
+
+To make a new part react, add a `simulation` entry to its definition in `src/component-library.js` using one of the existing kinds (`led`, `rgb-led`, `button`, `switch`, `signal`, `dial`, `buzzer`, `servo`, `resistor`, `light-resistor`, `capacitor`, `diode`, `transistor`, `motor`, `distance`, `led-array`, `keypad`, `pixels`, `i2c`, `spi`, `pin-device`, `relay`, `encoder`). The beginner text and the simulation entries of the compact parts live in `src/part-guide.js`.
 
 ## The compile server
 
@@ -61,7 +63,7 @@ docker run --rm -p 8787:8787 elera-compile
 VITE_COMPILE_URL=http://localhost:8787 npm run dev
 ```
 
-Without Docker, install [arduino-cli](https://arduino.github.io/arduino-cli/), run `arduino-cli core install arduino:avr`, `arduino-cli lib install Servo "LiquidCrystal I2C" "Adafruit SSD1306" RTClib "Adafruit MPU6050" "Adafruit NeoPixel" "Adafruit ILI9341" SD`, then `node server/compile-server/server.mjs`.
+Without Docker, install [arduino-cli](https://arduino.github.io/arduino-cli/), run `arduino-cli core install arduino:avr`, `arduino-cli lib install Servo "LiquidCrystal I2C" "Adafruit SSD1306" RTClib "Adafruit MPU6050" "Adafruit NeoPixel" "Adafruit ILI9341" SD "DHT sensor library" IRremote "HX711 Arduino Library" Stepper`, then `node server/compile-server/server.mjs`.
 
 ### After editing a lesson's code
 

@@ -5,6 +5,7 @@ import { ConnectivityResolver, UnionFind } from '../physical/connectivity.js';
 import { componentPinRef, connectionRefKey } from '../physical/model.js';
 import { solveDc } from './dc-solver.js';
 import { createI2cDevice } from './i2c-devices.js';
+import { createPinDevice } from './pin-devices.js';
 import { createSpiDevice } from './spi-devices.js';
 
 // Connects the running program to the circuit on the canvas: which parts light
@@ -22,6 +23,9 @@ const PULLUP_OHMS = 35_000;
 const DIAL_OHMS = 10_000;
 const FULL_BRIGHTNESS_AMPS = .008;
 const MOTOR_OHMS = 25;
+const RELAY_COIL_OHMS = 70;
+// Clock and data levels of a rotary encoder through one click: clock falls first when turning clockwise.
+const ENCODER_PHASES = [[1, 1], [0, 1], [0, 0], [1, 0]];
 const DISTANCE_CM = [2, 400];
 const TRANSISTOR_ON_OHMS = 2;
 const INTERNAL_5V = 'internal-5v';
@@ -43,7 +47,8 @@ function paintPixels(artwork, colors) {
  * `echoes` lists ultrasonic sensors as { trigger, echo, centimetres(values) }
  * and `i2c` the devices on the I2C bus as { address, device }; `spi` the devices
  * on the SPI bus as { select, command, device }; `pixelStrips` lists NeoPixel
- * chains as { pin, show(bytes) }. A `paint` entry in a part's
+ * chains as { pin, show(bytes) } and `pinDevices` the parts that work by
+ * timing on plain pins as { device, read(values, index) }. A `paint` entry in a part's
  * state is a function that draws on its artwork.
  */
 export function createCircuitSimulation(project) {
@@ -71,6 +76,7 @@ export function createCircuitSimulation(project) {
     const echoes = [];
     const i2c = [];
     const spi = [];
+    const pinDevices = [];
     const bus = pinId => net(board.id, pinId);
     for (const component of project.components) {
         const definition = getComponentDef(component.definitionId);
@@ -92,9 +98,21 @@ export function createCircuitSimulation(project) {
                 // On an Uno and Nano the I2C bus is pins A4 (SDA) and A5 (SCL).
                 if (pin(simulation.sda) === bus('A4') && pin(simulation.scl) === bus('A5')) i2c.push({ address: definition.i2cAddress, device: part.device });
             }
+            if (simulation.kind === 'encoder') inputs.push({ id: key, kind: 'dial', label: simulation.label, value: .5 });
+            if (simulation.kind === 'pin-device') {
+                const part = parts[parts.length - 1];
+                const inputId = index => index ? `${key}/${index}` : key;
+                (simulation.inputs || []).forEach((input, index) => inputs.push({ kind: 'dial', value: input.kind === 'keypad' ? 0 : .5, ...input, id: inputId(index) }));
+                const wired = pinId => ioPins.find(io => io.net === pin(pinId))?.name;
+                const names = Object.fromEntries(Object.entries(simulation.pins).map(([role, ids]) => [role, Array.isArray(ids) ? ids.map(wired) : wired(ids)]));
+                if (Object.values(names).flat().every(Boolean)) {
+                    part.device = createPinDevice(simulation.device, { ...simulation.options, ...names });
+                    pinDevices.push({ device: part.device, read: (values, index) => values[inputId(index)] });
+                }
+            }
             if (simulation.kind === 'spi') {
                 const part = parts[parts.length - 1];
-                part.device = createSpiDevice(simulation.device);
+                part.device = createSpiDevice(simulation.device, simulation.options);
                 const wired = pinId => ioPins.find(io => io.net === pin(pinId))?.name;
                 // On an Uno and Nano the SPI bus is pins 11 (data out), 12 (data in) and 13 (clock).
                 const onBus = pin(simulation.data) === bus('11') && pin(simulation.clock) === bus('13') &&
@@ -205,6 +223,27 @@ export function createCircuitSimulation(project) {
                 part.source = { a: root(pin(simulation.pins[0])), b: root(pin(simulation.pins[1])), volts: part.volts || 0,
                     ohms: Math.max(.05, seconds / simulation.farads) };
                 sources.push(part.source);
+            } else if (simulation.kind === 'relay') {
+                resistor(pin(simulation.coil[0]), pin(simulation.coil[1]), RELAY_COIL_OHMS);
+                // Each pole rests on its "normally closed" contact and moves to "normally open" when the coil pulls.
+                part.contacts = simulation.poles.map(([pole, open, closed]) => ({ a: root(pin(pole)), b: root(pin(part.on ? open : closed)), ohms: .05 }));
+                resistors.push(...part.contacts);
+            } else if (simulation.kind === 'encoder') {
+                const target = Math.round(clamp(values[part.key] ?? .5) * 40);
+                part.detent ??= target;
+                part.phase ??= 0;
+                // One quarter of a click per frame, so the sketch sees every change.
+                if (seconds > 0 && part.phase) {
+                    part.phase = (part.phase + 1) % 4;
+                    if (!part.phase) part.detent += part.direction;
+                } else if (seconds > 0 && target !== part.detent) {
+                    part.direction = Math.sign(target - part.detent);
+                    part.phase = 1;
+                }
+                const levels = ENCODER_PHASES[part.phase];
+                const [clock, data] = part.direction < 0 ? [levels[1], levels[0]] : levels;
+                const rail = level => root(pin(level ? simulation.power : simulation.ground));
+                resistors.push({ a: root(pin(simulation.clock)), b: rail(clock), ohms: 100 }, { a: root(pin(simulation.data)), b: rail(data), ohms: 100 });
             } else if (simulation.kind === 'motor') {
                 resistor(pin(simulation.pins[0]), pin(simulation.pins[1]), MOTOR_OHMS);
             } else if (simulation.kind === 'diode') {
@@ -254,14 +293,25 @@ export function createCircuitSimulation(project) {
         // shortcut: a transistor is a switch that closes fully once base current flows (no gain, no
         // linear region); model hFE if a lesson ever needs dimming through a transistor.
         const conducting = new Set();
-        for (let pass = 0; pass < 4; pass++) {
+        for (let pass = 0; pass < 6; pass++) {
             const turnedOn = parts.filter(part => part.simulation.kind === 'transistor' && !conducting.has(part) &&
                 solved.diodeCurrents[part.junction] > 1e-5);
-            if (!turnedOn.length) break;
             for (const part of turnedOn) {
                 conducting.add(part);
                 resistors.push({ a: root(part.pin(part.simulation.collector)), b: root(part.pin(part.simulation.emitter)), ohms: TRANSISTOR_ON_OHMS });
             }
+            // A relay pulls in above about 3.5 V on its coil and lets go below about 1 V.
+            const switched = parts.filter(part => {
+                if (part.simulation.kind !== 'relay') return false;
+                const [a, b] = part.simulation.coil.map(id => solved.voltage(root(part.pin(id))));
+                const across = a == null || b == null ? 0 : Math.abs(a - b);
+                return (across > (part.on ? 1 : 3.5)) !== Boolean(part.on);
+            });
+            for (const part of switched) {
+                part.on = !part.on;
+                part.simulation.poles.forEach(([, open, closed], index) => { part.contacts[index].b = root(part.pin(part.on ? open : closed)); });
+            }
+            if (!turnedOn.length && !switched.length) break;
             solved = solveDc({ fixed, resistors, diodes, sources });
         }
         const volts = id => solved.voltage(root(id));
@@ -330,6 +380,10 @@ export function createCircuitSimulation(project) {
             } else if (part.simulation.kind === 'pixels') {
                 const powered = volts(part.pin(part.simulation.power)) > 3 && grounded(part.pin(part.simulation.ground));
                 if (powered && part.paint) components[part.id] = { paint: part.paint };
+            } else if (part.simulation.kind === 'encoder') {
+                components[part.id] = { ...components[part.id], angle: part.detent * 18 };
+            } else if (part.simulation.kind === 'pin-device' && part.device?.state) {
+                components[part.id] = { ...components[part.id], ...part.device.state() };
             } else if (part.simulation.kind === 'spi') {
                 const powered = volts(part.pin(part.simulation.power)) > 3 && grounded(part.pin(part.simulation.ground));
                 if (powered) components[part.id] = part.device.state();
@@ -348,5 +402,5 @@ export function createCircuitSimulation(project) {
         return { components, pinLevels, sound };
     }
 
-    return { boardId: board.definitionId, inputs, echoes, i2c, spi, pixelStrips, parts, evaluate };
+    return { boardId: board.definitionId, inputs, echoes, i2c, spi, pinDevices, pixelStrips, parts, evaluate };
 }

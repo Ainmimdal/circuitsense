@@ -42,6 +42,8 @@ export const PART_GUIDE = {
         beginnerNote: 'Measures distance with sound, like a bat. TRIG sends a ping, and ECHO tells the Arduino how long it took to come back.',
     },
     dht22: {
+        simulation: { kind: 'pin-device', device: 'dht', pins: { data: 'SDA' },
+            inputs: [{ label: 'Temperature', range: [-10, 50], unit: ' °C' }, { label: 'Humidity', range: [0, 100], unit: ' %' }] },
         beginnerNote: 'Measures temperature and humidity and sends both as numbers on one data pin.',
     },
     lcd1602: {
@@ -59,6 +61,8 @@ export const PART_GUIDE = {
         beginnerNote: 'Detects people moving nearby. OUT goes HIGH for a few seconds when it sees movement.',
     },
     'ir-receiver': {
+        // The remote's keys, in the order of the codes in src/simulation/pin-devices.js.
+        simulation: { kind: 'pin-device', device: 'ir-receiver', pins: { output: 'DAT' }, inputs: [{ kind: 'keypad', label: 'Remote', keys: '123+456-7890' }] },
         description: 'Receiver for infrared remote control signals',
         beginnerNote: 'Reads the invisible light pulses sent by a TV-style remote control.',
     },
@@ -96,10 +100,15 @@ export const PART_GUIDE = {
         beginnerNote: 'A game-controller stick. HORZ and VERT give a voltage for left-right and up-down; SEL is a button you press by pushing the stick in.',
     },
     'biaxial-stepper': {
+        simulation: [
+            { kind: 'pin-device', device: 'stepper', pins: { coils: ['A1-', 'A1+', 'B1+', 'B1-'] }, options: { property: 'outerHandAngle' } },
+            { kind: 'pin-device', device: 'stepper', pins: { coils: ['A2-', 'A2+', 'B2+', 'B2-'] }, options: { property: 'innerHandAngle' } },
+        ],
         description: 'Two stepper motors on one shaft (clock or gauge movement)',
         beginnerNote: 'Two tiny stepper motors that move two hands on one shaft, like a clock. Each motor has four coil wires.',
     },
     'stepper-motor': {
+        simulation: { kind: 'pin-device', device: 'stepper', pins: { coils: ['A-', 'A+', 'B+', 'B-'] } },
         description: 'Stepper motor that turns in exact small steps',
         beginnerNote: 'A motor that moves in precise steps. It needs a driver board between it and the Arduino.',
     },
@@ -139,6 +148,7 @@ export const PART_GUIDE = {
         beginnerNote: 'Shines a light through your fingertip and outputs a voltage that rises and falls with your pulse.',
     },
     hx711: {
+        simulation: { kind: 'pin-device', device: 'load-cell', pins: { data: 'DT', clock: 'SCK' }, inputs: [{ label: 'Weight', range: [0, 5000], unit: ' g' }] },
         description: 'Load cell amplifier for weighing things',
         beginnerNote: 'Reads the tiny signal from a load cell (weight sensor) and sends the weight to the Arduino as a number.',
     },
@@ -153,10 +163,15 @@ export const PART_GUIDE = {
         beginnerNote: 'A remote control. It has no wires: point it at an IR Receiver on your circuit.',
     },
     'relay-dpdt': {
+        simulation: { kind: 'relay', coil: ['COIL1', 'COIL2'], poles: [['P1', 'NO1', 'NC1'], ['P2', 'NO2', 'NC2']] },
         description: 'Relay: a switch operated by an electromagnet',
         beginnerNote: 'A relay lets a small signal switch a separate, bigger circuit. The coil needs more current than an Arduino pin can give, so drive it through a transistor.',
     },
     'rotary-encoder': {
+        simulation: [
+            { kind: 'encoder', label: 'Knob turn', clock: 'CLK', data: 'DT', power: 'VCC', ground: 'GND' },
+            { kind: 'signal', action: 'push the knob in', output: 'SW', power: 'VCC', ground: 'GND', activeLow: true, floating: true },
+        ],
         description: 'Knob that turns forever and clicks, with a push button',
         beginnerNote: 'A knob with no end stops. CLK and DT pulse as it turns so the code can count steps and direction; SW is the push button.',
     },

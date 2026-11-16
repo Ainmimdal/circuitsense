@@ -1,5 +1,5 @@
 // Compiles the sketches below into test/fixtures/programs.json for
-// test/simulation-i2c.test.js, test/simulation-pixels.test.js and test/simulation-spi.test.js. Run after changing a sketch:
+// the test/simulation-*.test.js files. Run after changing a sketch:
 //
 //   node scripts/compile-test-programs.mjs http://localhost:8787
 //
@@ -104,6 +104,59 @@ void setup() {
   while (file.available()) Serial.write(file.read());
   file.close();
   Serial.println(SD.exists("log.txt") ? "saved" : "missing");
+}
+void loop() {}`,
+    sdRead: `#include <SPI.h>
+#include <SD.h>
+void setup() {
+  Serial.begin(9600);
+  if (!SD.begin(10)) { Serial.println("no card"); return; }
+  File file = SD.open("log.txt");
+  if (!file) { Serial.println("no file"); return; }
+  while (file.available()) Serial.write(file.read());
+}
+void loop() {}`,
+    // Reads the DHT22 the way the DHT library does: a start pulse, then 40 timed bits.
+    dht: `const int PIN = 2;
+void setup() { Serial.begin(9600); }
+void loop() {
+  pinMode(PIN, OUTPUT); digitalWrite(PIN, LOW); delay(2); pinMode(PIN, INPUT_PULLUP);
+  pulseIn(PIN, HIGH, 2000);
+  byte data[5] = {0, 0, 0, 0, 0};
+  for (int i = 0; i < 40; i++) data[i / 8] = data[i / 8] << 1 | (pulseIn(PIN, HIGH, 2000) > 45);
+  Serial.print((data[2] << 8 | data[3]) / 10.0); Serial.print(' ');
+  Serial.print((data[0] << 8 | data[1]) / 10.0); Serial.print(' ');
+  Serial.println(((data[0] + data[1] + data[2] + data[3]) & 255) == data[4] ? "ok" : "bad");
+  delay(200);
+}`,
+    // Decodes one NEC remote frame and prints its command byte.
+    remote: `const int PIN = 2;
+void setup() { Serial.begin(9600); }
+void loop() {
+  if (digitalRead(PIN) == HIGH) return;
+  if (pulseIn(PIN, HIGH, 20000) < 4000) return;
+  unsigned long frame = 0;
+  for (int i = 0; i < 32; i++) if (pulseIn(PIN, HIGH, 5000) > 1000) frame |= 1UL << i;
+  Serial.println((frame >> 16) & 255);
+  delay(100);
+}`,
+    loadCell: `const int DATA = 3, CLOCK = 4;
+void setup() { pinMode(CLOCK, OUTPUT); Serial.begin(9600); }
+void loop() {
+  if (digitalRead(DATA) == HIGH) return;
+  long value = 0;
+  for (int i = 0; i < 24; i++) { digitalWrite(CLOCK, HIGH); value = value << 1 | digitalRead(DATA); digitalWrite(CLOCK, LOW); }
+  digitalWrite(CLOCK, HIGH); digitalWrite(CLOCK, LOW);
+  Serial.println(value);
+  delay(100);
+}`,
+    stepper: `#include <Stepper.h>
+Stepper motor(200, 8, 9, 10, 11);
+void setup() {
+  Serial.begin(9600);
+  motor.setSpeed(120);
+  motor.step(51);
+  Serial.println("done");
 }
 void loop() {}`,
 };

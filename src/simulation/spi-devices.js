@@ -5,8 +5,8 @@
 //                             `dataMode` is the level of the D/C pin, if it has one
 //   deselect()                chip-select went HIGH
 //
-// shortcut: the screen ignores scrolling, inversion and reads; the SD card is
-// an empty 4 MB card that forgets its files when the simulation stops.
+// shortcut: the screen ignores scrolling, inversion and reads. The SD card is
+// a 4 MB card kept in the browser's storage, one card shared by all projects.
 
 const TFT_WIDTH = 240, TFT_HEIGHT = 320;
 
@@ -66,6 +66,7 @@ function createTft() {
 }
 
 const BLOCK = 512;
+const SD_STORAGE_KEY = 'elera_sd_card_v1';
 const SD_BLOCKS = 8192, SD_FAT_BLOCKS = 32, SD_ROOT_ENTRIES = 512;
 
 /** A freshly formatted FAT16 card: only the blocks that hold something are stored. */
@@ -91,8 +92,20 @@ function formattedCard() {
 }
 
 /** SD card in SPI mode (what the Arduino SD library talks to). */
-function createSdCard() {
+function createSdCard({ storage = globalThis.localStorage } = {}) {
     const blocks = formattedCard();
+    let unsaved = false;
+    try {
+        for (const [block, bytes] of Object.entries(JSON.parse(storage?.getItem(SD_STORAGE_KEY) || '{}'))) {
+            blocks.set(Number(block), Uint8Array.from(atob(bytes), letter => letter.charCodeAt(0)));
+        }
+    } catch { /* A damaged saved card starts again as an empty one. */ }
+    const save = () => {
+        unsaved = false;
+        try {
+            storage?.setItem(SD_STORAGE_KEY, JSON.stringify(Object.fromEntries([...blocks].map(([block, bytes]) => [block, btoa(String.fromCharCode(...bytes))]))));
+        } catch { /* Storage is full or blocked: the card still works until the page closes. */ }
+    };
     let frame = [], reply = [], idle = true, appCommand = false, writing = null;
 
     const run = (index, argument) => {
@@ -121,6 +134,7 @@ function createSdCard() {
                 writing.data.push(value);
                 if (writing.data.length === BLOCK + 2) {
                     blocks.set(writing.block, Uint8Array.from(writing.data.slice(0, BLOCK)));
+                    unsaved = true;
                     writing = null;
                     reply = [0x05];
                 }
@@ -135,13 +149,17 @@ function createSdCard() {
             }
             return 0xff;
         },
-        deselect() { frame = []; reply = []; },
+        deselect() {
+            frame = [];
+            reply = [];
+            if (unsaved) save();
+        },
         state: () => ({}),
     };
 }
 
 const DEVICES = { tft: createTft, sd: createSdCard };
 
-export function createSpiDevice(kind) {
-    return DEVICES[kind]?.() || null;
+export function createSpiDevice(kind, options) {
+    return DEVICES[kind]?.(options) || null;
 }

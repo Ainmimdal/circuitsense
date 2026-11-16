@@ -12,7 +12,7 @@ RUN curl -fsSL "https://downloads.arduino.cc/arduino-cli/arduino-cli_${ARDUINO_C
 USER node
 RUN arduino-cli core update-index \
     && arduino-cli core install arduino:avr@1.8.6 \
-    && arduino-cli lib install Servo "LiquidCrystal I2C" "Adafruit SSD1306" RTClib "Adafruit MPU6050" "Adafruit NeoPixel" "Adafruit ILI9341" SD
+    && arduino-cli lib install Servo "LiquidCrystal I2C" "Adafruit SSD1306" RTClib "Adafruit MPU6050" "Adafruit NeoPixel" "Adafruit ILI9341" SD "DHT sensor library" IRremote "HX711 Arduino Library" Stepper
 
 WORKDIR /app
 COPY --chown=node:node server.mjs .
