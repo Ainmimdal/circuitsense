@@ -1,5 +1,5 @@
 // Compiles the sketches below into test/fixtures/programs.json for
-// test/simulation-i2c.test.js and test/simulation-pixels.test.js. Run after changing a sketch:
+// test/simulation-i2c.test.js, test/simulation-pixels.test.js and test/simulation-spi.test.js. Run after changing a sketch:
 //
 //   node scripts/compile-test-programs.mjs http://localhost:8787
 //
@@ -67,6 +67,43 @@ void setup() {
   strip.setPixelColor(3, strip.Color(0, 0, 255));
   strip.setPixelColor(16, strip.Color(0, 255, 0));
   strip.show();
+}
+void loop() {}`,
+    // Drives the colour screen with plain SPI calls, the same bytes Adafruit_ILI9341 sends.
+    tft: `#include <SPI.h>
+const int CS = 10, DC = 9;
+void command(byte value) { digitalWrite(DC, LOW); SPI.transfer(value); digitalWrite(DC, HIGH); }
+void window(int x0, int y0, int x1, int y1) {
+  command(0x2A); SPI.transfer16(x0); SPI.transfer16(x1);
+  command(0x2B); SPI.transfer16(y0); SPI.transfer16(y1);
+  command(0x2C);
+}
+void setup() {
+  pinMode(CS, OUTPUT); pinMode(DC, OUTPUT);
+  SPI.begin();
+  digitalWrite(CS, LOW);
+  command(0x36); SPI.transfer(0x48);
+  window(10, 20, 11, 21);
+  for (int i = 0; i < 4; i++) SPI.transfer16(0xF800);
+  window(100, 200, 100, 200);
+  SPI.transfer16(0x07E0);
+  digitalWrite(CS, HIGH);
+  Serial.begin(9600);
+  Serial.println("done");
+}
+void loop() {}`,
+    sd: `#include <SPI.h>
+#include <SD.h>
+void setup() {
+  Serial.begin(9600);
+  if (!SD.begin(10)) { Serial.println("no card"); return; }
+  File file = SD.open("log.txt", FILE_WRITE);
+  file.println("hello 42");
+  file.close();
+  file = SD.open("log.txt");
+  while (file.available()) Serial.write(file.read());
+  file.close();
+  Serial.println(SD.exists("log.txt") ? "saved" : "missing");
 }
 void loop() {}`,
 };

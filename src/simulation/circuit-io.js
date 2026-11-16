@@ -5,6 +5,7 @@ import { ConnectivityResolver, UnionFind } from '../physical/connectivity.js';
 import { componentPinRef, connectionRefKey } from '../physical/model.js';
 import { solveDc } from './dc-solver.js';
 import { createI2cDevice } from './i2c-devices.js';
+import { createSpiDevice } from './spi-devices.js';
 
 // Connects the running program to the circuit on the canvas: which parts light
 // up, move or sound for the current pin activity, and what voltage each input
@@ -40,8 +41,9 @@ function paintPixels(artwork, colors) {
  * when it cannot run, otherwise `{ boardId, inputs, evaluate }`. `inputs`
  * lists the parts a person operates (buttons and dials) with a starting value;
  * `echoes` lists ultrasonic sensors as { trigger, echo, centimetres(values) }
- * and `i2c` the devices on the I2C bus as { address, device }; `pixelStrips`
- * lists NeoPixel chains as { pin, show(bytes) }. A `paint` entry in a part's
+ * and `i2c` the devices on the I2C bus as { address, device }; `spi` the devices
+ * on the SPI bus as { select, command, device }; `pixelStrips` lists NeoPixel
+ * chains as { pin, show(bytes) }. A `paint` entry in a part's
  * state is a function that draws on its artwork.
  */
 export function createCircuitSimulation(project) {
@@ -68,6 +70,7 @@ export function createCircuitSimulation(project) {
     const inputs = [];
     const echoes = [];
     const i2c = [];
+    const spi = [];
     const bus = pinId => net(board.id, pinId);
     for (const component of project.components) {
         const definition = getComponentDef(component.definitionId);
@@ -88,6 +91,15 @@ export function createCircuitSimulation(project) {
                 part.device = createI2cDevice(simulation.device, { ...simulation, tilt: () => part.tilt ?? .5 });
                 // On an Uno and Nano the I2C bus is pins A4 (SDA) and A5 (SCL).
                 if (pin(simulation.sda) === bus('A4') && pin(simulation.scl) === bus('A5')) i2c.push({ address: definition.i2cAddress, device: part.device });
+            }
+            if (simulation.kind === 'spi') {
+                const part = parts[parts.length - 1];
+                part.device = createSpiDevice(simulation.device);
+                const wired = pinId => ioPins.find(io => io.net === pin(pinId))?.name;
+                // On an Uno and Nano the SPI bus is pins 11 (data out), 12 (data in) and 13 (clock).
+                const onBus = pin(simulation.data) === bus('11') && pin(simulation.clock) === bus('13') &&
+                    (!simulation.reply || pin(simulation.reply) === bus('12'));
+                if (onBus && wired(simulation.select)) spi.push({ select: wired(simulation.select), command: simulation.command && wired(simulation.command), device: part.device });
             }
             if (simulation.kind === 'distance') {
                 inputs.push({ id: key, kind: 'dial', label: 'Distance', value: .1, range: DISTANCE_CM, unit: ' cm' });
@@ -318,6 +330,9 @@ export function createCircuitSimulation(project) {
             } else if (part.simulation.kind === 'pixels') {
                 const powered = volts(part.pin(part.simulation.power)) > 3 && grounded(part.pin(part.simulation.ground));
                 if (powered && part.paint) components[part.id] = { paint: part.paint };
+            } else if (part.simulation.kind === 'spi') {
+                const powered = volts(part.pin(part.simulation.power)) > 3 && grounded(part.pin(part.simulation.ground));
+                if (powered) components[part.id] = part.device.state();
             } else if (part.simulation.kind === 'i2c') {
                 part.tilt = values[part.key];
                 const powered = volts(part.pin(part.simulation.power)) > 3 && grounded(part.pin(part.simulation.ground));
@@ -333,5 +348,5 @@ export function createCircuitSimulation(project) {
         return { components, pinLevels, sound };
     }
 
-    return { boardId: board.definitionId, inputs, echoes, i2c, pixelStrips, parts, evaluate };
+    return { boardId: board.definitionId, inputs, echoes, i2c, spi, pixelStrips, parts, evaluate };
 }

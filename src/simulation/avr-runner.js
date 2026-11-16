@@ -1,6 +1,6 @@
 import {
-    AVRADC, AVRIOPort, AVRTimer, AVRTWI, AVRUSART, CPU, PinState, adcConfig, avrInstruction,
-    portBConfig, portCConfig, portDConfig, timer0Config, timer1Config, timer2Config, twiConfig, usart0Config,
+    AVRADC, AVRIOPort, AVRSPI, AVRTimer, AVRTWI, AVRUSART, CPU, PinState, adcConfig, avrInstruction,
+    portBConfig, portCConfig, portDConfig, spiConfig, timer0Config, timer1Config, timer2Config, twiConfig, usart0Config,
 } from 'avr8js';
 
 // Runs a compiled sketch on a simulated ATmega328P (Arduino Uno and Nano).
@@ -51,6 +51,17 @@ export class AvrRunner {
         this.adc = new AVRADC(this.cpu, adcConfig);
         this.usart = new AVRUSART(this.cpu, usart0Config, CPU_HZ);
         this.usart.onByteTransmit = byte => onSerial?.(String.fromCharCode(byte));
+        // SPI: a byte goes to every device whose chip-select pin is held LOW.
+        this.spiDevices = [];
+        this.spi = new AVRSPI(this.cpu, spiConfig, CPU_HZ);
+        const pinIs = (name, wanted) => { const [port, bit] = PIN_MAP[name]; return this.ports[port].pinState(bit) === wanted; };
+        this.spi.onTransfer = value => {
+            let answer = 0xff;
+            for (const { select, command, device } of this.spiDevices) {
+                if (pinIs(select, PinState.Low)) answer = device.transfer(value, command ? pinIs(command, PinState.High) : true);
+            }
+            return answer;
+        };
         // I2C (Wire): bytes go to the device registered at the address; nobody home means no acknowledge.
         this.i2c = new Map();
         this.twi = new AVRTWI(this.cpu, twiConfig, CPU_HZ);
@@ -100,6 +111,7 @@ export class AvrRunner {
                 track.period = now - track.lastRise;
                 track.lastRise = now;
                 for (const strip of this.strips) if (strip.pin === name && now - track.since > PIXEL_RESET_CYCLES) this.#showPixels(strip);
+                for (const entry of this.spiDevices) if (entry.select === name) entry.device.deselect();
             } else {
                 track.pulse = now - track.since;
                 // WS2812: a long HIGH is a 1, a short HIGH is a 0.
@@ -213,6 +225,7 @@ export function advance(runner, circuit, values, cycles, budgetMs = Infinity) {
     if (!runner.circuit) {
         runner.circuit = circuit;
         for (const echo of circuit.echoes || []) runner.addEcho(echo.trigger, echo.echo, () => echo.centimetres(runner.values));
+        runner.spiDevices.push(...(circuit.spi || []));
         for (const strip of circuit.pixelStrips || []) runner.addPixels(strip.pin, strip.show);
         for (const { address, device } of circuit.i2c || []) if (!runner.i2c.has(address)) runner.i2c.set(address, device);
     }

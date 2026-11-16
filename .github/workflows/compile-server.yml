@@ -19,7 +19,7 @@ jobs:
           docker run -d --rm -p 8787:8787 --name compile elera-compile
           for attempt in $(seq 1 20); do curl -sf localhost:8787/health && break; sleep 1; done
           good=$(curl -sf -X POST localhost:8787/compile -H 'Content-Type: application/json' \
-            -d '{"sketch":"#include <Servo.h>\n#include <LiquidCrystal_I2C.h>\n#include <Adafruit_SSD1306.h>\n#include <RTClib.h>\nServo arm;\nLiquidCrystal_I2C lcd(0x27, 16, 2);\nvoid setup() { arm.attach(9); lcd.init(); lcd.print(1); pinMode(13, OUTPUT); }\nvoid loop() { digitalWrite(13, HIGH); delay(500); }\n"}')
+            -d '{"sketch":"#include <Servo.h>\n#include <LiquidCrystal_I2C.h>\n#include <Adafruit_SSD1306.h>\n#include <RTClib.h>\n#include <Adafruit_NeoPixel.h>\n#include <Adafruit_ILI9341.h>\n#include <SD.h>\nServo arm;\nLiquidCrystal_I2C lcd(0x27, 16, 2);\nvoid setup() { arm.attach(9); lcd.init(); lcd.print(1); pinMode(13, OUTPUT); }\nvoid loop() { digitalWrite(13, HIGH); delay(500); }\n"}')
           echo "$good" | head -c 200
           echo "$good" | grep -q '"hex":":10'
           bad=$(curl -sf -X POST localhost:8787/compile -H 'Content-Type: application/json' \

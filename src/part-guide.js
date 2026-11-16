@@ -143,6 +143,7 @@ export const PART_GUIDE = {
         beginnerNote: 'Reads the tiny signal from a load cell (weight sensor) and sends the weight to the Arduino as a number.',
     },
     ili9341: {
+        simulation: { kind: 'spi', device: 'tft', data: 'MOSI', clock: 'SCK', select: 'CS', command: 'D/C', power: 'VCC', ground: 'GND' },
         description: '2.8 inch colour screen (SPI)',
         beginnerNote: 'A colour screen that can draw text, shapes and pictures. It uses the SPI pins and several wires.',
         pinMeta: { VCC: V, GND: G, CS: D, RST: D, 'D/C': D, MOSI: 'DATA', SCK: 'DATA', LED: S, MISO: 'DATA' },
@@ -171,6 +172,7 @@ export const PART_GUIDE = {
         pinMeta: pins(['R1', 'R2', 'R3', 'R4', 'C1', 'C2', 'C3', 'C4'], D),
     },
     'microsd-card': {
+        simulation: { kind: 'spi', device: 'sd', data: 'DI', clock: 'SCK', reply: 'DO', select: 'CS', power: 'VCC', ground: 'GND' },
         description: 'MicroSD card reader (SPI)',
         beginnerNote: 'Lets the Arduino save and read files on a memory card, for example to log sensor readings.',
     },
