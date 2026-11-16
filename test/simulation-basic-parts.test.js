@@ -65,3 +65,19 @@ test('a motion sensor output goes HIGH while triggered', () => {
     assert.ok(simulation.evaluate({}, {}).pinLevels[2] < .1);
     assert.ok(simulation.evaluate({}, { pir: 1 }).pinLevels[2] > .9);
 });
+
+test('a capacitor charges through a resistor over time and holds its charge', () => {
+    // Pin 9 - 1 k - A0, with 100 uF from A0 to ground: time constant 0.1 s.
+    const simulation = circuit(
+        [['r', 'resistor', { value: '1000' }], ['c', 'capacitor-electrolytic']],
+        [['uno:9', 'r:1'], ['r:2', 'c:+'], ['c:-', 'uno:GND.1'], ['c:+', 'uno:A0']],
+    );
+    const step = (pin, seconds) => simulation.evaluate({ 9: pin }, {}, seconds).pinLevels.A0 * 5;
+    assert.ok(step(high, 0) < .01);
+    let volts = 0;
+    for (let i = 0; i < 100; i++) volts = step(high, .001);
+    assert.ok(Math.abs(volts - 5 * (1 - Math.exp(-1))) < .05, `after one time constant: ${volts}`);
+    assert.ok(Math.abs(step(high, 0) - volts) < .01, 'no time passing changes nothing');
+    for (let i = 0; i < 100; i++) volts = step(low, .001);
+    assert.ok(Math.abs(volts - 3.16 * Math.exp(-1)) < .05, `discharging: ${volts}`);
+});

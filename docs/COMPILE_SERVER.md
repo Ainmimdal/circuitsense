@@ -21,9 +21,11 @@ The site itself stays static. The only thing that needs a server is turning *edi
 
 Arduino Uno and Nano. LED, RGB LED, resistor, push button, slide switch, potentiometer, slide potentiometer, buzzer (with sound), servo, photoresistor module, NTC module and the Serial Monitor. PWM (`analogWrite`), `tone()`, `analogRead`, `INPUT_PULLUP` and the Servo library work because the real compiled program runs.
 
-Voltages and LED currents come from a small DC solver (`src/simulation/dc-solver.js`, nodal analysis with LEDs as diodes), so resistor values change brightness, dividers read correctly on analog pins and too many LEDs in series stay dark. Limits: DC only (no capacitors), Arduino pins are ideal sources with no current limit, and buzzers and servos draw no current. Parts without `simulation` metadata (displays, I2C sensors) do nothing yet. Only `Servo.h` is installed on the compile server.
+Voltages and LED currents come from a small DC solver (`src/simulation/dc-solver.js`, nodal analysis with LEDs as diodes), so resistor values change brightness, dividers read correctly on analog pins and too many LEDs in series stay dark. Capacitors charge and discharge one time step per frame. Limits: Arduino pins are ideal sources with no current limit, buzzers and servos draw no current, and a PWM pin is solved as steady HIGH, so a capacitor does not smooth PWM.
 
-To make a new part react, add a `simulation` entry to its definition in `src/component-library.js` using one of the existing kinds (`led`, `rgb-led`, `button`, `switch`, `dial`, `buzzer`, `servo`, `resistor`).
+I2C parts on A4 (SDA) and A5 (SCL) receive the bytes the program sends (`src/simulation/i2c-devices.js`): the 16x2 and 20x4 LCD, the SSD1306 OLED, the DS1307 clock (answers with the computer's time) and the MPU6050 (tilt slider). The compile server installs Servo, LiquidCrystal I2C, Adafruit SSD1306, RTClib and Adafruit MPU6050; `Wire.h` is built in. Parts without `simulation` metadata (NeoPixels, 7-segment, keypad, SPI parts) do nothing yet.
+
+To make a new part react, add a `simulation` entry to its definition in `src/component-library.js` using one of the existing kinds (`led`, `rgb-led`, `button`, `switch`, `signal`, `dial`, `buzzer`, `servo`, `resistor`, `light-resistor`, `capacitor`, `diode`, `transistor`, `motor`, `distance`, `i2c`). The beginner text and the simulation entries of the compact parts live in `src/part-guide.js`.
 
 ## The compile server
 
@@ -57,7 +59,7 @@ docker run --rm -p 8787:8787 elera-compile
 VITE_COMPILE_URL=http://localhost:8787 npm run dev
 ```
 
-Without Docker, install [arduino-cli](https://arduino.github.io/arduino-cli/), run `arduino-cli core install arduino:avr`, `arduino-cli lib install Servo`, then `node server/compile-server/server.mjs`.
+Without Docker, install [arduino-cli](https://arduino.github.io/arduino-cli/), run `arduino-cli core install arduino:avr`, `arduino-cli lib install Servo "LiquidCrystal I2C" "Adafruit SSD1306" RTClib "Adafruit MPU6050"`, then `node server/compile-server/server.mjs`.
 
 ### After editing a lesson's code
 

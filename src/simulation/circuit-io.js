@@ -4,6 +4,7 @@ import { LED_COLOR_PROFILES } from '../core/led-resistor.js';
 import { ConnectivityResolver, UnionFind } from '../physical/connectivity.js';
 import { componentPinRef, connectionRefKey } from '../physical/model.js';
 import { solveDc } from './dc-solver.js';
+import { createI2cDevice } from './i2c-devices.js';
 
 // Connects the running program to the circuit on the canvas: which parts light
 // up, move or sound for the current pin activity, and what voltage each input
@@ -11,7 +12,8 @@ import { solveDc } from './dc-solver.js';
 //
 // Voltages and LED currents come from the DC solver; buzzers and servos are
 // treated as drawing no current and follow the signal on their pin. Capacitors
-// are open circuits here: the solver only knows the settled (DC) state.
+// charge and discharge between calls to evaluate(), one time step per call.
+// Screens and other I2C parts listen to the bytes the program sends them.
 
 const SIMULATED_BOARDS = ['arduino-uno', 'arduino-nano'];
 const SUPPLY_VOLTS = 5;
@@ -31,7 +33,8 @@ const clamp = value => Math.max(0, Math.min(1, value));
  * Prepare a project for simulation. Returns `{ error }` in beginner language
  * when it cannot run, otherwise `{ boardId, inputs, evaluate }`. `inputs`
  * lists the parts a person operates (buttons and dials) with a starting value;
- * `echoes` lists ultrasonic sensors as { trigger, echo, centimetres(values) }.
+ * `echoes` lists ultrasonic sensors as { trigger, echo, centimetres(values) }
+ * and `i2c` the devices on the I2C bus as { address, device }.
  */
 export function createCircuitSimulation(project) {
     const controllers = project.components.filter(component => getComponentDef(component.definitionId)?.isControllerBoard);
@@ -56,6 +59,8 @@ export function createCircuitSimulation(project) {
     const parts = [];
     const inputs = [];
     const echoes = [];
+    const i2c = [];
+    const bus = pinId => net(board.id, pinId);
     for (const component of project.components) {
         const definition = getComponentDef(component.definitionId);
         if (!definition?.simulation) continue;
@@ -68,6 +73,13 @@ export function createCircuitSimulation(project) {
             if (simulation.kind === 'signal') inputs.push({ id: key, kind: 'button', label: definition.name, action: simulation.action, value: 0 });
             if (simulation.kind === 'switch') inputs.push({ id: key, kind: 'switch', label: definition.name, value: 0 });
             if (['dial', 'light-resistor'].includes(simulation.kind)) inputs.push({ id: key, kind: 'dial', label: simulation.label, value: .5 });
+            if (simulation.kind === 'i2c') {
+                const part = parts[parts.length - 1];
+                if (simulation.input) inputs.push({ id: key, kind: 'dial', label: simulation.input, value: .5 });
+                part.device = createI2cDevice(simulation.device, { ...simulation, tilt: () => part.tilt ?? .5 });
+                // On an Uno and Nano the I2C bus is pins A4 (SDA) and A5 (SCL).
+                if (pin(simulation.sda) === bus('A4') && pin(simulation.scl) === bus('A5')) i2c.push({ address: definition.i2cAddress, device: part.device });
+            }
             if (simulation.kind === 'distance') {
                 inputs.push({ id: key, kind: 'dial', label: 'Distance', value: .1, range: DISTANCE_CM, unit: ' cm' });
                 const wired = pinId => ioPins.find(io => io.net === pin(pinId))?.name;
@@ -90,7 +102,7 @@ export function createCircuitSimulation(project) {
      * Returns the properties to show on each part, the level on every input
      * pin and the tone a buzzer is playing (or null).
      */
-    function evaluate(pins, values = {}) {
+    function evaluate(pins, values = {}, seconds = 0) {
         const merged = new UnionFind();
         const root = id => merged.find(id);
         for (const part of parts) {
@@ -110,6 +122,7 @@ export function createCircuitSimulation(project) {
 
         const resistors = [];
         const diodes = [];
+        const sources = [];
         const links = new Map();
         const resistor = (a, b, ohms) => {
             resistors.push({ a: root(a), b: root(b), ohms });
@@ -139,6 +152,13 @@ export function createCircuitSimulation(project) {
             } else if (simulation.kind === 'light-resistor') {
                 // About 200 k in the dark down to 1 k in bright light.
                 resistor(pin(simulation.pins[0]), pin(simulation.pins[1]), 10 ** (5.3 - 2.3 * clamp(values[part.key] ?? .5)));
+            } else if (simulation.kind === 'capacitor') {
+                // One backward-Euler step: the capacitor is its present voltage behind a resistance of step / C.
+                // shortcut: a PWM pin is solved as steady HIGH, so a capacitor will not smooth PWM; step the
+                // solver within a PWM period if a lesson needs an RC filter.
+                part.source = { a: root(pin(simulation.pins[0])), b: root(pin(simulation.pins[1])), volts: part.volts || 0,
+                    ohms: Math.max(.05, seconds / simulation.farads) };
+                sources.push(part.source);
             } else if (simulation.kind === 'motor') {
                 resistor(pin(simulation.pins[0]), pin(simulation.pins[1]), MOTOR_OHMS);
             } else if (simulation.kind === 'diode') {
@@ -157,7 +177,7 @@ export function createCircuitSimulation(project) {
         }
         for (const pin of ioPins) if (pins[pin.name]?.pullup) resistors.push({ a: root(pin.net), b: INTERNAL_5V, ohms: PULLUP_OHMS });
 
-        let solved = solveDc({ fixed, resistors, diodes });
+        let solved = solveDc({ fixed, resistors, diodes, sources });
         // shortcut: a transistor is a switch that closes fully once base current flows (no gain, no
         // linear region); model hFE if a lesson ever needs dimming through a transistor.
         const conducting = new Set();
@@ -169,7 +189,7 @@ export function createCircuitSimulation(project) {
                 conducting.add(part);
                 resistors.push({ a: root(part.pin(part.simulation.collector)), b: root(part.pin(part.simulation.emitter)), ohms: TRANSISTOR_ON_OHMS });
             }
-            solved = solveDc({ fixed, resistors, diodes });
+            solved = solveDc({ fixed, resistors, diodes, sources });
         }
         const volts = id => solved.voltage(root(id));
         const grounded = id => { const value = volts(id); return value != null && value < .1; };
@@ -223,6 +243,17 @@ export function createCircuitSimulation(project) {
             }
         }
 
+        for (const part of parts) {
+            if (part.simulation.kind === 'capacitor') {
+                const [a, b] = [solved.voltage(part.source.a), solved.voltage(part.source.b)];
+                if (a != null && b != null) part.volts = a - b;
+            } else if (part.simulation.kind === 'i2c') {
+                part.tilt = values[part.key];
+                const powered = volts(part.pin(part.simulation.power)) > 3 && grounded(part.pin(part.simulation.ground));
+                if (powered) components[part.id] = part.device.state();
+            }
+        }
+
         const pinLevels = {};
         for (const pin of ioPins) if (!pins[pin.name]?.output) {
             const value = volts(pin.net);
@@ -231,5 +262,5 @@ export function createCircuitSimulation(project) {
         return { components, pinLevels, sound };
     }
 
-    return { boardId: board.definitionId, inputs, echoes, evaluate };
+    return { boardId: board.definitionId, inputs, echoes, i2c, evaluate };
 }

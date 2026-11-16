@@ -1,11 +1,13 @@
 // A small DC circuit solver (nodal analysis). Nodes are any hashable ids.
 // `fixed` nodes are held at a voltage (supply rails, pins set as outputs);
-// resistors and diodes connect nodes. Diodes are LEDs: nothing flows below the
-// forward voltage, then a small series resistance. Voltages are in volts,
+// resistors, diodes and sources connect nodes. Diodes are LEDs: nothing flows
+// below the forward voltage, then a small series resistance. A source is a
+// voltage in series with a resistance, `volts` higher at `a` than at `b`; the
+// caller uses one per capacitor to step through time. Voltages are in volts,
 // currents in amps.
 //
-// shortcut: DC only, with ideal sources and no current limit on Arduino pins;
-// add capacitors and a pin-current warning when lessons need them.
+// shortcut: ideal supplies and no current limit on Arduino pins; add a
+// pin-current warning when lessons need it.
 
 const OFF_CONDUCTANCE = 1e-9;
 const MAX_PASSES = 30;
@@ -35,11 +37,12 @@ function eliminate(matrix, rhs) {
 }
 
 /**
- * @param {{ fixed: Map<any, number>, resistors?: {a, b, ohms}[], diodes?: {anode, cathode, forwardVoltage, ohms?}[] }} circuit
+ * @param {{ fixed: Map<any, number>, resistors?: {a, b, ohms}[], diodes?: {anode, cathode, forwardVoltage, ohms?}[],
+ *   sources?: {a, b, volts, ohms}[] }} circuit
  * @returns {{ voltage: (node) => number|null, diodeCurrents: number[] }}
  *   `voltage` is null for a node with no path to any fixed node (floating).
  */
-export function solveDc({ fixed, resistors = [], diodes = [] }) {
+export function solveDc({ fixed, resistors = [], diodes = [], sources = [] }) {
     // Only nodes with a path to a supply or output pin have a defined voltage.
     const neighbours = new Map();
     const join = (a, b) => {
@@ -50,6 +53,7 @@ export function solveDc({ fixed, resistors = [], diodes = [] }) {
     };
     for (const resistor of resistors) join(resistor.a, resistor.b);
     for (const diode of diodes) join(diode.anode, diode.cathode);
+    for (const source of sources) join(source.a, source.b);
     const index = new Map();
     const queue = [...fixed.keys()];
     const seen = new Set(queue);
@@ -82,6 +86,7 @@ export function solveDc({ fixed, resistors = [], diodes = [] }) {
             }
         };
         for (const resistor of resistors) stamp(resistor.a, resistor.b, 1 / Math.max(resistor.ohms, 1e-3));
+        for (const source of sources) stamp(source.a, source.b, 1 / source.ohms, -source.volts / source.ohms);
         diodes.forEach((diode, i) => {
             const conductance = 1 / (diode.ohms || 10);
             if (conducting[i]) stamp(diode.anode, diode.cathode, conductance, -conductance * diode.forwardVoltage);

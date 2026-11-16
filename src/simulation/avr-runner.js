@@ -1,6 +1,6 @@
 import {
-    AVRADC, AVRIOPort, AVRTimer, AVRUSART, CPU, PinState, adcConfig, avrInstruction,
-    portBConfig, portCConfig, portDConfig, timer0Config, timer1Config, timer2Config, usart0Config,
+    AVRADC, AVRIOPort, AVRTimer, AVRTWI, AVRUSART, CPU, PinState, adcConfig, avrInstruction,
+    portBConfig, portCConfig, portDConfig, timer0Config, timer1Config, timer2Config, twiConfig, usart0Config,
 } from 'avr8js';
 
 // Runs a compiled sketch on a simulated ATmega328P (Arduino Uno and Nano).
@@ -48,6 +48,24 @@ export class AvrRunner {
         this.adc = new AVRADC(this.cpu, adcConfig);
         this.usart = new AVRUSART(this.cpu, usart0Config, CPU_HZ);
         this.usart.onByteTransmit = byte => onSerial?.(String.fromCharCode(byte));
+        // I2C (Wire): bytes go to the device registered at the address; nobody home means no acknowledge.
+        this.i2c = new Map();
+        this.twi = new AVRTWI(this.cpu, twiConfig, CPU_HZ);
+        let device = null;
+        this.twi.eventHandler = {
+            start: () => this.twi.completeStart(),
+            stop: () => this.twi.completeStop(),
+            connectToSlave: address => {
+                device = this.i2c.get(address) || null;
+                device?.begin();
+                this.twi.completeConnect(Boolean(device));
+            },
+            writeByte: value => {
+                device?.write(value);
+                this.twi.completeWrite(Boolean(device));
+            },
+            readByte: () => this.twi.completeRead(device ? device.read() : 0xff),
+        };
         // Per pin: cycles spent high since the last sample(), plus the last high pulse and the gap between rising edges.
         this.tracks = Object.fromEntries(SIMULATED_PINS.map(name => [name, { mode: PinState.Input, high: false, since: 0, highCycles: 0, pulse: 0, lastRise: -Infinity, period: 0 }]));
         // Set when a pin switches between input, pull-up and output, so the circuit can react before the next read.
@@ -167,9 +185,12 @@ export function advance(runner, circuit, values, cycles, budgetMs = Infinity) {
     if (!runner.circuit) {
         runner.circuit = circuit;
         for (const echo of circuit.echoes || []) runner.addEcho(echo.trigger, echo.echo, () => echo.centimetres(runner.values));
+        for (const { address, device } of circuit.i2c || []) if (!runner.i2c.has(address)) runner.i2c.set(address, device);
     }
-    const settle = pins => {
-        const state = circuit.evaluate(pins, values);
+    const started = runner.cpu.cycles;
+    // Capacitors move on by the simulated time since the last full frame; mid-frame settles take no time.
+    const settle = (pins, seconds = 0) => {
+        const state = circuit.evaluate(pins, values, seconds);
         for (const [pin, level] of Object.entries(state.pinLevels)) runner.setInput(pin, level);
         return state;
     };
@@ -180,5 +201,5 @@ export function advance(runner, circuit, values, cycles, budgetMs = Infinity) {
         runner.modesChanged = false;
         settle(runner.sample({ reset: false }));
     }
-    return settle(runner.sample());
+    return settle(runner.sample(), (runner.cpu.cycles - started) / CPU_HZ);
 }

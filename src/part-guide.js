@@ -45,9 +45,11 @@ export const PART_GUIDE = {
         beginnerNote: 'Measures temperature and humidity and sends both as numbers on one data pin.',
     },
     lcd1602: {
+        simulation: { kind: 'i2c', device: 'lcd', sda: 'SDA', scl: 'SCL', power: 'VCC', ground: 'GND', cols: 16, rows: 2 },
         beginnerNote: 'A screen with 2 lines of 16 characters. It needs only two signal wires (SDA and SCL) plus power.',
     },
     lcd2004: {
+        simulation: { kind: 'i2c', device: 'lcd', sda: 'SDA', scl: 'SCL', power: 'VCC', ground: 'GND', cols: 20, rows: 4 },
         description: '20x4 character LCD with I2C backpack',
         beginnerNote: 'A screen with 4 lines of 20 characters. It needs only two signal wires (SDA and SCL) plus power.',
     },
@@ -112,6 +114,7 @@ export const PART_GUIDE = {
         switchContacts: range(8, n => [`${n}a`, `${n}b`]),
     },
     ds1307: {
+        simulation: { kind: 'i2c', device: 'clock', sda: 'SDA', scl: 'SCL', power: '5V', ground: 'GND' },
         description: 'Real-time clock that keeps the time with a coin battery',
         beginnerNote: 'A clock chip that remembers the date and time even when the Arduino is off.',
     },
@@ -165,6 +168,7 @@ export const PART_GUIDE = {
         beginnerNote: 'Lets the Arduino save and read files on a memory card, for example to log sensor readings.',
     },
     mpu6050: {
+        simulation: { kind: 'i2c', device: 'motion', sda: 'SDA', scl: 'SCL', power: 'VCC', ground: 'GND', input: 'Tilt' },
         description: 'Motion sensor: accelerometer and gyroscope',
         beginnerNote: 'Senses tilt, shaking and rotation. It needs only two signal wires (SDA and SCL) plus power.',
     },
@@ -193,6 +197,7 @@ export const PART_GUIDE = {
         beginnerNote: 'A slider that gives out a voltage between 0 and 5 V depending on where you push it.',
     },
     ssd1306: {
+        simulation: { kind: 'i2c', device: 'oled', sda: 'DATA', scl: 'CLK', power: 'VIN', ground: 'GND' },
         description: 'Small sharp OLED screen, 128x64 pixels (I2C)',
         beginnerNote: 'A tiny bright screen for text and simple graphics. It needs only two signal wires (DATA and CLK) plus power.',
     },
@@ -206,10 +211,12 @@ export const PART_GUIDE = {
         beginnerNote: 'A resistor that changes with light. Pair it with a 10 k resistor between 5V and GND and read the point where they meet with analogRead(). It works either way round.',
     },
     'capacitor-ceramic': {
+        simulation: { kind: 'capacitor', pins: ['1', '2'], farads: 100e-9 },
         description: 'Small capacitor (100 nF) for smoothing out electrical noise',
         beginnerNote: 'A capacitor stores a tiny bit of charge. This small one smooths out electrical noise and works either way round.',
     },
     'capacitor-electrolytic': {
+        simulation: { kind: 'capacitor', pins: ['+', '-'], farads: 100e-6 },
         description: 'Larger capacitor (100 µF) that stores charge. It has a + and a - leg',
         beginnerNote: 'A bigger capacitor that steadies the power supply. It must go the right way round: the striped side is the - leg and goes toward ground.',
     },
