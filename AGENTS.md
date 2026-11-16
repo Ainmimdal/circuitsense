@@ -52,4 +52,4 @@ Named projects live in IndexedDB on the device. Optional Google sign-in and clou
 
 ## Planned, not built
 
-Share links and read-only public projects, generating Arduino code from a circuit, BOM export and goal-based circuit generation.
+Read-only public projects, generating Arduino code from a circuit and goal-based circuit generation.

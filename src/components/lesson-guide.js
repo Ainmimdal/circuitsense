@@ -2,13 +2,13 @@ import { LitElement, html, css } from 'lit';
 import { keyed } from 'lit/directives/keyed.js';
 import { physicalCircuitStore } from '../physical/circuit-store.js';
 import {
-    buildLessonSteps, isLessonStepComplete, lessonMap, lessonStepGhost, lessonStepHint, lessonStepMutation, lessonStepNote,
+    buildLessonSteps, isLessonStepComplete, lessonStepBounds, lessonStepGhost, lessonStepHint, lessonStepMutation, lessonStepNote,
     matchLessonBuild,
 } from '../physical/lessons.js';
 import { validatePhysicalProject } from '../physical/validation.js';
 import { getComponentDef } from '../component-library.js';
 import { faIcon } from '../utils/fa-icons.js';
-import './lesson-map.js';
+import './circuit-canvas.js';
 
 // Guided build panel. `session` is { target, lesson?, name }: the finished
 // circuit to rebuild and, for preset lessons, the story and sketch. The panel
@@ -17,6 +17,13 @@ import './lesson-map.js';
 
 const KIND_LABELS = { surface: 'Breadboard', component: 'Part', power: 'Power wire', ground: 'Ground wire', signal: 'Signal wire' };
 const CODE_TOKENS = /(\/\/.*$)|("(?:[^"\\]|\\.)*")|\b(void|int|const|if|else|for|return|#include)\b|\b(\d+)\b|\b(pinMode|digitalWrite|digitalRead|analogWrite|analogRead|delay|tone|map|setup|loop|Serial|attach|write|println|begin)\b/g;
+
+// What to physically do for each kind of step; the guide checks the result by itself.
+const HOW_TO = {
+    surface: 'Drag a breadboard from the Parts library on the left onto the canvas.',
+    component: 'Find it in the Parts library on the left (already searched for you) and drag it onto the glowing outline.',
+    wire: 'Click one glowing end, then click the other. The wire draws itself.',
+};
 
 function stepKind(step) {
     return step.kind === 'wire' ? step.wireKind : step.kind;
@@ -237,7 +244,7 @@ class LessonGuide extends LitElement {
         .chips { display: flex; flex-wrap: wrap; gap: 5px; }
         .chip { padding: 3px 8px; color: var(--text-muted); border: 1px solid var(--panel-border); border-radius: 4px; font-size: 11px; }
 
-        .map { height: 190px; margin: 0 0 14px; padding: 10px; background: var(--ink); border-radius: 4px; }
+        .map { height: 230px; margin: 0 0 14px; border-radius: 4px; overflow: hidden; }
         .finish { position: relative; text-align: center; padding-top: 6px; }
         .finish h3 { font-size: 21px; margin: 0 0 6px; }
         .stats { display: flex; justify-content: center; gap: 18px; margin: 14px 0 4px; color: var(--text-muted); font-size: 11.5px; }
@@ -280,12 +287,12 @@ class LessonGuide extends LitElement {
         physicalCircuitStore.removeEventListener('change', this._storeHandler);
         clearTimeout(this._advanceTimer);
         this._publishGhost(null);
+        if (this._librarySearch) window.dispatchEvent(new CustomEvent('elera-library-search', { detail: '' }));
     }
 
     willUpdate(changed) {
         if (!changed.has('session')) return;
         this._steps = this.session ? buildLessonSteps(this.session.target) : [];
-        this._map = this.session ? lessonMap(this.session.target) : null;
         this._skipped = new Set();
         this._cursor = this.session?.lesson ? -1 : 0;
         this._startedAt = Date.now();
@@ -295,6 +302,17 @@ class LessonGuide extends LitElement {
 
     updated() {
         this._syncGhost();
+        this._syncLibrarySearch();
+    }
+
+    // While a part step is open the Parts library shows just that part, so a beginner does not hunt through 60 of them.
+    _syncLibrarySearch() {
+        const step = this._steps?.[this._cursor];
+        const wanted = this.session && step?.kind === 'component' && !this._done[this._cursor]
+            ? getComponentDef(this.session.target.components.find(component => component.id === step.id)?.definitionId)?.name || '' : '';
+        if (wanted === (this._librarySearch || '')) return;
+        this._librarySearch = wanted;
+        window.dispatchEvent(new CustomEvent('elera-library-search', { detail: wanted }));
     }
 
     _firstOpen() {
@@ -400,13 +418,24 @@ class LessonGuide extends LitElement {
         }
     }
 
-    // The finished circuit, with built steps solid, the current one in the accent and the rest faint.
+    // A real picture of the circuit as it should look once the current step is done
+    // (the whole thing when `all`), with the current step's part or wire marked.
     _renderMap(all = false) {
-        const states = {};
-        this._steps.forEach((step, index) => {
-            states[step.id] = all || this._done[index] ? 'done' : index === this._cursor ? 'current' : 'todo';
-        });
-        return html`<lesson-map class="map" .map=${this._map} .states=${states}></lesson-map>`;
+        const target = this.session.target;
+        const step = this._steps[this._cursor];
+        const reached = new Set(this._steps.slice(0, this._cursor + 1).map(item => item.id));
+        const keep = item => all || reached.has(item.id);
+        const project = { ...target, components: target.components.filter(keep), wires: target.wires.filter(keep) };
+        // Keyed by step so the picture object only changes when the step does.
+        if (this._pictureKey !== `${all}:${this._cursor}`) {
+            this._pictureKey = `${all}:${this._cursor}`;
+            this._picture = project;
+            // A step shows a close-up of where its part or wire goes; intro and finish show everything.
+            this._pictureArea = all || !step ? null : lessonStepBounds(step, target);
+        }
+        return html`<circuit-canvas preview class="map" role="img"
+            aria-label=${all ? 'The finished circuit' : 'Close-up of where this step goes'}
+            .previewProject=${this._picture} .fitProject=${target} .fitBounds=${this._pictureArea} .highlight=${all ? null : step?.id}></circuit-canvas>`;
     }
 
     _renderIntro() {
@@ -444,7 +473,7 @@ class LessonGuide extends LitElement {
                     ${this._hint && !done ? html`<div class="hint" role="status">${faIcon('lightbulb')}<span>${this._hint}</span></div>` : ''}
                     ${done
                         ? html`<div class="watch">${this._celebrate ? 'Nice! Moving on…' : skipped ? 'Skipped' : 'Done'}</div>`
-                        : html`<div class="watch"><i></i>Follow the glowing outline. I'll check it as you build.</div>`}
+                        : html`<div class="watch"><i></i>${HOW_TO[step.kind]}</div>`}
                 </div>`)}
                 <button class="list-toggle" @click=${() => { this._showAll = !this._showAll; }}>
                     ${faIcon('listCheck')} ${this._showAll ? 'Hide all steps' : 'Show all steps'}
@@ -476,7 +505,7 @@ class LessonGuide extends LitElement {
                 <div class="finish">
                     ${this._renderMap(true)}
                     <h3>${lesson ? `${lesson.title} built!` : 'Circuit rebuilt!'}</h3>
-                    <p class="note">${lesson ? lesson.goal.replace(/\.$/, '') + ' is ready to go.' : `You rebuilt ${this.session.name || 'the circuit'} step by step.`}</p>
+                    <p class="note">${lesson ? 'Every part and wire is in the right place. Now give it some code.' : `You rebuilt ${this.session.name || 'the circuit'} step by step.`}</p>
                     <div class="stats">
                         <span><b>${this._steps.length}</b>steps</span>
                         <span><b>${this.session.target.wires.length}</b>wires</span>
@@ -487,15 +516,16 @@ class LessonGuide extends LitElement {
                     ${this._skipped.size ? html`<p class="note">You skipped ${this._skipped.size} step${this._skipped.size === 1 ? '' : 's'}. Use the step list to go back to them.</p>` : ''}
                 </div>
                 ${lesson ? html`
-                    <div class="section-title">Upload the code</div>
+                    <button class="btn primary wide" style="margin: 14px 0 0; width: 100%;" @click=${() => this.dispatchEvent(new CustomEvent('open-code', { bubbles: true, composed: true }))}>
+                        ${faIcon('play')} Run the code on this circuit</button>
+                    <p class="note" style="text-align: center; margin: 6px 0 0;">No real board needed. You can change the code and see what happens.</p>
+                    <div class="section-title">The code for this lesson</div>
                     <div class="code-box">
                         <div class="code-head">${lesson.id}.ino
                             <button class="btn" @click=${this._copyCode}>${faIcon(this._copied ? 'check' : 'copy')} ${this._copied ? 'Copied' : 'Copy'}</button>
                         </div>
                         <pre>${lesson.code.split('\n').map(line => html`${highlight(line)}\n`)}</pre>
                     </div>
-                    <button class="btn primary wide" style="margin: 10px 0 0; width: 100%;" @click=${() => this.dispatchEvent(new CustomEvent('open-code', { bubbles: true, composed: true }))}>
-                        ${faIcon('play')} Try the code here, no board needed</button>
                     <div class="section-title">On your real board</div>
                     <ol class="upload">
                         <li>Build the same circuit on a breadboard and plug the Uno in with USB.</li>

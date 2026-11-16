@@ -1,9 +1,9 @@
 import { LitElement, html, css } from 'lit';
 import { listLessons } from '../lessons/catalog.js';
-import { buildLessonSteps, lessonMap } from '../physical/lessons.js';
+import { buildLessonSteps } from '../physical/lessons.js';
 import { billOfMaterials } from './lesson-guide.js';
 import { faIcon } from '../utils/fa-icons.js';
-import './lesson-map.js';
+import './circuit-canvas.js';
 
 // Lesson picker: the course on the left, the selected lesson's finished
 // circuit and facts on the right. Emits `start-lesson` with { lessonId } or { current: true }.
@@ -14,7 +14,7 @@ function lessons() {
         const target = lesson.build();
         return {
             lesson,
-            map: lessonMap(target),
+            target,
             steps: buildLessonSteps(target).length,
             wires: target.wires.length,
             parts: billOfMaterials(target).filter(([label]) => label !== 'Jumper wires'),
@@ -123,7 +123,7 @@ class LessonsModal extends LitElement {
             cursor: pointer;
         }
         .close:hover { color: var(--text); background: var(--primary); }
-        lesson-map { min-height: 0; padding: 40px 32px; }
+        circuit-canvas { min-height: 0; height: 100%; }
         .facts { display: flex; flex-direction: column; min-height: 0; overflow: auto; padding: 56px 28px 24px; border-left: 1px solid var(--panel-border); }
         h3 { margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -.02em; line-height: 1.1; }
         .goal { margin: 8px 0 0; font-size: 15px; line-height: 1.5; }
@@ -161,7 +161,7 @@ class LessonsModal extends LitElement {
             .detail { grid-template-columns: 1fr; }
             .facts { padding: 16px; border-left: 0; }
             .start { margin-top: 20px; }
-            lesson-map { padding: 16px; }
+            circuit-canvas { height: 240px; }
         }
     `;
 
@@ -249,7 +249,7 @@ class LessonsModal extends LitElement {
 
                 <section class="detail" aria-live="polite">
                     <button class="close" @click=${this._close} aria-label="Close lessons">${faIcon('xmark')}</button>
-                    <lesson-map .map=${item.map}></lesson-map>
+                    <circuit-canvas preview role="img" aria-label=${`The finished ${item.lesson.title} circuit`} .previewProject=${item.target}></circuit-canvas>
                     <div class="facts">
                         <h3>${lesson.title}</h3>
                         <p class="goal">${lesson.goal}</p>

@@ -35,7 +35,8 @@ The **legacy schema-v2 engine** (`src/store.js`, `src/services/*`, `src/componen
 - Optional Google sign-in through Supabase Auth replaces the old mock login. Signed-in projects sync to a row-level-secured `projects` table, with the newest save winning per project and tombstones carrying deletes. Signing out removes that account's synced copies from the device.
 - The toolbar Save button updates the open project; an unnamed circuit opens My projects to name it.
 - Accounts stay switched off until `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` are set. The schema, Google setup, free-tier notes and the keep-awake workflow are covered in [CLOUD_SYNC_SETUP.md](CLOUD_SYNC_SETUP.md); library and sync coverage is in `test/project-library.test.js`.
-- Not yet built: share links and read-only public projects.
+- Share copies a link that carries the whole circuit, compressed, in the address (`src/persistence/share-link.js`, `test/share-link.test.js`); opening it gives the visitor their own copy, so no backend is involved. Parts shows the bill of materials and downloads it as a CSV.
+- Not yet built: read-only public projects (they need a backend table).
 
 ### Lessons and guided builds
 

@@ -355,6 +355,12 @@ class ComponentSidebar extends LitElement {
     super();
     this._libraryVersion = 0;
     this._searchQuery = '';
+    // A lesson step asks for one part; show just that one (empty text shows everything again).
+    this._lessonSearchHandler = event => {
+      this._searchQuery = event.detail || '';
+      if (event.detail) this._partFilter = 'all';
+      this.scrollTop = 0;
+    };
     this._partFilter = 'all';
     this._customLibraryHandler = () => { this._libraryVersion++; };
   }
@@ -363,12 +369,14 @@ class ComponentSidebar extends LitElement {
     super.connectedCallback();
     window.addEventListener('elera-custom-components-change', this._customLibraryHandler);
     window.addEventListener('elera-component-library-change', this._customLibraryHandler);
+    window.addEventListener('elera-library-search', this._lessonSearchHandler);
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     window.removeEventListener('elera-custom-components-change', this._customLibraryHandler);
     window.removeEventListener('elera-component-library-change', this._customLibraryHandler);
+    window.removeEventListener('elera-library-search', this._lessonSearchHandler);
   }
 
   render() {
