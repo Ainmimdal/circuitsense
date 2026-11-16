@@ -372,6 +372,58 @@ export const componentGeometry = deepFreeze({
         }],
     },
 
+    // Elera's own basic parts: legs sit one pitch (9.6 px) apart in the artwork.
+    'photoresistor': {
+        tag: 'elera-photoresistor',
+        native: { size: { width: 28.8, height: 48 }, pins: { '1': { x: 9.6, y: 46 }, '2': { x: 19.2, y: 46 } } },
+        calibration: { from: '1', to: '2', gridDelta: { col: 1, row: 0 } },
+        footprints: [{
+            id: 'photoresistor-2.54', anchorPin: '1', rotations: [0, 180],
+            pins: { '1': { col: 0, row: 0 }, '2': { col: 1, row: 0 } },
+            bodyBounds: { minCol: -1, maxCol: 2, minRow: -5, maxRow: 1 },
+        }],
+    },
+    'capacitor-ceramic': {
+        tag: 'elera-ceramic-capacitor',
+        native: { size: { width: 28.8, height: 44 }, pins: { '1': { x: 9.6, y: 42 }, '2': { x: 19.2, y: 42 } } },
+        calibration: { from: '1', to: '2', gridDelta: { col: 1, row: 0 } },
+        footprints: [{
+            id: 'ceramic-capacitor-2.54', anchorPin: '1', rotations: [0, 180],
+            pins: { '1': { col: 0, row: 0 }, '2': { col: 1, row: 0 } },
+            bodyBounds: { minCol: -1, maxCol: 2, minRow: -5, maxRow: 1 },
+        }],
+    },
+    'capacitor-electrolytic': {
+        tag: 'elera-electrolytic-capacitor',
+        native: { size: { width: 28.8, height: 52 }, pins: { '+': { x: 9.6, y: 50 }, '-': { x: 19.2, y: 50 } } },
+        calibration: { from: '+', to: '-', gridDelta: { col: 1, row: 0 } },
+        footprints: [{
+            id: 'electrolytic-capacitor-2.54', anchorPin: '+', rotations: [0, 180],
+            pins: { '+': { col: 0, row: 0 }, '-': { col: 1, row: 0 } },
+            bodyBounds: { minCol: -1, maxCol: 2, minRow: -6, maxRow: 1 },
+        }],
+    },
+    'transistor-npn': {
+        tag: 'elera-transistor',
+        native: { size: { width: 28.8, height: 48 }, pins: { 'E': { x: 4.8, y: 46 }, 'B': { x: 14.4, y: 46 }, 'C': { x: 24, y: 46 } } },
+        calibration: { from: 'E', to: 'C', gridDelta: { col: 2, row: 0 } },
+        footprints: [{
+            id: 'to92-3', anchorPin: 'E', rotations: [0, 180],
+            pins: { 'E': { col: 0, row: 0 }, 'B': { col: 1, row: 0 }, 'C': { col: 2, row: 0 } },
+            bodyBounds: { minCol: -1, maxCol: 3, minRow: -5, maxRow: 1 },
+        }],
+    },
+    diode: {
+        tag: 'elera-diode',
+        native: { size: { width: 38.4, height: 11.52 }, pins: { A: { x: 0, y: 5.76 }, C: { x: 38.4, y: 5.76 } } },
+        calibration: { from: 'A', to: 'C', gridDelta: { col: 4, row: 0 } },
+        footprints: [{
+            id: 'diode-axial-4', anchorPin: 'A', rotations: [0, 180],
+            pins: { A: { col: 0, row: 0 }, C: { col: 4, row: 0 } },
+            bodyBounds: { minCol: 1, maxCol: 3, minRow: -.6, maxRow: .6 },
+        }],
+    },
+
     // Breakout modules with a straight header row. Students plug these into
     // the breadboard in most tutorials, so they snap like any other part.
     'hc-sr04': headerModule({

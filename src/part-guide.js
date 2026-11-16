@@ -186,4 +186,28 @@ export const PART_GUIDE = {
         description: 'Switch that changes when the module is tilted',
         beginnerNote: 'A little ball inside rolls when you tilt it, switching OUT between HIGH and LOW.',
     },
+    photoresistor: {
+        description: 'Light sensor: its resistance drops as it gets brighter',
+        beginnerNote: 'A resistor that changes with light. Pair it with a 10 k resistor between 5V and GND and read the point where they meet with analogRead(). It works either way round.',
+    },
+    'capacitor-ceramic': {
+        description: 'Small capacitor (100 nF) for smoothing out electrical noise',
+        beginnerNote: 'A capacitor stores a tiny bit of charge. This small one smooths out electrical noise and works either way round.',
+    },
+    'capacitor-electrolytic': {
+        description: 'Larger capacitor (100 µF) that stores charge. It has a + and a - leg',
+        beginnerNote: 'A bigger capacitor that steadies the power supply. It must go the right way round: the striped side is the - leg and goes toward ground.',
+    },
+    diode: {
+        description: 'One-way valve for current (1N4007)',
+        beginnerNote: 'A diode lets current flow one way only, toward the end with the silver band. Put one across a motor or relay coil to protect the circuit.',
+    },
+    'transistor-npn': {
+        description: 'Electronic switch (2N2222): a small current controls a bigger one',
+        beginnerNote: 'A transistor is a switch your code can flip. A small current into B (through a 1 k resistor) lets a bigger current flow from C to E, enough for a motor.',
+    },
+    'dc-motor': {
+        description: 'Small motor that spins when powered',
+        beginnerNote: 'A motor needs more current than an Arduino pin can give. Switch it with a transistor instead of wiring it straight to a pin.',
+    },
 };

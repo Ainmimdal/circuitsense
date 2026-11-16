@@ -10,13 +10,16 @@ import { solveDc } from './dc-solver.js';
 // pin sees. Voltages are a share of 5 V (0 to 1); null means nothing connected.
 //
 // Voltages and LED currents come from the DC solver; buzzers and servos are
-// treated as drawing no current and follow the signal on their pin.
+// treated as drawing no current and follow the signal on their pin. Capacitors
+// are open circuits here: the solver only knows the settled (DC) state.
 
 const SIMULATED_BOARDS = ['arduino-uno', 'arduino-nano'];
 const SUPPLY_VOLTS = 5;
 const PULLUP_OHMS = 35_000;
 const DIAL_OHMS = 10_000;
 const FULL_BRIGHTNESS_AMPS = .008;
+const MOTOR_OHMS = 25;
+const TRANSISTOR_ON_OHMS = 2;
 const INTERNAL_5V = 'internal-5v';
 const SERVO_MIN_MICROS = 544;
 const SERVO_MAX_MICROS = 2400;
@@ -58,6 +61,7 @@ export function createCircuitSimulation(project) {
         parts.push({ id: component.id, definition, simulation, pin, properties: component.properties || {} });
         if (simulation.kind === 'button') inputs.push({ id: component.id, kind: 'button', label: definition.name, value: 0 });
         if (simulation.kind === 'switch') inputs.push({ id: component.id, kind: 'switch', label: definition.name, value: 0 });
+        if (simulation.kind === 'light-resistor') inputs.push({ id: component.id, kind: 'dial', label: simulation.label, value: .5 });
         if (simulation.kind === 'dial') inputs.push({ id: component.id, kind: 'dial', label: simulation.label, value: .5 });
     }
     // Two knobs become "Knob 1" and "Knob 2".
@@ -111,6 +115,16 @@ export function createCircuitSimulation(project) {
                 resistors.push({ a: root(pin(simulation.output)), b: root(ground), ohms: Math.max(1, share * DIAL_OHMS) });
                 // A sensor module's digital pin snaps to one rail.
                 if (simulation.digitalOutput) resistors.push({ a: root(pin(simulation.digitalOutput)), b: root(share > .5 ? power : ground), ohms: 100 });
+            } else if (simulation.kind === 'light-resistor') {
+                // About 200 k in the dark down to 1 k in bright light.
+                resistor(pin(simulation.pins[0]), pin(simulation.pins[1]), 10 ** (5.3 - 2.3 * clamp(values[part.id] ?? .5)));
+            } else if (simulation.kind === 'motor') {
+                resistor(pin(simulation.pins[0]), pin(simulation.pins[1]), MOTOR_OHMS);
+            } else if (simulation.kind === 'diode') {
+                diodes.push({ part, prop: null, anode: root(pin(simulation.anode)), cathode: root(pin(simulation.cathode)), forwardVoltage: .7 });
+            } else if (simulation.kind === 'transistor') {
+                part.junction = diodes.length;
+                diodes.push({ part, prop: 'base', anode: root(pin(simulation.base)), cathode: root(pin(simulation.emitter)), forwardVoltage: .7 });
             } else if (simulation.kind === 'led') {
                 diodes.push({ part, prop: null, anode: root(pin(simulation.anode)), cathode: root(pin(simulation.cathode)),
                     forwardVoltage: LED_COLOR_PROFILES[part.properties.color]?.forwardVoltage || 2 });
@@ -122,7 +136,20 @@ export function createCircuitSimulation(project) {
         }
         for (const pin of ioPins) if (pins[pin.name]?.pullup) resistors.push({ a: root(pin.net), b: INTERNAL_5V, ohms: PULLUP_OHMS });
 
-        const solved = solveDc({ fixed, resistors, diodes });
+        let solved = solveDc({ fixed, resistors, diodes });
+        // shortcut: a transistor is a switch that closes fully once base current flows (no gain, no
+        // linear region); model hFE if a lesson ever needs dimming through a transistor.
+        const conducting = new Set();
+        for (let pass = 0; pass < 4; pass++) {
+            const turnedOn = parts.filter(part => part.simulation.kind === 'transistor' && !conducting.has(part) &&
+                solved.diodeCurrents[part.junction] > 1e-5);
+            if (!turnedOn.length) break;
+            for (const part of turnedOn) {
+                conducting.add(part);
+                resistors.push({ a: root(part.pin(part.simulation.collector)), b: root(part.pin(part.simulation.emitter)), ohms: TRANSISTOR_ON_OHMS });
+            }
+            solved = solveDc({ fixed, resistors, diodes });
+        }
         const volts = id => solved.voltage(root(id));
         const grounded = id => { const value = volts(id); return value != null && value < .1; };
 
@@ -162,6 +189,10 @@ export function createCircuitSimulation(project) {
                         angle: Math.round(clamp((signal.pulseMicros - SERVO_MIN_MICROS) / (SERVO_MAX_MICROS - SERVO_MIN_MICROS)) * 180),
                     };
                 }
+            } else if (simulation.kind === 'motor') {
+                const [plus, minus] = simulation.pins.map(id => volts(pin(id)));
+                const across = plus == null || minus == null ? 0 : plus - minus;
+                components[part.id] = { spinning: Math.abs(across) > 1, reverse: across < 0 };
             } else if (simulation.kind === 'button') {
                 components[part.id] = { pressed: Boolean(values[part.id]) };
             } else if (simulation.kind === 'switch') {

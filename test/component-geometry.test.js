@@ -15,11 +15,11 @@ import {
 
 test('registers calibrated rigid footprints for the initial through-hole set', () => {
     assert.deepEqual(Object.keys(componentGeometry).sort(), [
-        'arduino-nano', 'big-sound-sensor', 'buzzer', 'dht22', 'dip-switch-8', 'dip8', 'ds1307', 'flame-sensor',
+        'arduino-nano', 'big-sound-sensor', 'buzzer', 'capacitor-ceramic', 'capacitor-electrolytic', 'dht22', 'diode', 'dip-switch-8', 'dip8', 'ds1307', 'flame-sensor',
         'gas-sensor', 'hc-sr04', 'ir-receiver', 'led', 'led-bar-graph', 'microsd-card', 'mpu6050',
-        'nano-rp2040-connect', 'ntc-temperature-sensor', 'photoresistor-sensor', 'pir-motion', 'potentiometer',
+        'nano-rp2040-connect', 'ntc-temperature-sensor', 'photoresistor', 'photoresistor-sensor', 'pir-motion', 'potentiometer',
         'pushbutton-6mm', 'relay-dpdt', 'resistor', 'rgb-led', 'seven-segment', 'slide-switch',
-        'small-sound-sensor', 'ssd1306', 'tilt-switch',
+        'small-sound-sensor', 'ssd1306', 'tilt-switch', 'transistor-npn',
     ]);
     for (const geometry of Object.values(componentGeometry)) {
         assert.ok(geometry.footprints.length > 0);
