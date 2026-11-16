@@ -300,13 +300,14 @@ class CodePanel extends LitElement {
             return html`<button class="hold ${value ? 'down' : ''}" @pointerdown=${press(true)} @pointerup=${press(false)}
                 @pointerleave=${press(false)} @pointercancel=${press(false)}
                 @keydown=${event => { if (event.key === ' ' || event.key === 'Enter') this._setValue(input.id, 1); }}
-                @keyup=${() => this._setValue(input.id, 0)}>Hold to press ${input.label}</button>`;
+                @keyup=${() => this._setValue(input.id, 0)}>Hold to ${input.action || `press ${input.label}`}</button>`;
         }
         if (input.kind === 'switch') {
             return html`<button class="hold ${value ? 'down' : ''}" aria-pressed=${Boolean(value)}
                 @click=${() => this._setValue(input.id, value ? 0 : 1)}>Flip ${input.label} (now ${value ? 'right' : 'left'})</button>`;
         }
-        return html`<label>${input.label}: ${Math.round(value * 100)}%
+        const shown = input.range ? `${Math.round(input.range[0] + value * (input.range[1] - input.range[0]))}${input.unit}` : `${Math.round(value * 100)}%`;
+        return html`<label>${input.label}: ${shown}
             <input type="range" min="0" max="1" step="0.01" .value=${String(value)}
                 @input=${event => this._setValue(input.id, event.currentTarget.value)} /></label>`;
     }

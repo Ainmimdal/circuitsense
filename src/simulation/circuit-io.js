@@ -19,6 +19,7 @@ const PULLUP_OHMS = 35_000;
 const DIAL_OHMS = 10_000;
 const FULL_BRIGHTNESS_AMPS = .008;
 const MOTOR_OHMS = 25;
+const DISTANCE_CM = [2, 400];
 const TRANSISTOR_ON_OHMS = 2;
 const INTERNAL_5V = 'internal-5v';
 const SERVO_MIN_MICROS = 544;
@@ -29,7 +30,8 @@ const clamp = value => Math.max(0, Math.min(1, value));
 /**
  * Prepare a project for simulation. Returns `{ error }` in beginner language
  * when it cannot run, otherwise `{ boardId, inputs, evaluate }`. `inputs`
- * lists the parts a person operates (buttons and dials) with a starting value.
+ * lists the parts a person operates (buttons and dials) with a starting value;
+ * `echoes` lists ultrasonic sensors as { trigger, echo, centimetres(values) }.
  */
 export function createCircuitSimulation(project) {
     const controllers = project.components.filter(component => getComponentDef(component.definitionId)?.isControllerBoard);
@@ -53,16 +55,29 @@ export function createCircuitSimulation(project) {
 
     const parts = [];
     const inputs = [];
+    const echoes = [];
     for (const component of project.components) {
         const definition = getComponentDef(component.definitionId);
-        const simulation = definition?.simulation;
-        if (!simulation) continue;
+        if (!definition?.simulation) continue;
         const pin = pinId => net(component.id, pinId);
-        parts.push({ id: component.id, definition, simulation, pin, properties: component.properties || {} });
-        if (simulation.kind === 'button') inputs.push({ id: component.id, kind: 'button', label: definition.name, value: 0 });
-        if (simulation.kind === 'switch') inputs.push({ id: component.id, kind: 'switch', label: definition.name, value: 0 });
-        if (simulation.kind === 'light-resistor') inputs.push({ id: component.id, kind: 'dial', label: simulation.label, value: .5 });
-        if (simulation.kind === 'dial') inputs.push({ id: component.id, kind: 'dial', label: simulation.label, value: .5 });
+        // A part with several controls (a joystick) lists one behaviour per control.
+        [].concat(definition.simulation).forEach((simulation, index) => {
+            const key = index ? `${component.id}:${index}` : component.id;
+            parts.push({ id: component.id, key, definition, simulation, pin, properties: component.properties || {} });
+            if (simulation.kind === 'button') inputs.push({ id: key, kind: 'button', label: definition.name, value: 0 });
+            if (simulation.kind === 'signal') inputs.push({ id: key, kind: 'button', label: definition.name, action: simulation.action, value: 0 });
+            if (simulation.kind === 'switch') inputs.push({ id: key, kind: 'switch', label: definition.name, value: 0 });
+            if (['dial', 'light-resistor'].includes(simulation.kind)) inputs.push({ id: key, kind: 'dial', label: simulation.label, value: .5 });
+            if (simulation.kind === 'distance') {
+                inputs.push({ id: key, kind: 'dial', label: 'Distance', value: .1, range: DISTANCE_CM, unit: ' cm' });
+                const wired = pinId => ioPins.find(io => io.net === pin(pinId))?.name;
+                // shortcut: the echo ignores whether VCC and GND are wired; check them if a lesson teaches powering the sensor.
+                if (wired(simulation.trigger) && wired(simulation.echo)) {
+                    echoes.push({ trigger: wired(simulation.trigger), echo: wired(simulation.echo),
+                        centimetres: values => DISTANCE_CM[0] + clamp(values[key] ?? .1) * (DISTANCE_CM[1] - DISTANCE_CM[0]) });
+                }
+            }
+        });
     }
     // Two knobs become "Knob 1" and "Knob 2".
     for (const input of inputs) {
@@ -81,8 +96,8 @@ export function createCircuitSimulation(project) {
         for (const part of parts) {
             const contacts = part.definition.switchContacts || [];
             // A button closes all its contacts while held; a slide switch always closes one pair.
-            const closed = part.simulation.kind === 'button' ? (values[part.id] ? contacts : [])
-                : part.simulation.kind === 'switch' ? [contacts[values[part.id] ? 1 : 0]] : [];
+            const closed = part.simulation.kind === 'button' ? (values[part.key] ? contacts : [])
+                : part.simulation.kind === 'switch' ? [contacts[values[part.key] ? 1 : 0]] : [];
             for (const [a, b] of closed) merged.union(part.pin(a), part.pin(b));
         }
 
@@ -108,16 +123,22 @@ export function createCircuitSimulation(project) {
             if (simulation.kind === 'resistor') {
                 resistor(pin(simulation.pins[0]), pin(simulation.pins[1]), Math.max(1, Number(part.properties.value) || 220));
             } else if (simulation.kind === 'dial') {
-                const position = clamp(values[part.id] ?? .5);
+                const position = clamp(values[part.key] ?? .5);
                 const share = simulation.inverted ? 1 - position : position;
                 const [power, ground] = [pin(simulation.power), pin(simulation.ground)];
                 resistors.push({ a: root(power), b: root(pin(simulation.output)), ohms: Math.max(1, (1 - share) * DIAL_OHMS) });
                 resistors.push({ a: root(pin(simulation.output)), b: root(ground), ohms: Math.max(1, share * DIAL_OHMS) });
                 // A sensor module's digital pin snaps to one rail.
                 if (simulation.digitalOutput) resistors.push({ a: root(pin(simulation.digitalOutput)), b: root(share > .5 ? power : ground), ohms: 100 });
+            } else if (simulation.kind === 'signal') {
+                // A digital sensor output: at one rail while triggered, the other (or disconnected) at rest.
+                const active = Boolean(values[part.key]) !== Boolean(simulation.activeLow);
+                if (!simulation.floating || values[part.key]) {
+                    resistors.push({ a: root(pin(simulation.output)), b: root(pin(active ? simulation.power : simulation.ground)), ohms: 100 });
+                }
             } else if (simulation.kind === 'light-resistor') {
                 // About 200 k in the dark down to 1 k in bright light.
-                resistor(pin(simulation.pins[0]), pin(simulation.pins[1]), 10 ** (5.3 - 2.3 * clamp(values[part.id] ?? .5)));
+                resistor(pin(simulation.pins[0]), pin(simulation.pins[1]), 10 ** (5.3 - 2.3 * clamp(values[part.key] ?? .5)));
             } else if (simulation.kind === 'motor') {
                 resistor(pin(simulation.pins[0]), pin(simulation.pins[1]), MOTOR_OHMS);
             } else if (simulation.kind === 'diode') {
@@ -194,11 +215,11 @@ export function createCircuitSimulation(project) {
                 const across = plus == null || minus == null ? 0 : plus - minus;
                 components[part.id] = { spinning: Math.abs(across) > 1, reverse: across < 0 };
             } else if (simulation.kind === 'button') {
-                components[part.id] = { pressed: Boolean(values[part.id]) };
+                components[part.id] = { pressed: Boolean(values[part.key]) };
             } else if (simulation.kind === 'switch') {
-                components[part.id] = { value: values[part.id] ? 1 : 0 };
+                components[part.id] = { value: values[part.key] ? 1 : 0 };
             } else if (simulation.kind === 'dial' && simulation.visual) {
-                components[part.id] = { [simulation.visual.prop]: clamp(values[part.id] ?? .5) * simulation.visual.scale };
+                components[part.id] = { [simulation.visual.prop]: clamp(values[part.key] ?? .5) * simulation.visual.scale };
             }
         }
 
@@ -210,5 +231,5 @@ export function createCircuitSimulation(project) {
         return { components, pinLevels, sound };
     }
 
-    return { boardId: board.definitionId, inputs, evaluate };
+    return { boardId: board.definitionId, inputs, echoes, evaluate };
 }

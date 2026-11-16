@@ -53,6 +53,8 @@ export class AvrRunner {
         // Set when a pin switches between input, pull-up and output, so the circuit can react before the next read.
         this.modesChanged = false;
         this.sampledAt = 0;
+        // Ultrasonic sensors: echo pins are driven by timed events, not by the circuit's settled voltage.
+        this.echoes = [];
         for (const [portName, port] of Object.entries(this.ports)) {
             port.addListener(() => this.#trackPort(portName));
         }
@@ -77,10 +79,25 @@ export class AvrRunner {
             } else {
                 track.pulse = now - track.since;
                 track.highCycles += now - Math.max(track.since, this.sampledAt);
+                for (const echo of this.echoes) if (echo.trigger === name) this.#ping(echo);
             }
             track.high = high;
             track.since = now;
         }
+    }
+
+    /** HC-SR04: a pulse on `trigger` is answered by `echo` held HIGH for the sound's round trip (58 us per cm). */
+    addEcho(trigger, echo, centimetres) {
+        this.echoes.push({ trigger, echo, centimetres });
+    }
+
+    #ping(echo) {
+        const [port, bit] = PIN_MAP[echo.echo];
+        const micros = value => Math.round(value * CPU_HZ / 1e6);
+        this.cpu.addClockEvent(() => {
+            this.ports[port].setPin(bit, true);
+            this.cpu.addClockEvent(() => this.ports[port].setPin(bit, false), micros(echo.centimetres() * 58));
+        }, micros(450));
     }
 
     /** Advance the program by up to `cycles`, stopping early after `budgetMs` of real time or when a pin changes mode. */
@@ -132,7 +149,7 @@ export class AvrRunner {
     /** Apply the voltage the circuit puts on a pin, as a share of 5 V (null = nothing connected). */
     setInput(name, level) {
         const [port, bit] = PIN_MAP[name] || [];
-        if (!port) return;
+        if (!port || this.echoes.some(echo => echo.echo === name)) return;
         this.ports[port].setPin(bit, (level ?? 0) > .5);
         if (port === 'C') this.adc.channelValues[bit] = (level ?? 0) * 5;
     }
@@ -146,6 +163,11 @@ export class AvrRunner {
 export function advance(runner, circuit, values, cycles, budgetMs = Infinity) {
     const target = runner.cpu.cycles + cycles;
     const deadline = performance.now() + budgetMs;
+    runner.values = values;
+    if (!runner.circuit) {
+        runner.circuit = circuit;
+        for (const echo of circuit.echoes || []) runner.addEcho(echo.trigger, echo.echo, () => echo.centimetres(runner.values));
+    }
     const settle = pins => {
         const state = circuit.evaluate(pins, values);
         for (const [pin, level] of Object.entries(state.pinLevels)) runner.setInput(pin, level);

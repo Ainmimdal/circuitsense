@@ -117,3 +117,12 @@ test('compileSketch uses prebuilt programs, the server for edits, and says when 
     const fetchImpl = async () => ({ json: async () => ({ errors: "sketch.ino:1:1: error: expected ';' before 'x'" }) });
     assert.equal((await compileSketch('void setup(){}', { server: 'http://compile.test', fetchImpl })).problems[0].line, 1);
 });
+
+test('Parking sensor lights the LED only when something is close and prints the distance', () => {
+    const near = runLesson('distance-alarm', .5, { sonar: 10 / 398 });
+    assert.equal(near.state.components.led.value, true);
+    assert.match(near.serial, /\b1[12]\r?\n/);
+    const far = runLesson('distance-alarm', .5, { sonar: .5 });
+    assert.equal(far.state.components.led.value, false);
+    assert.match(far.serial, /\b(199|20[01])\r?\n/);
+});

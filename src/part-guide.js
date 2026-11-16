@@ -36,6 +36,8 @@ export const PART_GUIDE = {
         beginnerNote: 'A tiny beginner board with only six usable pins, good for very small projects.',
     },
     'hc-sr04': {
+        name: 'Distance Sensor', keywords: ['hc-sr04', 'ultrasonic', 'sonar'],
+        simulation: { kind: 'distance', trigger: 'TRIG', echo: 'ECHO' },
         description: 'Ultrasonic distance sensor (2 cm to 4 m)',
         beginnerNote: 'Measures distance with sound, like a bat. TRIG sends a ping, and ECHO tells the Arduino how long it took to come back.',
     },
@@ -50,6 +52,7 @@ export const PART_GUIDE = {
         beginnerNote: 'A screen with 4 lines of 20 characters. It needs only two signal wires (SDA and SCL) plus power.',
     },
     'pir-motion': {
+        simulation: { kind: 'signal', action: 'wave at the motion sensor', output: 'OUT', power: 'VCC', ground: 'GND' },
         description: 'Motion sensor that detects warm moving bodies',
         beginnerNote: 'Detects people moving nearby. OUT goes HIGH for a few seconds when it sees movement.',
     },
@@ -76,6 +79,12 @@ export const PART_GUIDE = {
         beginnerNote: 'Seven LED bars (A to G) that make the digits 0 to 9. Each bar needs its own resistor; the COM pins are shared by all of them.',
     },
     'analog-joystick': {
+        simulation: [
+            { kind: 'dial', label: 'Joystick left-right', output: 'HORZ', power: 'VCC', ground: 'GND' },
+            { kind: 'dial', label: 'Joystick up-down', output: 'VERT', power: 'VCC', ground: 'GND' },
+            // Pushing the stick in joins SEL to ground; use INPUT_PULLUP to read it.
+            { kind: 'signal', action: 'push the joystick in', output: 'SEL', power: 'VCC', ground: 'GND', activeLow: true, floating: true },
+        ],
         description: 'Thumb joystick with two axes and a push button',
         beginnerNote: 'A game-controller stick. HORZ and VERT give a voltage for left-right and up-down; SEL is a button you press by pushing the stick in.',
     },
@@ -88,10 +97,12 @@ export const PART_GUIDE = {
         beginnerNote: 'A motor that moves in precise steps. It needs a driver board between it and the Arduino.',
     },
     'big-sound-sensor': {
+        simulation: { kind: 'dial', label: 'Sound level', output: 'AOUT', digitalOutput: 'DOUT', power: 'VCC', ground: 'GND' },
         description: 'Microphone module with analog and digital outputs',
         beginnerNote: 'A microphone. AOUT gives the loudness as a voltage; DOUT goes HIGH when the sound passes the level set on the blue dial.',
     },
     'small-sound-sensor': {
+        simulation: { kind: 'dial', label: 'Sound level', output: 'AOUT', digitalOutput: 'DOUT', power: 'VCC', ground: 'GND' },
         description: 'Small microphone module with analog and digital outputs',
         beginnerNote: 'A microphone. AOUT gives the loudness as a voltage; DOUT goes HIGH when the sound passes the level set on the blue dial.',
     },
@@ -105,14 +116,17 @@ export const PART_GUIDE = {
         beginnerNote: 'A clock chip that remembers the date and time even when the Arduino is off.',
     },
     'flame-sensor': {
+        simulation: { kind: 'dial', label: 'Flame', output: 'AOUT', digitalOutput: 'DOUT', power: 'VCC', ground: 'GND' },
         description: 'Flame detector with analog and digital outputs',
         beginnerNote: 'Sees the infrared light of a flame. AOUT gives the strength; DOUT switches when a flame is detected.',
     },
     'gas-sensor': {
+        simulation: { kind: 'dial', label: 'Gas level', output: 'AOUT', digitalOutput: 'DOUT', power: 'VCC', ground: 'GND' },
         description: 'MQ-2 gas and smoke sensor module',
         beginnerNote: 'Detects smoke and flammable gas. It gets warm in use and needs a minute to settle before its readings mean anything.',
     },
     'heart-beat-sensor': {
+        simulation: { kind: 'dial', label: 'Pulse signal', output: 'OUT', power: 'VCC', ground: 'GND' },
         description: 'Pulse sensor you rest a fingertip on',
         beginnerNote: 'Shines a light through your fingertip and outputs a voltage that rises and falls with your pulse.',
     },
@@ -183,6 +197,7 @@ export const PART_GUIDE = {
         beginnerNote: 'A tiny bright screen for text and simple graphics. It needs only two signal wires (DATA and CLK) plus power.',
     },
     'tilt-switch': {
+        simulation: { kind: 'signal', action: 'tilt the sensor', output: 'OUT', power: 'VCC', ground: 'GND' },
         description: 'Switch that changes when the module is tilted',
         beginnerNote: 'A little ball inside rolls when you tilt it, switching OUT between HIGH and LOW.',
     },

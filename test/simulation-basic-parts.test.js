@@ -48,3 +48,20 @@ test('a photoresistor divider reads higher in brighter light', () => {
     const bright = simulation.evaluate({}, { ldr: 1 }).pinLevels.A0;
     assert.ok(dark < .1 && bright > .85, `${dark} ${bright}`);
 });
+
+test('a joystick has two axes and a push switch that needs a pull-up', () => {
+    const simulation = circuit([['joy', 'analog-joystick']],
+        [['joy:VCC', 'uno:5V'], ['joy:GND', 'uno:GND.1'], ['joy:HORZ', 'uno:A0'], ['joy:VERT', 'uno:A1'], ['joy:SEL', 'uno:2']]);
+    assert.deepEqual(simulation.inputs.map(input => input.id), ['joy', 'joy:1', 'joy:2']);
+    const pullup = { 2: { pullup: true } };
+    const state = simulation.evaluate(pullup, { joy: .25, 'joy:1': 1 });
+    assert.ok(Math.abs(state.pinLevels.A0 - .25) < .01 && state.pinLevels.A1 > .99);
+    assert.ok(state.pinLevels[2] > .9);
+    assert.ok(simulation.evaluate(pullup, { 'joy:2': 1 }).pinLevels[2] < .1);
+});
+
+test('a motion sensor output goes HIGH while triggered', () => {
+    const simulation = circuit([['pir', 'pir-motion']], [['pir:VCC', 'uno:5V'], ['pir:GND', 'uno:GND.1'], ['pir:OUT', 'uno:2']]);
+    assert.ok(simulation.evaluate({}, {}).pinLevels[2] < .1);
+    assert.ok(simulation.evaluate({}, { pir: 1 }).pinLevels[2] > .9);
+});
