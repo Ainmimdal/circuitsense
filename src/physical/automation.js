@@ -11,7 +11,9 @@ import { pinExitDirection, ROUTING_COMPONENT_MARGIN, ROUTING_WIRE_SEPARATION } f
 import { realizeAutoWireConnections } from './breadboard-auto-wire.js';
 import { validatePhysicalProject } from './validation.js';
 
-const SIGNAL_COLORS = Object.freeze(['#22d3ee', '#a78bfa', '#f59e0b', '#10b981', '#f472b6', '#60a5fa']);
+// Twelve, so a circuit with up to twelve signal wires gives each its own colour (AW-08).
+const SIGNAL_COLORS = Object.freeze(['#22d3ee', '#a78bfa', '#f59e0b', '#10b981', '#f472b6', '#60a5fa',
+    '#84cc16', '#fb923c', '#2dd4bf', '#e879f9', '#facc15', '#94a3b8']);
 const COMPONENT_GAP = 12;
 const ROW_GAP = 24;
 const CLUSTER_GAP = 42;

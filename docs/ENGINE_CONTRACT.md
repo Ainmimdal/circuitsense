@@ -228,6 +228,7 @@ The rows between the markers are parsed by `test/engine-contract.test.js`. Rule 
 | `AW-04` | Supply domains are shared | `src/core/auto-wire-planner.js` | `test/auto-wire-planner.test.js` |
 | `AW-05` | Generated resistors are deterministic and idempotent | `src/core/auto-wire-planner.js` | `test/auto-wire-planner.test.js` |
 | `AW-06` | Auto Wire preserves mounted footprints | `src/physical/automation.js`, `src/physical/breadboard-auto-wire.js` | `test/physical-automation.test.js` |
+| `AW-08` | Each net has one wire colour: ground black, power red, up to twelve signal nets distinct | `src/physical/automation.js` | `test/engine-rules.test.js` |
 | `AW-09` | Components keep stable controller ownership and independent controller budgets | `src/core/auto-wire-planner.js`, `src/physical/automation.js` | `test/auto-wire-planner.test.js`, `test/physical-automation.test.js` |
 | `AW-10` | Mounted nets collapse fixed groups and reserve only required jumper holes | `src/physical/breadboard-auto-wire.js`, `src/physical/automation.js` | `test/physical-core.test.js`, `test/physical-automation.test.js` |
 | `AL-01` | Direct and breadboard scenes use separate layout branches | `src/physical/automation.js`, `src/physical/direct-layout-v2.js` | `test/physical-automation.test.js` |
@@ -246,6 +247,7 @@ The rows between the markers are parsed by `test/engine-contract.test.js`. Rule 
 | `CL-03` | Header wires fan into distinct lanes | `src/physical/routing.js` | `test/physical-automation.test.js` |
 | `CL-08` | Route-only operations preserve existing semantic nets | `src/ai/tools.js`, `src/physical/routing.js` | `test/ai-agent.test.js`, `test/physical-interaction.test.js` |
 | `CL-09` | Unrelated automatic wires route around breadboard bodies | `src/physical/routing.js` | `test/physical-core.test.js` |
+| `VAL-01` | Validation is read-only | `src/physical/validation.js` | `test/engine-rules.test.js` |
 | `VAL-04` | Logical checks report shorts, current, voltage, coil-driver, LED polarity/current, pin capability, serial, duplicate-pin, supply and floating-pin findings on the live project | `src/physical/electrical-validation.js`, `src/physical/validation.js` | `test/physical-electrical-validation.test.js` |
 | `VAL-05` | Breadboard legality produces validation findings | `src/physical/validation.js` | `test/physical-core.test.js`, `test/physical-electrical-validation.test.js` |
 | `VAL-06` | Shared I2C buses and pull resistors are not duplicate pin use; clashing I2C addresses are | `src/physical/electrical-validation.js` | `test/physical-electrical-validation.test.js` |
@@ -261,7 +263,7 @@ These are not accepted exceptions. They are visible work items. Removing a row r
 | --- | --- | --- |
 | `GAP-07` | Browser acceptance is manual; pointer, zoom and final rendered geometry are not in automated CI. | Add browser fixtures for the primary mixed circuit and interaction rollback. |
 | `GAP-10` | Live Auto Layout (`src/physical/automation.js`) fails when a scene does not fit the current breadboard; proven capacity alternatives (add a board, replace with a larger one) existed only in the removed schema-v2 planner. | `CAP-02`: offer only alternatives proven by a complete legal plan, from the live engine. |
-| `GAP-11` | The schema-v2 engine was removed (2026-10-11) because the app no longer loaded it. These rules were proven only there and have no live regression evidence yet: `AW-08` (one color per net), `AL-04` (constrained footprints first), `BB-05` (one rail feeder, unique branches), `BB-07` (jumper gender), `CAP-01` and `CAP-02` (proven capacity and recovery alternatives), `CL-05` (breadboard-local jumper routes), `VAL-01` (read-only logical/physical validation layers) and `INT-01` (click cannot move parts). | Implement each rule in `src/physical/` with a regression test and restore its registry row. |
+| `GAP-11` | The schema-v2 engine was removed (2026-10-11) because the app no longer loaded it. These rules were proven only there and have no live regression evidence yet: `AL-04` (constrained footprints first), `BB-05` (one rail feeder, unique branches), `BB-07` (jumper gender), `CAP-01` and `CAP-02` (proven capacity and recovery alternatives), `CL-05` (breadboard-local jumper routes) and `INT-01` (click cannot move parts). | Implement each rule in `src/physical/` with a regression test and restore its registry row. |
 
 ## Change protocol
 
