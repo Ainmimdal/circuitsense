@@ -81,3 +81,33 @@ test('a capacitor charges through a resistor over time and holds its charge', ()
     for (let i = 0; i < 100; i++) volts = step(low, .001);
     assert.ok(Math.abs(volts - 3.16 * Math.exp(-1)) < .05, `discharging: ${volts}`);
 });
+
+test('a capacitor smooths a PWM pin to its average voltage', () => {
+    const simulation = circuit(
+        [['r', 'resistor', { value: '1000' }], ['c', 'capacitor-electrolytic']],
+        [['uno:9', 'r:1'], ['r:2', 'c:+'], ['c:-', 'uno:GND.1'], ['c:+', 'uno:A0']],
+    );
+    let level = 0;
+    for (let i = 0; i < 100; i++) level = simulation.evaluate({ 9: { output: true, level: .4 } }, {}, .01).pinLevels.A0;
+    assert.ok(Math.abs(level - .4) < .01, String(level));
+});
+
+test('a 7-segment display lights the bars that are driven HIGH', () => {
+    const simulation = circuit(
+        [['seg', 'seven-segment'], ['rb', 'resistor'], ['rc', 'resistor']],
+        [['uno:3', 'rb:1'], ['rb:2', 'seg:B'], ['uno:4', 'rc:1'], ['rc:2', 'seg:C'], ['seg:COM.2', 'uno:GND.1']],
+    );
+    assert.deepEqual(simulation.evaluate({ 3: high, 4: high }).components.seg.values, [0, 1, 1, 0, 0, 0, 0, 0]);
+    const first = simulation.evaluate({ 3: high, 4: low }).components.seg.values;
+    assert.deepEqual(first, [0, 1, 0, 0, 0, 0, 0, 0]);
+    assert.equal(simulation.evaluate({ 3: high, 4: low }).components.seg.values, first);
+});
+
+test('a keypad key joins its row to its column', () => {
+    const simulation = circuit([['pad', 'membrane-keypad']], [['pad:R2', 'uno:5'], ['pad:C3', 'uno:6']]);
+    const scan = { 5: low, 6: { pullup: true } };
+    assert.ok(simulation.evaluate(scan, {}).pinLevels[6] > .9);
+    // Row 2, column 3 is the "6" key, the seventh key in reading order.
+    assert.ok(simulation.evaluate(scan, { pad: 7 }).pinLevels[6] < .1);
+    assert.ok(simulation.evaluate(scan, { pad: 8 }).pinLevels[6] > .9);
+});

@@ -77,8 +77,10 @@ export const PART_GUIDE = {
         beginnerNote: 'A switch that stays where you put it. The middle leg connects to the left leg or the right leg.',
     },
     'seven-segment': {
+        // Common cathode: the COM pins go to ground and a HIGH pin lights its bar.
+        simulation: { kind: 'led-array', joined: [['COM.1', 'COM.2']], leds: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'DP'].map(name => [name, 'COM.1']) },
         description: 'One digit made of seven LED bars and a dot',
-        beginnerNote: 'Seven LED bars (A to G) that make the digits 0 to 9. Each bar needs its own resistor; the COM pins are shared by all of them.',
+        beginnerNote: 'Seven LED bars (A to G) that make the digits 0 to 9. Each bar needs its own resistor; the COM pins are shared by all of them and go to ground.',
     },
     'analog-joystick': {
         simulation: [
@@ -155,10 +157,12 @@ export const PART_GUIDE = {
         beginnerNote: 'A knob with no end stops. CLK and DT pulse as it turns so the code can count steps and direction; SW is the push button.',
     },
     'led-bar-graph': {
+        simulation: { kind: 'led-array', leds: range(10, n => [`A${n}`, `C${n}`]) },
         description: 'Ten small LEDs in a row',
         beginnerNote: 'Ten LEDs in one block, handy for level meters. Each LED has its own + pin (A) and - pin (C) and needs its own resistor.',
     },
     'membrane-keypad': {
+        simulation: { kind: 'keypad', keys: '123A456B789C*0#D', rows: ['R1', 'R2', 'R3', 'R4'], cols: ['C1', 'C2', 'C3', 'C4'] },
         description: '4x4 keypad with 16 keys',
         beginnerNote: 'Sixteen keys wired as 4 rows and 4 columns. Pressing a key joins its row pin to its column pin.',
         pinMeta: pins(['R1', 'R2', 'R3', 'R4', 'C1', 'C2', 'C3', 'C4'], D),

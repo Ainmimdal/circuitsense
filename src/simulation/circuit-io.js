@@ -71,6 +71,7 @@ export function createCircuitSimulation(project) {
             parts.push({ id: component.id, key, definition, simulation, pin, properties: component.properties || {} });
             if (simulation.kind === 'button') inputs.push({ id: key, kind: 'button', label: definition.name, value: 0 });
             if (simulation.kind === 'signal') inputs.push({ id: key, kind: 'button', label: definition.name, action: simulation.action, value: 0 });
+            if (simulation.kind === 'keypad') inputs.push({ id: key, kind: 'keypad', label: definition.name, keys: simulation.keys, value: 0 });
             if (simulation.kind === 'switch') inputs.push({ id: key, kind: 'switch', label: definition.name, value: 0 });
             if (['dial', 'light-resistor'].includes(simulation.kind)) inputs.push({ id: key, kind: 'dial', label: simulation.label, value: .5 });
             if (simulation.kind === 'i2c') {
@@ -111,14 +112,18 @@ export function createCircuitSimulation(project) {
             const closed = part.simulation.kind === 'button' ? (values[part.key] ? contacts : [])
                 : part.simulation.kind === 'switch' ? [contacts[values[part.key] ? 1 : 0]] : [];
             for (const [a, b] of closed) merged.union(part.pin(a), part.pin(b));
+            // Pins that are one piece of metal inside the part (a display's two common pins).
+            for (const [a, b] of part.simulation.joined || []) merged.union(part.pin(a), part.pin(b));
+            if (part.simulation.kind === 'keypad' && values[part.key]) {
+                const key = values[part.key] - 1;
+                merged.union(part.pin(part.simulation.rows[key >> 2]), part.pin(part.simulation.cols[key & 3]));
+            }
         }
 
         // Supplies and output pins hold their net at a voltage; the first claim wins, ground first.
         const fixed = new Map([[INTERNAL_5V, SUPPLY_VOLTS]]);
         const hold = (id, volts) => { if (!fixed.has(root(id))) fixed.set(root(id), volts); };
         for (const [id, share] of supplies) hold(id, share * SUPPLY_VOLTS);
-        // A PWM pin is solved at its HIGH level; LEDs it feeds are dimmed by its duty afterwards.
-        for (const pin of ioPins) if (pins[pin.name]?.output) hold(pin.net, pins[pin.name].level > 0 ? SUPPLY_VOLTS : 0);
 
         const resistors = [];
         const diodes = [];
@@ -154,8 +159,6 @@ export function createCircuitSimulation(project) {
                 resistor(pin(simulation.pins[0]), pin(simulation.pins[1]), 10 ** (5.3 - 2.3 * clamp(values[part.key] ?? .5)));
             } else if (simulation.kind === 'capacitor') {
                 // One backward-Euler step: the capacitor is its present voltage behind a resistance of step / C.
-                // shortcut: a PWM pin is solved as steady HIGH, so a capacitor will not smooth PWM; step the
-                // solver within a PWM period if a lesson needs an RC filter.
                 part.source = { a: root(pin(simulation.pins[0])), b: root(pin(simulation.pins[1])), volts: part.volts || 0,
                     ohms: Math.max(.05, seconds / simulation.farads) };
                 sources.push(part.source);
@@ -173,7 +176,34 @@ export function createCircuitSimulation(project) {
                 for (const [prop, channel] of Object.entries(simulation.channels)) {
                     diodes.push({ part, prop, anode: root(pin(channel)), cathode: root(pin(simulation.common)), forwardVoltage: prop === 'ledRed' ? 2 : 3 });
                 }
+            } else if (simulation.kind === 'led-array') {
+                simulation.leds.forEach(([anode, cathode], index) => {
+                    diodes.push({ part, prop: index, anode: root(pin(anode)), cathode: root(pin(cathode)), forwardVoltage: 2 });
+                });
             }
+        }
+
+        // A PWM pin is normally solved at its HIGH level and the LEDs it feeds are dimmed by its duty
+        // afterwards. Where a capacitor can smooth it, the pin is held at its average voltage instead.
+        const outputPins = ioPins.filter(pin => pins[pin.name]?.output);
+        const smoothed = new Set();
+        if (sources.length) {
+            const stops = new Set([...fixed.keys(), ...outputPins.map(pin => root(pin.net))]);
+            const charged = new Set(sources.flatMap(source => [source.a, source.b]));
+            for (const pin of outputPins) {
+                if (!(pins[pin.name].level > 0 && pins[pin.name].level < 1)) continue;
+                const queue = [root(pin.net)];
+                const seen = new Set(queue);
+                while (queue.length && !smoothed.has(pin.name)) {
+                    const node = queue.pop();
+                    if (charged.has(node)) smoothed.add(pin.name);
+                    for (const next of links.get(node) || []) if (!seen.has(next) && !stops.has(next)) { seen.add(next); queue.push(next); }
+                }
+            }
+        }
+        for (const pin of outputPins) {
+            const level = pins[pin.name].level;
+            hold(pin.net, smoothed.has(pin.name) ? level * SUPPLY_VOLTS : level > 0 ? SUPPLY_VOLTS : 0);
         }
         for (const pin of ioPins) if (pins[pin.name]?.pullup) resistors.push({ a: root(pin.net), b: INTERNAL_5V, ohms: PULLUP_OHMS });
 
@@ -195,16 +225,18 @@ export function createCircuitSimulation(project) {
         const grounded = id => { const value = volts(id); return value != null && value < .1; };
 
         // The Arduino output that reaches this terminal directly or through one resistor.
-        const outputPins = ioPins.filter(pin => pins[pin.name]?.output);
-        const driver = id => {
+        const driverPin = id => {
             const reach = new Set([root(id), ...(links.get(root(id)) || [])]);
-            return pins[outputPins.find(pin => reach.has(root(pin.net)))?.name] || null;
+            return outputPins.find(pin => reach.has(root(pin.net)));
         };
+        const driver = id => pins[driverPin(id)?.name] || null;
+        // A smoothed pin already carries its duty in its voltage.
+        const duty = id => { const pin = driverPin(id); return pin && !smoothed.has(pin.name) ? pins[pin.name] : null; };
         // Brightness from the current through each LED: full at about 8 mA.
         const glow = new Map();
         diodes.forEach((diode, i) => {
-            const duty = (driver(diode.anode)?.level ?? 1) * (1 - (driver(diode.cathode)?.level ?? 0));
-            glow.set(`${diode.part.id}:${diode.prop}`, clamp(solved.diodeCurrents[i] / FULL_BRIGHTNESS_AMPS) * duty);
+            const share = (duty(diode.anode)?.level ?? 1) * (1 - (duty(diode.cathode)?.level ?? 0));
+            glow.set(`${diode.part.id}:${diode.prop}`, clamp(solved.diodeCurrents[i] / FULL_BRIGHTNESS_AMPS) * share);
         });
 
         const components = {};
@@ -216,6 +248,11 @@ export function createCircuitSimulation(project) {
                 components[part.id] = { value: brightness > .02, brightness: Math.max(.25, brightness) };
             } else if (simulation.kind === 'rgb-led') {
                 components[part.id] = Object.fromEntries(Object.keys(simulation.channels).map(prop => [prop, glow.get(`${part.id}:${prop}`)]));
+            } else if (simulation.kind === 'led-array') {
+                const values = simulation.leds.map((_, index) => glow.get(`${part.id}:${index}`) > .02 ? 1 : 0);
+                // The artwork redraws when it is handed a new array, so keep the old one while nothing changed.
+                if (part.shown?.join() !== values.join()) part.shown = values;
+                components[part.id] = { values: part.shown };
             } else if (simulation.kind === 'buzzer') {
                 const [a, b] = simulation.pins.map(pin);
                 const signal = grounded(b) ? driver(a) : grounded(a) ? driver(b) : null;

@@ -69,6 +69,7 @@ class CodePanel extends LitElement {
         .inputs label { display: grid; gap: 4px; font-size: 12px; }
         .inputs input[type="range"] { width: 100%; accent-color: var(--accent); }
         .inputs .hold { justify-content: center; user-select: none; touch-action: none; }
+        .inputs .keypad { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
         .inputs .hold.down { color: var(--ink); background: var(--accent); border-color: var(--accent); }
 
         .serial { flex: 1; min-height: 70px; display: flex; flex-direction: column; }
@@ -301,6 +302,14 @@ class CodePanel extends LitElement {
                 @pointerleave=${press(false)} @pointercancel=${press(false)}
                 @keydown=${event => { if (event.key === ' ' || event.key === 'Enter') this._setValue(input.id, 1); }}
                 @keyup=${() => this._setValue(input.id, 0)}>Hold to ${input.action || `press ${input.label}`}</button>`;
+        }
+        if (input.kind === 'keypad') {
+            const press = key => () => this._setValue(input.id, key);
+            return html`<div class="keypad" role="group" aria-label=${input.label}>${[...input.keys].map((label, index) => html`
+                <button class="hold ${value === index + 1 ? 'down' : ''}" aria-label="Key ${label}" @pointerdown=${press(index + 1)} @pointerup=${press(0)}
+                    @pointerleave=${press(0)} @pointercancel=${press(0)}
+                    @keydown=${event => { if (event.key === ' ' || event.key === 'Enter') this._setValue(input.id, index + 1); }}
+                    @keyup=${press(0)}>${label}</button>`)}</div>`;
         }
         if (input.kind === 'switch') {
             return html`<button class="hold ${value ? 'down' : ''}" aria-pressed=${Boolean(value)}
