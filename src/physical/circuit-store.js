@@ -228,6 +228,17 @@ export class PhysicalCircuitStore extends EventTarget {
         if (typeof localStorage !== 'undefined') localStorage.setItem(STORAGE_KEY, JSON.stringify(this.project));
     }
 
+    // The Arduino sketch travels with the project but sits outside undo history,
+    // so undoing a wire never rewinds the code. Pass null to remove it.
+    setSketch(code) {
+        for (const project of [this.project, ...this.history]) {
+            project.properties ||= {};
+            if (code == null) delete project.properties.sketch;
+            else project.properties.sketch = code;
+        }
+        this.save();
+    }
+
     exportProject() {
         return JSON.stringify(this.project, null, 2);
     }

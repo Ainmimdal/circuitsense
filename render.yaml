@@ -1,0 +1,12 @@
+# Render Blueprint for the Arduino compile server (see docs/COMPILE_SERVER.md).
+services:
+  - type: web
+    name: elera-compile
+    runtime: docker
+    plan: free
+    rootDir: server/compile-server
+    healthCheckPath: /health
+    envVars:
+      # The site's address, for example https://circuitsense.example.workers.dev
+      - key: ALLOWED_ORIGINS
+        sync: false

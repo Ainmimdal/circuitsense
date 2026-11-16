@@ -494,6 +494,8 @@ class LessonGuide extends LitElement {
                         </div>
                         <pre>${lesson.code.split('\n').map(line => html`${highlight(line)}\n`)}</pre>
                     </div>
+                    <button class="btn primary wide" style="margin: 10px 0 0; width: 100%;" @click=${() => this.dispatchEvent(new CustomEvent('open-code', { bubbles: true, composed: true }))}>
+                        ${faIcon('play')} Try the code here, no board needed</button>
                     <div class="section-title">On your real board</div>
                     <ol class="upload">
                         <li>Build the same circuit on a breadboard and plug the Uno in with USB.</li>
