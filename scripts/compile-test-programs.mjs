@@ -7,6 +7,9 @@
 
 import { writeFileSync } from 'node:fs';
 
+import { getLesson } from '../src/lessons/catalog.js';
+import { writeSketch } from '../src/simulation/sketch-writer.js';
+
 const sketches = {
     // Drives the LCD backpack with plain Wire calls, the same bytes LiquidCrystal_I2C sends.
     lcdAndClock: `#include <Wire.h>
@@ -172,6 +175,9 @@ void setup() {
 }
 void loop() {}`,
 };
+
+// The code Elera writes for these lesson circuits (test/sketch-writer.test.js runs it).
+for (const id of ['traffic-light', 'doorbell', 'distance-alarm', 'servo-knob']) sketches[`written:${id}`] = writeSketch(getLesson(id).build()).code;
 
 const server = (process.argv[2] || '').replace(/\/$/, '');
 const programs = {};

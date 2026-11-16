@@ -4,6 +4,7 @@ import { physicalCircuitStore } from '../physical/circuit-store.js';
 import { advance, AvrRunner, CPU_HZ } from '../simulation/avr-runner.js';
 import { createCircuitSimulation } from '../simulation/circuit-io.js';
 import { compileServerUrl, compileSketch, DEFAULT_SKETCH } from '../simulation/compile.js';
+import { writeSketch } from '../simulation/sketch-writer.js';
 import { faIcon } from '../utils/fa-icons.js';
 import { confirmDialog } from './app-dialogs.js';
 
@@ -287,6 +288,24 @@ class CodePanel extends LitElement {
         this._syncFromProject();
     }
 
+    // Replaces the code with a sketch written from the wiring on the canvas.
+    async _writeFromCircuit() {
+        const written = writeSketch(this.store.project);
+        if (written.error) {
+            this._notice = written.error;
+            return;
+        }
+        if (this._code !== this._starter && this._code !== written.code && !(await confirmDialog({
+            title: 'Write new code for this circuit?',
+            message: 'Your changes to the code will be replaced.',
+            confirmLabel: 'Replace my code',
+        }))) return;
+        this._stop();
+        this._notice = written.skipped.length ? `Code written. Left out: ${written.skipped.join('; ')}.` : '';
+        this.store.setSketch(written.code);
+        this._syncFromProject();
+    }
+
     _goToLine(lineNumber) {
         if (!this._view || !lineNumber) return;
         const line = this._view.state.doc.line(Math.min(lineNumber, this._view.state.doc.lines));
@@ -331,6 +350,7 @@ class CodePanel extends LitElement {
                 ${running ? html`<span class="state" role="status"><i></i>Running on the Arduino</span>` : ''}
                 ${building ? html`<span class="state" role="status">Building your code…</span>` : ''}
                 <span class="spacer"></span>
+                <button @click=${this._writeFromCircuit} title="Write code that matches the parts and wires on the canvas">${faIcon('wand')} Write code for my circuit</button>
                 <button @click=${this._restoreStarter} title="Replace the code with the starter code">${faIcon('rotateLeft')} Starter code</button>
                 ${running
                     ? html`<button @click=${this._stop}><span class="stop-mark"></span> Stop</button>`
