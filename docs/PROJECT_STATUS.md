@@ -25,7 +25,7 @@ The **legacy schema-v2 engine** (`src/store.js`, `src/services/*`, `src/componen
 
 ### Editor
 
-- Lit 3 application shell with a Konva workspace (background, board, wire, component and interaction layers). Wokwi or converted-part artwork is drawn in a pointer-transparent DOM layer; Konva owns hit testing.
+- Lit 3 application shell with a Konva workspace (two canvas layers holding board, component, wire, ghost and interaction groups; the dot grid is CSS). Wokwi or converted-part artwork is drawn in a pointer-transparent DOM layer; Konva owns hit testing.
 - Component sidebar over the `@wokwi/elements` catalog, the converted Fritzing parts (`Imported` filter) and user-defined parts from the component builder (`My parts`).
 - Free-space placement, breadboard mounting through the generic snap solver, rotation, selection, multi-select, delete with connected-wire cleanup, pan and zoom.
 - Manual wiring in orthogonal or freestyle mode with optional pitch snap, editable waypoints and segment grips, and per-net inspection.
@@ -104,7 +104,7 @@ Gap definitions and exit conditions live in [ENGINE_CONTRACT.md](ENGINE_CONTRACT
 3. **P1, command completion:** decide the Auto Wire route-dirty versus baseline-routing behavior (`GAP-03`).
 4. **P1, regression depth:** one focused fixture per remaining physical validation finding (`GAP-06`; the electrical findings have them in `test/physical-electrical-validation.test.js`) and an automated browser fixture for the mixed circuit (`GAP-07`).
 5. **P1, legacy rule parity:** the unused schema-v2 engine and its tests were removed; port the rules listed in `GAP-11` to the physical engine, each with a regression test.
-6. **P2, performance:** profile dense breadboard scenes and split the production bundle.
+6. **P2, performance:** split the production bundle. Canvas pan and zoom were profiled and fixed in November 2026 (two Konva canvases instead of six, CSS dot grid, one camera update per frame, no hit testing mid-pan); re-profile if scenes grow past a full breadboard with about 30 parts.
 
 For every engine change, name the affected contract rule, add the failing test first, and keep the command mutation boundaries.
 
