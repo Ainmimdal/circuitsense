@@ -1,7 +1,9 @@
 import { LitElement, css, html, svg } from 'lit';
 
+import { a4988NativePins } from '../core/component-geometry.js';
+
 // Artwork for the basic parts Wokwi does not ship: light sensor, capacitors,
-// diode, transistor and DC motor. Drawn in CSS pixels with legs exactly one
+// diode, transistor, DC motor and A4988 stepper driver. Drawn in CSS pixels with legs exactly one
 // breadboard pitch (9.6 px = 2.54 mm) apart; pin positions are repeated in
 // src/core/component-geometry.js.
 
@@ -115,10 +117,28 @@ class DcMotorElement extends LitElement {
     }
 }
 
+class A4988Element extends LitElement {
+    static styles = sharedStyles;
+    get pinInfo() { return Object.entries(a4988NativePins).map(([name, point]) => ({ name, ...point, signals: [] })); }
+    render() {
+        const label = name => name.replace(/\.\d$/, '').replace('ENABLE', 'EN').replace('RESET', 'RST').replace('SLEEP', 'SLP');
+        return html`<svg width="86.4" height="67.2" viewBox="0 0 86.4 67.2" role="img" aria-label="A4988 stepper driver">
+            <rect x="2" y=".8" width="82.4" height="65.6" rx="2.4" fill="#b91c1c" stroke="#7f1d1d" stroke-width=".8" />
+            <rect x="29" y="22" width="24" height="24" rx="1.5" fill="#1c1c1c" />
+            <text x="41" y="35.6" text-anchor="middle" font-family="Arial, sans-serif" font-size="5" fill="#d4d4d4">A4988</text>
+            <!-- The small screw sets the motor current. -->
+            <circle cx="66" cy="34" r="6" fill="#d4d4d8" stroke="#71717a" stroke-width=".8" /><path d="M62 34h8M66 30v8" stroke="#52525b" stroke-width="1.2" />
+            ${Object.entries(a4988NativePins).map(([name, { x, y }]) => svg`
+                <circle cx=${x} cy=${y} r="2.6" fill="#facc15" stroke="#854d0e" stroke-width=".6" /><circle cx=${x} cy=${y} r="1" fill="#27272a" />
+                <text transform="translate(${x + 1.4} ${y < 30 ? 9.5 : 57.7}) rotate(${y < 30 ? 90 : -90})" font-family="Arial, sans-serif" font-size="3.9" font-weight="700" fill="#fff">${label(name)}</text>`)}
+        </svg>`;
+    }
+}
+
 if (typeof customElements !== 'undefined') {
     for (const [tag, element] of [
         ['elera-photoresistor', PhotoresistorElement], ['elera-ceramic-capacitor', CeramicCapacitorElement],
         ['elera-electrolytic-capacitor', ElectrolyticCapacitorElement], ['elera-diode', DiodeElement],
-        ['elera-transistor', TransistorElement], ['elera-dc-motor', DcMotorElement],
+        ['elera-transistor', TransistorElement], ['elera-dc-motor', DcMotorElement], ['elera-a4988', A4988Element],
     ]) if (!customElements.get(tag)) customElements.define(tag, element);
 }

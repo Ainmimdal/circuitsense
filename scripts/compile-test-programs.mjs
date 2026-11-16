@@ -150,6 +150,18 @@ void loop() {
   Serial.println(value);
   delay(100);
 }`,
+    // Step and direction pulses for an A4988: 50 steps one way, 10 back.
+    stepperDriver: `const int STEP = 3, DIR = 4;
+void move(int steps) {
+  digitalWrite(DIR, steps > 0 ? HIGH : LOW);
+  for (int i = 0; i < abs(steps); i++) { digitalWrite(STEP, HIGH); delayMicroseconds(500); digitalWrite(STEP, LOW); delayMicroseconds(500); }
+}
+void setup() {
+  pinMode(STEP, OUTPUT); pinMode(DIR, OUTPUT); Serial.begin(9600);
+  move(50); move(-10);
+  Serial.println("done");
+}
+void loop() {}`,
     stepper: `#include <Stepper.h>
 Stepper motor(200, 8, 9, 10, 11);
 void setup() {

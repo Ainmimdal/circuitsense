@@ -15,7 +15,7 @@ import {
 
 test('registers calibrated rigid footprints for the initial through-hole set', () => {
     assert.deepEqual(Object.keys(componentGeometry).sort(), [
-        'arduino-nano', 'big-sound-sensor', 'buzzer', 'capacitor-ceramic', 'capacitor-electrolytic', 'dht22', 'diode', 'dip-switch-8', 'dip8', 'ds1307', 'flame-sensor',
+        'a4988', 'arduino-nano', 'big-sound-sensor', 'buzzer', 'capacitor-ceramic', 'capacitor-electrolytic', 'dht22', 'diode', 'dip-switch-8', 'dip8', 'ds1307', 'flame-sensor',
         'gas-sensor', 'hc-sr04', 'ir-receiver', 'led', 'led-bar-graph', 'microsd-card', 'mpu6050',
         'nano-rp2040-connect', 'ntc-temperature-sensor', 'photoresistor', 'photoresistor-sensor', 'pir-motion', 'potentiometer',
         'pushbutton-6mm', 'relay-dpdt', 'resistor', 'rgb-led', 'seven-segment', 'slide-switch',

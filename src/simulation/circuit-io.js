@@ -5,7 +5,7 @@ import { ConnectivityResolver, UnionFind } from '../physical/connectivity.js';
 import { componentPinRef, connectionRefKey } from '../physical/model.js';
 import { solveDc } from './dc-solver.js';
 import { createI2cDevice } from './i2c-devices.js';
-import { createPinDevice } from './pin-devices.js';
+import { createPinDevice, shaftAngle } from './pin-devices.js';
 import { createSpiDevice } from './spi-devices.js';
 
 // Connects the running program to the circuit on the canvas: which parts light
@@ -105,7 +105,7 @@ export function createCircuitSimulation(project) {
                 (simulation.inputs || []).forEach((input, index) => inputs.push({ kind: 'dial', value: input.kind === 'keypad' ? 0 : .5, ...input, id: inputId(index) }));
                 const wired = pinId => ioPins.find(io => io.net === pin(pinId))?.name;
                 const names = Object.fromEntries(Object.entries(simulation.pins).map(([role, ids]) => [role, Array.isArray(ids) ? ids.map(wired) : wired(ids)]));
-                if (Object.values(names).flat().every(Boolean)) {
+                if (Object.entries(names).every(([role, name]) => simulation.optional?.includes(role) || [name].flat().every(Boolean))) {
                     part.device = createPinDevice(simulation.device, { ...simulation.options, ...names });
                     pinDevices.push({ device: part.device, read: (values, index) => values[inputId(index)] });
                 }
@@ -384,6 +384,10 @@ export function createCircuitSimulation(project) {
                 components[part.id] = { ...components[part.id], angle: part.detent * 18 };
             } else if (part.simulation.kind === 'pin-device' && part.device?.state) {
                 components[part.id] = { ...components[part.id], ...part.device.state() };
+            } else if (part.simulation.device === 'stepper') {
+                // Not on Arduino pins: a motor on a driver's outputs follows the driver.
+                part.driver ??= parts.find(other => other.device && other.simulation.outputs?.some(output => other.pin(output) === part.pin(part.simulation.pins.coils[0]))) || null;
+                if (part.driver) components[part.id] = { ...components[part.id], [part.simulation.options?.property || 'angle']: shaftAngle(part.driver.device.degrees) };
             } else if (part.simulation.kind === 'spi') {
                 const powered = volts(part.pin(part.simulation.power)) > 3 && grounded(part.pin(part.simulation.ground));
                 if (powered) components[part.id] = part.device.state();

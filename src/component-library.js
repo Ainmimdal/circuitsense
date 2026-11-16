@@ -718,6 +718,16 @@ const defineWokwiComponent = definition => {
         breadboard: { mountable: true, required: true, footprintId: 'to92-3' },
     },
     {
+        id: 'a4988', name: 'Stepper Driver (A4988)', tag: 'elera-a4988', category: 'actuator',
+        size: { width: 86.4, height: 67.2 }, currentDraw_mA: 8, keywords: ['stepper driver', 'pololu', 'nema 17', 'step', 'dir'],
+        // The other pins (ENABLE, MS1 to MS3, RESET, SLEEP, VMOT) are optional, so they stay undeclared.
+        pinMeta: { STEP: PIN.DIGITAL, DIR: PIN.DIGITAL, VDD: PIN.VCC, 'GND.1': PIN.GND, '1A': PIN.SIGNAL, '1B': PIN.SIGNAL, '2A': PIN.SIGNAL, '2B': PIN.SIGNAL },
+        simulation: { kind: 'pin-device', device: 'stepper-driver', pins: { step: 'STEP', direction: 'DIR' }, optional: ['direction'], outputs: ['1A', '1B', '2A', '2B'] },
+        description: 'Driver board that turns STEP and DIR signals into stepper motor movement',
+        beginnerNote: 'Sits between the Arduino and a stepper motor. Each pulse on STEP moves the motor one step; DIR chooses the direction. Join RESET to SLEEP, and give VMOT the motor\'s own power supply.',
+        breadboard: { mountable: true, required: true, footprintId: 'a4988-16' },
+    },
+    {
         id: 'dc-motor', name: 'DC Motor', tag: 'elera-dc-motor', category: 'actuator',
         size: { width: 116, height: 60 }, currentDraw_mA: 200, keywords: ['hobby motor', 'fan'],
         pinMeta: { '+': PIN.SIGNAL, '-': PIN.SIGNAL },

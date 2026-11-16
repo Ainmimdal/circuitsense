@@ -63,6 +63,18 @@ const dipFootprintPins = Object.fromEntries([
     ...dipBottomPins.map((name, index) => [name, { col: index, row: 5 }]),
 ]);
 
+// Pololu-style A4988 carrier, drawn with its two rows on the same holes as an Arduino Nano.
+const a4988TopPins = ['VMOT', 'GND.2', '2B', '2A', '1A', '1B', 'VDD', 'GND.1'];
+const a4988BottomPins = ['ENABLE', 'MS1', 'MS2', 'MS3', 'RESET', 'SLEEP', 'STEP', 'DIR'];
+export const a4988NativePins = Object.fromEntries([
+    ...a4988TopPins.map((name, index) => [name, { x: 9.6 + index * 9.6, y: 4.8 }]),
+    ...a4988BottomPins.map((name, index) => [name, { x: 9.6 + index * 9.6, y: 62.4 }]),
+]);
+const a4988FootprintPins = Object.fromEntries([
+    ...a4988TopPins.map((name, index) => [name, { col: index, row: 0 }]),
+    ...a4988BottomPins.map((name, index) => [name, { col: index, row: 6 }]),
+]);
+
 const genericDip8NativePins = Object.fromEntries([
     ...['1', '2', '3', '4'].map((name, index) => [name, { x: 8 + index * 10, y: 3 }]),
     ...['8', '7', '6', '5'].map((name, index) => [name, { x: 8 + index * 10, y: 63 }]),
@@ -401,6 +413,16 @@ export const componentGeometry = deepFreeze({
             id: 'electrolytic-capacitor-2.54', anchorPin: '+', rotations: [0, 180],
             pins: { '+': { col: 0, row: 0 }, '-': { col: 1, row: 0 } },
             bodyBounds: { minCol: -1, maxCol: 2, minRow: -6, maxRow: 1 },
+        }],
+    },
+    a4988: {
+        tag: 'elera-a4988',
+        native: { size: { width: 86.4, height: 67.2 }, pins: a4988NativePins },
+        calibration: { from: 'VMOT', to: 'GND.2', gridDelta: { col: 1, row: 0 } },
+        footprints: [{
+            id: 'a4988-16', anchorPin: 'VMOT', rotations: [0, 180], requiresTrench: true,
+            pins: a4988FootprintPins,
+            bodyBounds: { minCol: -1, maxCol: 8, minRow: 0, maxRow: 6 },
         }],
     },
     'transistor-npn': {

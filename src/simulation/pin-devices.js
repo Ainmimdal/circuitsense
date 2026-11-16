@@ -126,11 +126,30 @@ function createStepper({ coils, degreesPerStep = 1.8, property = 'angle' }) {
             for (const pin of coils) runner.watch(pin, { edge: settle, mode: settle });
         },
         get degrees() { return degrees; },
-        state: () => ({ [property]: Math.round(((degrees % 360) + 360) % 360 * 10) / 10 }),
+        state: () => ({ [property]: shaftAngle(degrees) }),
     };
 }
 
-const DEVICES = { dht: createDht, 'ir-receiver': createIrReceiver, 'load-cell': createLoadCell, stepper: createStepper };
+/**
+ * A4988 stepper driver: the motor on its outputs moves one step for each pulse on STEP, the way DIR points.
+ * shortcut: always full steps (MS1 to MS3 are ignored) and always awake (ENABLE, SLEEP and RESET are not
+ * checked); read those pins if a lesson ever teaches microstepping or sleep.
+ */
+function createStepperDriver({ step, direction, degreesPerStep = 1.8 }) {
+    let degrees = 0;
+    return {
+        attach(runner) {
+            // DIR wired to a power rail instead of a pin turns one way only.
+            runner.watch(step, { edge: high => { if (high) degrees += (direction && runner.outputLevel(direction) === false ? -1 : 1) * degreesPerStep; } });
+        },
+        get degrees() { return degrees; },
+    };
+}
+
+/** Where a shaft that has turned `degrees` in total points, 0 to 360. */
+export const shaftAngle = degrees => Math.round(((degrees % 360) + 360) % 360 * 10) / 10;
+
+const DEVICES = { dht: createDht, 'ir-receiver': createIrReceiver, 'load-cell': createLoadCell, stepper: createStepper, 'stepper-driver': createStepperDriver };
 
 export function createPinDevice(kind, options) {
     return DEVICES[kind]?.(options) || null;

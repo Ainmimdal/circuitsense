@@ -64,6 +64,15 @@ test('a stepper motor turns 1.8 degrees for each step', () => {
     assert.equal(run.state.components.motor.angle, 90);
 });
 
+test('a stepper motor on an A4988 driver follows the STEP and DIR pulses', () => {
+    const simulation = circuit([['driver', 'a4988'], ['motor', 'stepper-motor']],
+        [['driver:STEP', 'uno:3'], ['driver:DIR', 'uno:4'], ['driver:VDD', 'uno:5V'], ['driver:GND.1', 'uno:GND.1'],
+            ['motor:A-', 'driver:1B'], ['motor:A+', 'driver:1A'], ['motor:B+', 'driver:2A'], ['motor:B-', 'driver:2B']]);
+    const run = session('stepperDriver', simulation).run(.5);
+    assert.match(run.serial, /done/);
+    assert.equal(run.state.components.motor.angle, 72);
+});
+
 test('a relay switches its contacts when a transistor powers the coil', () => {
     const simulation = circuit(
         [['rb', 'resistor', { value: '1000' }], ['q', 'transistor-npn'], ['k', 'relay-dpdt'], ['r', 'resistor', { value: '1000' }]],
