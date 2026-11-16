@@ -114,8 +114,7 @@ The electrical checks read the resolved connectivity graph, so a connection thro
 
 Gap definitions and exit conditions live in [ENGINE_CONTRACT.md](ENGINE_CONTRACT.md#known-contract-drift). `GAP-01`, `GAP-02`, `GAP-04`, `GAP-05`, `GAP-08` and `GAP-09` are closed: the live validator now runs the logical checks with shared-bus awareness and per-board hole lookup.
 
-1. **P1, board data:** the ESP32 DevKit table has no `VIN`/5 V pin, so 5 V parts on it can only be powered from 3V3 and always show `under-voltage`.
-2. **P1, capacity alternatives:** when a scene does not fit, live Auto Layout fails without offering a proven larger or additional board (`GAP-10`).
+1. **P1, capacity alternatives:** when a scene does not fit, live Auto Layout fails without offering a proven larger or additional board (`GAP-10`).
 3. **P1, command completion:** decide the Auto Wire route-dirty versus baseline-routing behavior (`GAP-03`).
 4. **P1, regression depth:** one focused fixture per remaining physical validation finding (`GAP-06`; the electrical findings have them in `test/physical-electrical-validation.test.js`) and an automated browser fixture for the mixed circuit (`GAP-07`).
 5. **P1, legacy rule parity:** the unused schema-v2 engine and its tests were removed; port the rules listed in `GAP-11` to the physical engine, each with a regression test.

@@ -368,6 +368,13 @@ test('under-voltage and signal-over-voltage catch 5 V parts on 3.3 V boards', ()
     assert.equal(starved?.severity, 'warning');
     assert.match(starved.message, /4.5 to 5.5 V but gets 3.3 V/);
 
+    // The ESP32's VIN pin carries the USB 5 V, so a 5 V part with no signal back to the board is happy there.
+    const servo = ids(project({
+        components: [part('esp', 'esp32-devkit-v1'), part('servo', 'servo')],
+        wires: connect([['servo', 'V+'], ['esp', 'VIN']], [['servo', 'GND'], ['esp', 'GND.1']], [['servo', 'PWM'], ['esp', 'D18']]),
+    }));
+    assert.ok(!servo.some(id => /^(under-voltage|signal-over-voltage):/.test(id)), servo.join());
+
     // Powered from an Uno's 5 V, the sensor's ECHO output reaches a 3.3 V ESP32 input.
     const level = findings(project({
         components: [part('uno', 'arduino-uno'), part('esp', 'esp32-devkit-v1'), part('sonar', 'hc-sr04')],

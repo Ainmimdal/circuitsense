@@ -26,6 +26,8 @@ export function supplyPinVoltage(pinId, fallback = null) {
     if (plain) return Number(plain[1]);
     const split = name.match(/^(\d+)V(\d+)$/);
     if (split) return Number(`${split[1]}.${split[2]}`);
+    // A VIN pin listed as a supply passes on the USB cable's 5 V (ESP32 boards).
+    if (name === 'VIN') return 5;
     return Number.isFinite(Number(fallback)) && fallback !== null ? Number(fallback) : null;
 }
 
