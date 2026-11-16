@@ -8,7 +8,7 @@ import { getComponentPropertyDefinitions, validateComponentPropertyValue, visual
 import { canonicalLedColor, LED_COLOR_PROFILES } from '../core/led-resistor.js';
 import { applyVisualProperties, createPartVisualElement } from '../core/visual-adapter.js';
 import { getResistorPackageVisual } from './resistor-variant-elements.js';
-import { physicalCircuitStore } from '../physical/circuit-store.js';
+import { PhysicalCircuitStore, physicalCircuitStore } from '../physical/circuit-store.js';
 import { InteractionController } from '../editor/interaction-controller.js';
 import { firstIsolatedMount } from '../physical/placement.js';
 import { normalizeSelectionRect, rectsIntersect, routeIntersectsRect } from '../editor/selection.js';
@@ -49,6 +49,13 @@ function isPrimaryPointer(event) {
 class CircuitCanvas extends LitElement {
     static properties = {
         guided: { type: Boolean },
+        // Preview mode: a read-only picture of `previewProject` drawn by the real renderer
+        // (lesson thumbnails). `highlight` is a part or wire id to mark; `fitProject` frames the view.
+        preview: { type: Boolean, reflect: true },
+        previewProject: { attribute: false },
+        fitProject: { attribute: false },
+        fitBounds: { attribute: false },
+        highlight: { attribute: false },
         _status: { state: true },
         _zoomLabel: { state: true },
         _hintsOpen: { state: true },
@@ -56,6 +63,9 @@ class CircuitCanvas extends LitElement {
     };
 
     static styles = css`
+        :host([preview]) { pointer-events: none; }
+        :host([preview]) .workspace::before { display: none; }
+        :host([preview]) :is(.mode-pill, .pin-readout, .zoom-controls, .net-inspector, .property-inspector, .canvas-hints) { display: none; }
         :host {
             display: block;
             position: relative;
@@ -739,7 +749,28 @@ class CircuitCanvas extends LitElement {
         }));
     }
 
+    updated(changed) {
+        if (this.preview && ['previewProject', 'fitProject', 'fitBounds', 'highlight'].some(key => changed.has(key))) this._showPreview();
+    }
+
+    _showPreview() {
+        if (!this.stage || !this.previewProject) return;
+        this.store.importProject(structuredClone(this.previewProject));
+        this._clearItemSelection();
+        if (this.highlight && !this._selectComponent(this.highlight)) this._selectWire(this.highlight);
+        this._lessonFit = { target: this.fitProject || this.previewProject, bounds: this.fitBounds, at: Date.now() };
+        this._fittedCamera = null;
+        this._refitLesson();
+    }
+
     firstUpdated() {
+        if (this.preview) {
+            // Its own circuit, never saved and never mixed with the one being edited.
+            this.store = new PhysicalCircuitStore({ load: false, routingWorker: null });
+            this.store.save = () => {};
+            this.interaction = new InteractionController(this.store);
+            this._hintsOpen = false;
+        }
         const container = this.shadowRoot.querySelector('.stage-host');
         this.visualLayer = this.shadowRoot.querySelector('.component-visual-layer');
         // Six stacked full-size canvases at 3x cost 9x the pixels; 2x looks the same and halves draw time.
@@ -771,12 +802,16 @@ class CircuitCanvas extends LitElement {
         this._resizeObserver.observe(container);
         this.store.addEventListener('change', this._storeHandler);
         this.interaction.addEventListener('change', this._interactionHandler);
+        window.addEventListener('elera-component-library-change', this._componentLibraryHandler);
+        if (this.preview) {
+            this._showPreview();
+            return;
+        }
         window.addEventListener('keydown', this._keyHandler);
         window.addEventListener('keyup', this._keyUpHandler);
         window.addEventListener('blur', this._blurHandler);
         window.addEventListener('elera-add-physical-component', this._physicalAddHandler);
         window.addEventListener('elera-select-physical-component', this._physicalSelectHandler);
-        window.addEventListener('elera-component-library-change', this._componentLibraryHandler);
         window.addEventListener('elera-lesson-ghost', this._lessonGhostHandler);
         window.addEventListener('elera-lesson-fit', this._lessonFitHandler);
         window.addEventListener('elera-simulation-state', this._simulationHandler);
@@ -1828,7 +1863,7 @@ class CircuitCanvas extends LitElement {
     _refitLesson() {
         const untouched = this._fittedCamera && ['zoom', 'panX', 'panY'].every(key => this.camera[key] === this._fittedCamera[key]);
         if (!this._lessonFit?.target || (Date.now() - this._lessonFit.at > 2500 && !untouched)) return false;
-        this._fitToBounds(lessonBounds(this._lessonFit.target));
+        this._fitToBounds(this._lessonFit.bounds || lessonBounds(this._lessonFit.target));
         this._fittedCamera = { ...this.camera };
         return true;
     }
@@ -1837,7 +1872,8 @@ class CircuitCanvas extends LitElement {
         if (!this.stage || !bounds) return;
         const width = this.stage.width(), height = this.stage.height();
         const fit = Math.min(width / (bounds.width * CAMERA.pixelsPerMillimetre), height / (bounds.height * CAMERA.pixelsPerMillimetre));
-        this.camera.zoom = Math.max(CAMERA.minZoom, Math.min(CAMERA.maxZoom, fit * .9));
+        // A thumbnail is far smaller than anything worth zooming out to while editing.
+        this.camera.zoom = Math.max(this.preview ? .1 : CAMERA.minZoom, Math.min(CAMERA.maxZoom, fit * .9));
         const scale = this.camera.pixelsPerMillimetre * this.camera.zoom;
         this.camera.panX = width / 2 - (bounds.x + bounds.width / 2) * scale;
         this.camera.panY = height / 2 - (bounds.y + bounds.height / 2) * scale;
@@ -2337,6 +2373,8 @@ class CircuitCanvas extends LitElement {
      * one connection in a busy circuit. Drags and placement show neither.
      */
     _refreshNetFocus() {
+        // A thumbnail marks one wire; fading everything else would hide the circuit.
+        if (this.preview) return;
         const busy = this._isNetFocusBusy();
         this._netFocusBusy = busy;
         const selectedWire = this._selectedWireIds.size === 1 && this._selectedComponentIds.size === 0

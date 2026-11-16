@@ -2,13 +2,13 @@ import { LitElement, html, css } from 'lit';
 import { keyed } from 'lit/directives/keyed.js';
 import { physicalCircuitStore } from '../physical/circuit-store.js';
 import {
-    buildLessonSteps, isLessonStepComplete, lessonMap, lessonStepGhost, lessonStepHint, lessonStepMutation, lessonStepNote,
+    buildLessonSteps, isLessonStepComplete, lessonStepBounds, lessonStepGhost, lessonStepHint, lessonStepMutation, lessonStepNote,
     matchLessonBuild,
 } from '../physical/lessons.js';
 import { validatePhysicalProject } from '../physical/validation.js';
 import { getComponentDef } from '../component-library.js';
 import { faIcon } from '../utils/fa-icons.js';
-import './lesson-map.js';
+import './circuit-canvas.js';
 
 // Guided build panel. `session` is { target, lesson?, name }: the finished
 // circuit to rebuild and, for preset lessons, the story and sketch. The panel
@@ -244,7 +244,7 @@ class LessonGuide extends LitElement {
         .chips { display: flex; flex-wrap: wrap; gap: 5px; }
         .chip { padding: 3px 8px; color: var(--text-muted); border: 1px solid var(--panel-border); border-radius: 4px; font-size: 11px; }
 
-        .map { height: 190px; margin: 0 0 14px; padding: 10px; background: var(--ink); border-radius: 4px; }
+        .map { height: 230px; margin: 0 0 14px; border-radius: 4px; overflow: hidden; }
         .finish { position: relative; text-align: center; padding-top: 6px; }
         .finish h3 { font-size: 21px; margin: 0 0 6px; }
         .stats { display: flex; justify-content: center; gap: 18px; margin: 14px 0 4px; color: var(--text-muted); font-size: 11.5px; }
@@ -293,7 +293,6 @@ class LessonGuide extends LitElement {
     willUpdate(changed) {
         if (!changed.has('session')) return;
         this._steps = this.session ? buildLessonSteps(this.session.target) : [];
-        this._map = this.session ? lessonMap(this.session.target) : null;
         this._skipped = new Set();
         this._cursor = this.session?.lesson ? -1 : 0;
         this._startedAt = Date.now();
@@ -419,13 +418,24 @@ class LessonGuide extends LitElement {
         }
     }
 
-    // The finished circuit, with built steps solid, the current one in the accent and the rest faint.
+    // A real picture of the circuit as it should look once the current step is done
+    // (the whole thing when `all`), with the current step's part or wire marked.
     _renderMap(all = false) {
-        const states = {};
-        this._steps.forEach((step, index) => {
-            states[step.id] = all || this._done[index] ? 'done' : index === this._cursor ? 'current' : 'todo';
-        });
-        return html`<lesson-map class="map" .map=${this._map} .states=${states}></lesson-map>`;
+        const target = this.session.target;
+        const step = this._steps[this._cursor];
+        const reached = new Set(this._steps.slice(0, this._cursor + 1).map(item => item.id));
+        const keep = item => all || reached.has(item.id);
+        const project = { ...target, components: target.components.filter(keep), wires: target.wires.filter(keep) };
+        // Keyed by step so the picture object only changes when the step does.
+        if (this._pictureKey !== `${all}:${this._cursor}`) {
+            this._pictureKey = `${all}:${this._cursor}`;
+            this._picture = project;
+            // A step shows a close-up of where its part or wire goes; intro and finish show everything.
+            this._pictureArea = all || !step ? null : lessonStepBounds(step, target);
+        }
+        return html`<circuit-canvas preview class="map" role="img"
+            aria-label=${all ? 'The finished circuit' : 'Close-up of where this step goes'}
+            .previewProject=${this._picture} .fitProject=${target} .fitBounds=${this._pictureArea} .highlight=${all ? null : step?.id}></circuit-canvas>`;
     }
 
     _renderIntro() {

@@ -5,10 +5,10 @@ import { createHalfBreadboardSurface, holeWorldPosition } from '../src/physical/
 import { defaultFootprintForComponent, getFootprintDefinition, projectFootprintPoint } from '../src/physical/footprints.js';
 import { applyTransform } from '../src/physical/geometry.js';
 import {
-    componentPinRef, createComponentInstance, createPhysicalProject, mountedComponentTransform, surfaceHoleRef,
+    componentPinRef, createComponentInstance, createPhysicalProject, mountedComponentTransform, resolveConnectionWorldPoint, surfaceHoleRef,
 } from '../src/physical/model.js';
 import {
-    buildLessonSteps, isLessonStepComplete, lessonMap, lessonProgress, lessonStepGhost, lessonStepHint, lessonStepMutation,
+    buildLessonSteps, isLessonStepComplete, lessonBounds, lessonProgress, lessonStepBounds, lessonStepGhost, lessonStepHint, lessonStepMutation,
 } from '../src/physical/lessons.js';
 import { validatePhysicalProject } from '../src/physical/validation.js';
 import { listLessons } from '../src/lessons/catalog.js';
@@ -132,13 +132,21 @@ test('a misplaced LED gets a hint naming the leg and column', () => {
     assert.match(lessonStepHint(step, target, current), /short leg belongs in column 10/);
 });
 
-test('every lesson draws as a map that covers each part and wire', () => {
+test('every step has a close-up area inside the circuit that contains what it places', () => {
     for (const lesson of listLessons()) {
         const target = lesson.build();
-        const map = lessonMap(target);
-        const drawn = new Set([...map.parts, ...map.boxes].map(item => item.id));
-        for (const component of target.components) assert.ok(drawn.has(component.id), `${lesson.id}: ${component.id} missing`);
-        assert.equal(map.wires.length, target.wires.length, `${lesson.id}: a wire end did not resolve`);
-        for (const part of map.parts) assert.equal(part.points.length, Object.keys(target.components.find(item => item.id === part.id).placement.bindings).length);
+        const whole = lessonBounds(target, 30);
+        for (const step of buildLessonSteps(target)) {
+            const area = lessonStepBounds(step, target);
+            assert.ok(area.width >= 48 && area.height >= 34, `${lesson.id}: ${step.id} too tight`);
+            assert.ok(area.x + area.width > whole.x && area.x < whole.x + whole.width && area.y + area.height > whole.y && area.y < whole.y + whole.height,
+                `${lesson.id}: ${step.id} is off the circuit`);
+            if (step.kind !== 'wire') continue;
+            const wire = target.wires.find(item => item.id === step.id);
+            for (const ref of [wire.from, wire.to]) {
+                const point = resolveConnectionWorldPoint(target, ref);
+                assert.ok(point.x > area.x && point.x < area.x + area.width && point.y > area.y && point.y < area.y + area.height, `${lesson.id}: ${step.id} end outside`);
+            }
+        }
     }
 });
