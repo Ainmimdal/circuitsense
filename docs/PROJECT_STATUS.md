@@ -10,7 +10,7 @@ This is the current status source of truth. Engine behavior is governed by [ENGI
 
 | Check | Status |
 | --- | --- |
-| Node test suite (`npm test`) | All 277 passing. |
+| Node test suite (`npm test`) | All 285 passing. |
 | Production build (`npm run build`) | Passing. The main chunk is about 650 kB (179 kB gzip) and still triggers Vite's 500 kB warning. Konva, the Wokwi elements, avr8js and Supabase are separate vendor chunks (`vite.config.js`); the code panel with the simulator loads when Code is first opened; the routing worker is its own chunk. |
 | Lint / type check | Not configured |
 | Browser acceptance | Manual only (`GAP-07`). Pointer events cannot be driven reliably into the nested Konva canvas by the current browser harness, so add/move/delete behavior is covered at command and controller level. |
@@ -116,13 +116,12 @@ The electrical checks read the resolved connectivity graph, so a connection thro
 
 ## Known gaps and next priorities
 
-Gap definitions and exit conditions live in [ENGINE_CONTRACT.md](ENGINE_CONTRACT.md#known-contract-drift). `GAP-01`, `GAP-02`, `GAP-04`, `GAP-05`, `GAP-08` and `GAP-09` are closed: the live validator now runs the logical checks with shared-bus awareness and per-board hole lookup.
+Gap definitions and exit conditions live in [ENGINE_CONTRACT.md](ENGINE_CONTRACT.md#known-contract-drift). `GAP-01` to `GAP-06`, `GAP-08` and `GAP-09` are closed. `GAP-03` was settled as a deliberate choice: Auto Wire leaves each wire in automatic routing with no waypoints, and the store routes those on every change, so Clean is not needed (`test/auto-wire-routing.test.js`). The rest are closed (every physical finding has a fixture in `test/physical-validation-findings.test.js` or `test/physical-core.test.js`, every electrical one in `test/physical-electrical-validation.test.js`): the live validator now runs the logical checks with shared-bus awareness and per-board hole lookup.
 
 1. **P1, capacity alternatives:** live Auto Layout offers no proven larger or additional board (`GAP-10`). In practice the board runs out of pins before the breadboard runs out of room, and a failed Auto Wire or Auto Layout now explains that in plain words (`describeAutomationFailure`).
-2. **P1, command completion:** decide the Auto Wire route-dirty versus baseline-routing behavior (`GAP-03`).
-3. **P1, regression depth:** one focused fixture per remaining physical validation finding (`GAP-06`; the electrical findings have them in `test/physical-electrical-validation.test.js`) and an automated browser fixture for the mixed circuit (`GAP-07`).
-4. **P1, legacy rule parity:** the unused schema-v2 engine and its tests were removed; port the rules listed in `GAP-11` to the physical engine, each with a regression test.
-5. **P2, performance:** the bundle is split by vendor and the simulator is lazy; the AI assistant and the dialogs could load on first use too.
+2. **P1, regression depth:** an automated browser fixture for the mixed circuit (`GAP-07`).
+3. **P1, legacy rule parity:** the unused schema-v2 engine and its tests were removed; port the rules listed in `GAP-11` to the physical engine, each with a regression test.
+4. **P2, performance:** the bundle is split by vendor and the simulator is lazy; the AI assistant and the dialogs could load on first use too.
 
 For every engine change, name the affected contract rule, add the failing test first, and keep the command mutation boundaries.
 

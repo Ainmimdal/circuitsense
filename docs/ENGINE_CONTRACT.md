@@ -259,8 +259,6 @@ These are not accepted exceptions. They are visible work items. Removing a row r
 
 | Gap | Current drift | Contract to satisfy |
 | --- | --- | --- |
-| `GAP-03` | Auto Wire replaces connectivity with empty waypoints and does not invoke Clean from the toolbar. | The command contract must deliberately choose either immediate baseline routing or an explicit route-dirty state; it must not be accidental. |
-| `GAP-06` | Validation issue codes do not yet each have a focused fixture. | Every `VAL-*` behavior and public finding ID needs direct regression evidence. |
 | `GAP-07` | Browser acceptance is manual; pointer, zoom and final rendered geometry are not in automated CI. | Add browser fixtures for the primary mixed circuit and interaction rollback. |
 | `GAP-10` | Live Auto Layout (`src/physical/automation.js`) fails when a scene does not fit the current breadboard; proven capacity alternatives (add a board, replace with a larger one) existed only in the removed schema-v2 planner. | `CAP-02`: offer only alternatives proven by a complete legal plan, from the live engine. |
 | `GAP-11` | The schema-v2 engine was removed (2026-10-11) because the app no longer loaded it. These rules were proven only there and have no live regression evidence yet: `AW-08` (one color per net), `AL-04` (constrained footprints first), `BB-05` (one rail feeder, unique branches), `BB-07` (jumper gender), `CAP-01` and `CAP-02` (proven capacity and recovery alternatives), `CL-05` (breadboard-local jumper routes), `VAL-01` (read-only logical/physical validation layers) and `INT-01` (click cannot move parts). | Implement each rule in `src/physical/` with a regression test and restore its registry row. |
