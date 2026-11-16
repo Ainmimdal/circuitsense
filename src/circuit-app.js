@@ -9,6 +9,7 @@ import { getLesson } from './lessons/catalog.js';
 import './components/component-builder-modal.js';
 import './components/login-modal.js';
 import './components/lessons-modal.js';
+import { buildGoalProject } from './lessons/goal-build.js';
 import { billOfMaterials } from './components/lesson-guide.js';
 import { decodeShareHash, encodeShareHash, MAX_SHARE_LINK_LENGTH } from './persistence/share-link.js';
 import './components/code-panel.js';
@@ -601,14 +602,44 @@ class CircuitApp extends LitElement {
     }
 
     _onStartLesson(event) {
-        const { lessonId, current } = event.detail || {};
+        const { lessonId, current, goal, guided } = event.detail || {};
         this._lessonsOpen = false;
+        if (goal) {
+            this._buildGoal(goal, guided);
+            return;
+        }
         if (current) {
             this._startGuide({ target: structuredClone(physicalCircuitStore.project), name: this._currentProjectName });
             return;
         }
         const lesson = getLesson(lessonId);
         if (lesson) this._startGuide({ target: lesson.build(), lesson });
+    }
+
+    // A circuit and its code for "when this, then that": rebuilt step by step, or put straight on the canvas.
+    async _buildGoal(goal, guided) {
+        const built = buildGoalProject(goal);
+        if (built.error) {
+            showToast(built.error, 'warning');
+            return;
+        }
+        if (guided) {
+            await this._startGuide({ target: built.project, name: built.name });
+            // The guide starts from an empty canvas, so the code goes in separately.
+            if (this._guideSession?.target === built.project) physicalCircuitStore.setSketch(built.project.properties.sketch);
+            return;
+        }
+        const project = physicalCircuitStore.project;
+        if ((project.components.length || project.wires.length) && !(await confirmDialog({
+            title: 'Replace the circuit on the canvas?',
+            message: 'The new circuit takes its place, so save first if you want to keep yours.',
+            confirmLabel: 'Build it',
+        }))) return;
+        physicalCircuitStore.importProject(built.project);
+        projectLibrary.setCurrentProjectId(null);
+        if (!this._codeOpen) this._toggleCode();
+        else this._fitCircuit();
+        showToast(`Built: ${built.name}. Press Run to try it.`, 'success');
     }
 
     // Clears the canvas down to the target's breadboards, then hands the
