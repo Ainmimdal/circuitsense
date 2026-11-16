@@ -25,7 +25,7 @@ The **legacy schema-v2 engine** (`src/store.js`, `src/services/*`, `src/componen
 
 ### Editor
 
-- Lit 3 application shell with a Konva workspace (background, board, wire, component and interaction layers). Wokwi or converted-part artwork is drawn in a pointer-transparent DOM layer; Konva owns hit testing.
+- Lit 3 application shell with a Konva workspace (two canvas layers holding board, component, wire, ghost and interaction groups; the dot grid is CSS). Wokwi or converted-part artwork is drawn in a pointer-transparent DOM layer; Konva owns hit testing.
 - Component sidebar over the `@wokwi/elements` catalog, the converted Fritzing parts (`Imported` filter) and user-defined parts from the component builder (`My parts`).
 - Free-space placement, breadboard mounting through the generic snap solver, rotation, selection, multi-select, delete with connected-wire cleanup, pan and zoom.
 - Manual wiring in orthogonal or freestyle mode with optional pitch snap, editable waypoints and segment grips, and per-net inspection.
