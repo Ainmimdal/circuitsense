@@ -647,6 +647,7 @@ const defineWokwiComponent = definition => {
         id: 'rgb-led', name: 'RGB LED', tag: 'wokwi-rgb-led', category: 'output',
         size: { width: 43, height: 73 }, currentDraw_mA: 60,
         pinMeta: { R: PIN.SIGNAL, COM: PIN.GND, G: PIN.SIGNAL, B: PIN.SIGNAL }, needsResistor: true,
+        autoWire: { R: PIN.PWM, G: PIN.PWM, B: PIN.PWM, COM: PIN.GND },
         simulation: { kind: 'rgb-led', channels: { ledRed: 'R', ledGreen: 'G', ledBlue: 'B' }, common: 'COM' },
         breadboard: { mountable: true, required: true, footprintId: 'rgb-led-bent-4' },
     },

@@ -11,8 +11,8 @@ import { writeSketch } from '../simulation/sketch-writer.js';
 // for a goal the student picks. Parts are placed and wired by the same Auto
 // Layout the toolbar uses, and the code comes from the sketch writer.
 //
-// shortcut: one sensor and one output from the lists below; the RGB LED is
-// left out because Auto Wire cannot give its three legs their own resistors yet.
+// shortcut: one sensor and one output from the lists below, add a second
+// output list when students ask to drive two things at once.
 
 export const GOAL_SENSORS = [
     { id: 'none', label: 'the Arduino is switched on', definitionId: null },
@@ -26,6 +26,7 @@ export const GOAL_SENSORS = [
 
 export const GOAL_OUTPUTS = [
     { id: 'led', label: 'light an LED', definitionId: 'led' },
+    { id: 'rgb', label: 'change a colour light', definitionId: 'rgb-led' },
     { id: 'buzzer', label: 'make a sound', definitionId: 'buzzer' },
     { id: 'servo', label: 'move a servo arm', definitionId: 'servo' },
     { id: 'screen', label: 'show it on a screen', definitionId: 'lcd1602' },
