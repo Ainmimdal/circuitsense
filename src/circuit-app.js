@@ -9,7 +9,8 @@ import { getLesson } from './lessons/catalog.js';
 import './components/component-builder-modal.js';
 import './components/login-modal.js';
 import './components/lessons-modal.js';
-import './components/lesson-guide.js';
+import { billOfMaterials } from './components/lesson-guide.js';
+import { decodeShareHash, encodeShareHash, MAX_SHARE_LINK_LENGTH } from './persistence/share-link.js';
 import './components/code-panel.js';
 
 const COMPLETED_LESSONS_KEY = 'elera_completed_lessons';
@@ -317,6 +318,76 @@ class CircuitApp extends LitElement {
         projectLibrary.addEventListener('change', this._libraryHandler);
         accountService.init().then(this._accountHandler);
         this._refreshCurrentProjectName();
+        this._openSharedLink();
+    }
+
+    async _openSharedLink() {
+        let shared = null;
+        try {
+            shared = await decodeShareHash(location.hash);
+        } catch {
+            showToast('This share link is damaged or incomplete. Ask for it to be sent again.', 'error');
+        }
+        if (location.hash.startsWith('#p=')) history.replaceState(null, '', location.pathname + location.search);
+        if (!shared) return;
+        const current = physicalCircuitStore.project;
+        // A lone breadboard is the starting canvas, not work worth asking about.
+        if (current.components.length && !await confirmDialog({
+            title: 'Open the shared circuit?',
+            message: 'It replaces the circuit on the canvas. Save yours first if you want to keep it.',
+            confirmLabel: 'Open shared circuit',
+            cancelLabel: 'Keep mine',
+        })) return;
+        try {
+            physicalCircuitStore.importProject(shared);
+            projectLibrary.setCurrentProjectId(null);
+            this._fitCircuit();
+            showToast('Shared circuit opened. It is your own copy; changes do not affect the original.', 'success');
+        } catch {
+            showToast('This share link could not be opened.', 'error');
+        }
+    }
+
+    async _shareProject() {
+        const project = physicalCircuitStore.project;
+        if (!project.components.length && !project.surfaces.length) {
+            showToast('Add something to the canvas first, then share it.', 'info');
+            return;
+        }
+        const link = location.origin + location.pathname + await encodeShareHash(physicalCircuitStore.exportProject());
+        if (link.length > MAX_SHARE_LINK_LENGTH) {
+            showToast('This circuit is too big for a link. Use Export and send the file instead.', 'warning');
+            return;
+        }
+        try {
+            await navigator.clipboard.writeText(link);
+            showToast('Link copied. Anyone who opens it gets their own copy of this circuit.', 'success');
+        } catch {
+            // Clipboard access can be blocked; the address bar is the fallback.
+            history.replaceState(null, '', link);
+            showToast('Copy the link from the address bar to share this circuit.', 'info');
+        }
+    }
+
+    async _showPartsList() {
+        const rows = billOfMaterials(physicalCircuitStore.project);
+        if (!rows.length) {
+            showToast('The canvas is empty, so there are no parts to list yet.', 'info');
+            return;
+        }
+        if (!await confirmDialog({
+            title: 'Parts you need to build this',
+            message: html`${rows.map(([label, count]) => html`<b>${count} ×</b> ${label}<br>`)}`,
+            confirmLabel: 'Download as spreadsheet',
+            cancelLabel: 'Close',
+        })) return;
+        const csv = ['Quantity,Part', ...rows.map(([label, count]) => `${count},"${label.replace(/"/g, '""')}"`)].join('\r\n');
+        const linkElement = document.createElement('a');
+        // The BOM mark makes Excel read the Ω sign correctly.
+        linkElement.href = URL.createObjectURL(new Blob(['\ufeff' + csv], { type: 'text/csv' }));
+        linkElement.download = 'parts-list.csv';
+        linkElement.click();
+        URL.revokeObjectURL(linkElement.href);
     }
 
     disconnectedCallback() {
@@ -621,6 +692,8 @@ class CircuitApp extends LitElement {
           <div class="tool-cluster secondary" aria-label="File actions">
             <button class="toolbar-btn btn-action" @click=${this._exportProject} title="Export project"><span class="icon">${faIcon('download')}</span>Export</button>
             <button class="toolbar-btn btn-action" @click=${this._importProject} title="Import project"><span class="icon">${faIcon('folderOpen')}</span>Import</button>
+            <button class="toolbar-btn btn-action" @click=${this._shareProject} title="Copy a link to this circuit"><span class="icon">${faIcon('link')}</span>Share</button>
+            <button class="toolbar-btn btn-action" @click=${this._showPartsList} title="List the parts this circuit needs"><span class="icon">${faIcon('listCheck')}</span>Parts</button>
           </div>
           <div class="tool-cluster circuit-actions" aria-label="Circuit actions">
             <button class="toolbar-btn btn-action" @click=${this._cleanupWires} title="Clean wire routes"><span class="icon">${faIcon('wrench')}</span>Clean</button>
@@ -643,6 +716,8 @@ class CircuitApp extends LitElement {
               <button class="toolbar-btn btn-action" @click=${event => this._runOverflowAction(event, this._autoLayoutAll)}>${faIcon('wand')} Auto Layout</button>
               <button class="toolbar-btn btn-action" @click=${event => this._runOverflowAction(event, this._exportProject)}>${faIcon('download')} Export project</button>
               <button class="toolbar-btn btn-action" @click=${event => this._runOverflowAction(event, this._importProject)}>${faIcon('folderOpen')} Import project</button>
+              <button class="toolbar-btn btn-action" @click=${event => this._runOverflowAction(event, this._shareProject)}>${faIcon('link')} Share link</button>
+              <button class="toolbar-btn btn-action" @click=${event => this._runOverflowAction(event, this._showPartsList)}>${faIcon('listCheck')} Parts list</button>
               <button class="toolbar-btn btn-action" @click=${event => this._runOverflowAction(event, this._resetWires)}>${faIcon('rotateLeft')} Reset wires</button>
               <button class="toolbar-btn btn-action" @click=${event => this._runOverflowAction(event, this._toggleAi)}>${faIcon('wand')} AI assistant</button>
               <button class="toolbar-btn btn-action" @click=${event => this._runOverflowAction(event, this._openProjects)}>${faIcon('folder')} Projects</button>
