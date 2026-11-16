@@ -40,18 +40,24 @@ The **legacy schema-v2 engine** (`src/store.js`, `src/services/*`, `src/componen
 
 ### Lessons and guided builds
 
-- The Learn button opens eight preset lessons (`src/lessons/catalog.js`): Blink, Push to light, Traffic light, Knob dimmer, Doorbell, Night light, Colour mixer and Servo steering. Each has a goal, an explanation, a parts list, per-step notes, an Arduino sketch and a follow-up challenge.
+- The Learn button opens nine preset lessons (`src/lessons/catalog.js`): Blink, Push to light, Traffic light, Knob dimmer, Doorbell, Night light, Parking sensor, Colour mixer and Servo steering. Each has a goal, an explanation, a parts list, per-step notes, an Arduino sketch and a follow-up challenge.
 - `src/physical/lessons.js` turns any finished project into ordered steps (breadboards, boards, parts, then power, ground and signal wires) and checks each step against the student's build. Parts are matched by definition rather than id, and any hole in the right strip counts.
 - The guide panel (`src/components/lesson-guide.js`) shows step N of M, a one-line reason for each step, gentle hints after a wrong placement, and Show me, Back and Skip. The canvas draws the next part or wire as a glowing ghost. The finish screen shows the sketch with a copy button and upload steps.
 - "Guide me" turns the circuit on the canvas, or any saved project from My projects, into the same step-by-step rebuild; leaving it early offers the original circuit back.
 - `test/lessons.test.js` checks that every lesson is a valid circuit whose footprints match their holes, that Show me completes every step, and that hints name the right leg and column.
 
+### Parts library
+
+- Every built-in part has a one-line description and a beginner note (`src/part-guide.js`); cards say how the part connects ("Plugs into breadboard", "Connect with wires", "Runs your code") and frame the artwork by its drawn size.
+- Elera draws the basic parts Wokwi does not ship (`src/components/basic-part-elements.js`): photoresistor, ceramic and electrolytic capacitor, diode, NPN transistor and DC motor. They snap to the breadboard through `src/core/component-geometry.js` like any other part.
+- A pin listed in `pinMeta` is reported as floating until it is wired, so optional terminals (spare relay contacts, unused display pins) are deliberately left out of it.
+
 ### Arduino code and simulation
 
-- The Code button opens an editor under the canvas (`src/components/code-panel.js`). Run executes the sketch on a simulated ATmega328P (avr8js, `src/simulation/avr-runner.js`) wired to the circuit on the canvas: LEDs, RGB LEDs, buzzers (with sound) and servos react; buttons can be held on the canvas; knobs and sensors get sliders; there is a Serial Monitor. Uno and Nano only.
+- The Code button opens an editor under the canvas (`src/components/code-panel.js`). Run executes the sketch on a simulated ATmega328P (avr8js, `src/simulation/avr-runner.js`) wired to the circuit on the canvas: LEDs, RGB LEDs, buzzers (with sound), servos and DC motors react; buttons can be held on the canvas; knobs, the joystick and sensor modules (light, sound, flame, gas, temperature, motion, tilt) get sliders or hold buttons; the HC-SR04 answers `pulseIn` with a real echo pulse for the distance on its slider; there is a Serial Monitor. Uno and Nano only.
 - Each lesson opens with its starter sketch, which is compiled ahead of time (`src/simulation/prebuilt-sketches.json`), so it runs with no server. Edited code goes to the compile server (`server/compile-server/`, `VITE_COMPILE_URL`); compiler errors are rewritten in beginner language with a jump to the line.
 - The compile server is not deployed yet. Until `VITE_COMPILE_URL` is set, edited code shows a message and starter code still runs. Hosting and limits are in [COMPILE_SERVER.md](COMPILE_SERVER.md).
-- Voltages and LED currents come from a DC solver (`src/simulation/dc-solver.js`, `test/dc-solver.test.js`): resistor values change brightness and too many LEDs in series stay dark. It is DC only, and displays and I2C parts are not simulated.
+- Voltages and LED currents come from a DC solver (`src/simulation/dc-solver.js`, `test/dc-solver.test.js`): resistor values change brightness and too many LEDs in series stay dark. Diodes conduct one way, a photoresistor's resistance follows its Light slider and an NPN transistor acts as a switch that closes when base current flows (`test/simulation-basic-parts.test.js`). It is DC only, so capacitors are open circuits, and displays and I2C parts are not simulated.
 - `test/simulation.test.js` runs every lesson's program on its finished circuit and checks the parts behave as the lesson says.
 
 ### Physical model
