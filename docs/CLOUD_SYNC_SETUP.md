@@ -39,8 +39,13 @@ Checked against the Supabase and Google Cloud consoles in November 2026.
    - **By hand:** open the SQL editor, paste
      `supabase/migrations/20261011000000_projects.sql` and run it.
 
-   Either way, the migration creates the `projects` table with row level
-   security, so each user only sees their own rows. It is safe to run twice.
+   Run `supabase/migrations/20261116000000_shared_projects.sql` the same way.
+
+   The first migration creates the `projects` table with row level
+   security, so each user only sees their own rows. The second creates
+   `shared_projects` for short share links: a signed-in user publishes a copy,
+   and anyone with the link id can read that one circuit through the
+   `get_shared_project` function. Both are safe to run twice.
    `supabase/config.toml` holds settings for local development. Without a
    `[remotes]` block, it never changes production auth settings.
 3. **Create a Google OAuth client** in Google Cloud Console, under

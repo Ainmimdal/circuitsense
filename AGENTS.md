@@ -52,4 +52,4 @@ Named projects live in IndexedDB on the device. Optional Google sign-in and clou
 
 ## Planned, not built
 
-Read-only public projects, generating Arduino code from a circuit and goal-based circuit generation.
+Nothing from the original plan is left unbuilt: published circuits (`shared_projects`), code written from the circuit (`src/simulation/sketch-writer.js`) and goal-based builds (`src/lessons/goal-build.js`) exist. Open engine gaps are listed in `docs/PROJECT_STATUS.md`.
