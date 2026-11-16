@@ -180,7 +180,8 @@ export function lessonStepNote(step, target, notes = {}) {
     if (step.kind === 'wire') return DEFAULT_NOTES[step.wireKind];
     if (step.isBoard) return DEFAULT_NOTES.board;
     const component = componentById(target, step.id);
-    return getComponentDef(component?.definitionId)?.description || 'Place this part where the outline shows.';
+    const definition = getComponentDef(component?.definitionId);
+    return definition?.beginnerNote || definition?.description || 'Place this part where the outline shows.';
 }
 
 function describeHole(holeId) {

@@ -18,6 +18,13 @@ import './lesson-map.js';
 const KIND_LABELS = { surface: 'Breadboard', component: 'Part', power: 'Power wire', ground: 'Ground wire', signal: 'Signal wire' };
 const CODE_TOKENS = /(\/\/.*$)|("(?:[^"\\]|\\.)*")|\b(void|int|const|if|else|for|return|#include)\b|\b(\d+)\b|\b(pinMode|digitalWrite|digitalRead|analogWrite|analogRead|delay|tone|map|setup|loop|Serial|attach|write|println|begin)\b/g;
 
+// What to physically do for each kind of step; the guide checks the result by itself.
+const HOW_TO = {
+    surface: 'Drag a breadboard from the Parts library on the left onto the canvas.',
+    component: 'Find it in the Parts library on the left (already searched for you) and drag it onto the glowing outline.',
+    wire: 'Click one glowing end, then click the other. The wire draws itself.',
+};
+
 function stepKind(step) {
     return step.kind === 'wire' ? step.wireKind : step.kind;
 }
@@ -280,6 +287,7 @@ class LessonGuide extends LitElement {
         physicalCircuitStore.removeEventListener('change', this._storeHandler);
         clearTimeout(this._advanceTimer);
         this._publishGhost(null);
+        if (this._librarySearch) window.dispatchEvent(new CustomEvent('elera-library-search', { detail: '' }));
     }
 
     willUpdate(changed) {
@@ -295,6 +303,17 @@ class LessonGuide extends LitElement {
 
     updated() {
         this._syncGhost();
+        this._syncLibrarySearch();
+    }
+
+    // While a part step is open the Parts library shows just that part, so a beginner does not hunt through 60 of them.
+    _syncLibrarySearch() {
+        const step = this._steps?.[this._cursor];
+        const wanted = this.session && step?.kind === 'component' && !this._done[this._cursor]
+            ? getComponentDef(this.session.target.components.find(component => component.id === step.id)?.definitionId)?.name || '' : '';
+        if (wanted === (this._librarySearch || '')) return;
+        this._librarySearch = wanted;
+        window.dispatchEvent(new CustomEvent('elera-library-search', { detail: wanted }));
     }
 
     _firstOpen() {
@@ -444,7 +463,7 @@ class LessonGuide extends LitElement {
                     ${this._hint && !done ? html`<div class="hint" role="status">${faIcon('lightbulb')}<span>${this._hint}</span></div>` : ''}
                     ${done
                         ? html`<div class="watch">${this._celebrate ? 'Nice! Moving on…' : skipped ? 'Skipped' : 'Done'}</div>`
-                        : html`<div class="watch"><i></i>Follow the glowing outline. I'll check it as you build.</div>`}
+                        : html`<div class="watch"><i></i>${HOW_TO[step.kind]}</div>`}
                 </div>`)}
                 <button class="list-toggle" @click=${() => { this._showAll = !this._showAll; }}>
                     ${faIcon('listCheck')} ${this._showAll ? 'Hide all steps' : 'Show all steps'}
@@ -476,7 +495,7 @@ class LessonGuide extends LitElement {
                 <div class="finish">
                     ${this._renderMap(true)}
                     <h3>${lesson ? `${lesson.title} built!` : 'Circuit rebuilt!'}</h3>
-                    <p class="note">${lesson ? lesson.goal.replace(/\.$/, '') + ' is ready to go.' : `You rebuilt ${this.session.name || 'the circuit'} step by step.`}</p>
+                    <p class="note">${lesson ? 'Every part and wire is in the right place. Now give it some code.' : `You rebuilt ${this.session.name || 'the circuit'} step by step.`}</p>
                     <div class="stats">
                         <span><b>${this._steps.length}</b>steps</span>
                         <span><b>${this.session.target.wires.length}</b>wires</span>
@@ -487,15 +506,16 @@ class LessonGuide extends LitElement {
                     ${this._skipped.size ? html`<p class="note">You skipped ${this._skipped.size} step${this._skipped.size === 1 ? '' : 's'}. Use the step list to go back to them.</p>` : ''}
                 </div>
                 ${lesson ? html`
-                    <div class="section-title">Upload the code</div>
+                    <button class="btn primary wide" style="margin: 14px 0 0; width: 100%;" @click=${() => this.dispatchEvent(new CustomEvent('open-code', { bubbles: true, composed: true }))}>
+                        ${faIcon('play')} Run the code on this circuit</button>
+                    <p class="note" style="text-align: center; margin: 6px 0 0;">No real board needed. You can change the code and see what happens.</p>
+                    <div class="section-title">The code for this lesson</div>
                     <div class="code-box">
                         <div class="code-head">${lesson.id}.ino
                             <button class="btn" @click=${this._copyCode}>${faIcon(this._copied ? 'check' : 'copy')} ${this._copied ? 'Copied' : 'Copy'}</button>
                         </div>
                         <pre>${lesson.code.split('\n').map(line => html`${highlight(line)}\n`)}</pre>
                     </div>
-                    <button class="btn primary wide" style="margin: 10px 0 0; width: 100%;" @click=${() => this.dispatchEvent(new CustomEvent('open-code', { bubbles: true, composed: true }))}>
-                        ${faIcon('play')} Try the code here, no board needed</button>
                     <div class="section-title">On your real board</div>
                     <ol class="upload">
                         <li>Build the same circuit on a breadboard and plug the Uno in with USB.</li>

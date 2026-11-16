@@ -492,6 +492,8 @@ class CircuitCanvas extends LitElement {
         };
         this._lessonFitHandler = event => {
             this._lessonFit = { target: event.detail, at: Date.now() };
+            // The controls list would cover part of the circuit the guide is pointing at.
+            if (event.detail) this._hintsOpen = false;
             this._refitLesson();
         };
         // While code runs, the simulator sends the properties each part should show (null when it stops).
